@@ -3,24 +3,52 @@
 #include <string>
 #include <bitset>
 
-Util::Util() {
-}
+#include "cryptlib.h"
+#include "randpool.h"
+#include "integer.h"
+#include "osrng.h"
+
+using namespace std;
+
+Util::Util() {}
 
 /*
-  returns a random string
+  Returns a random string that can contain
+  numbers, upper- and lower-case letters.
 */
-std::string Util::randomString() {
-		std::string lettersLower = "abcdefghijklmnopqrstuvwxyz";
-		std::string lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-		std::string numbers = "0123456789";
-		std::string combine = lettersLower+lettersUpper+numbers;
+string Util::randomString(int length) {
+  string lettersLower = "abcdefghijklmnopqrstuvwxyz";
+  string lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  string numbers = "0123456789";
+  string combine = lettersLower+lettersUpper+numbers;
+  string s = "";
+  for(int i=0; i<length; i++) {
+    long l = Util::randomInt(0, combine.size());
+    s += combine[l];
+  }
 
-		//random
-		return "needImplementation";
+  return s;
 }
 
 /*
- char contains 8 bits
+  Returns random number between minInt and maxInt
+*/
+long Util::randomInt(int minInt, int maxInt) {
+  CryptoPP::AutoSeededRandomPool asrp;
+  CryptoPP::Integer r;
+
+  if(minInt = 0) {
+    r = CryptoPP::Integer(asrp, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
+  } else {
+    r = CryptoPP::Integer(asrp, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
+  }
+
+  long l = r.ConvertToLong();
+  return l;
+}
+
+/*
+ Char contains 8 bits
  - signed char [-128; 127]
  - unsigned char [0; 255]
  unsigned char can therefore be used as a byte
@@ -38,10 +66,10 @@ unsigned char Util::toByte(int i) {
 }
 
 /*
-  transform integer to a bit string
+  Transform integer to a bit-string
 */
-std::string Util::toBitString(int i) {
-  std::string s = std::bitset<64>(i).to_string();
+string Util::toBitString(int i) {
+  string s = bitset<64>(i).to_string();
 
   int index = 0;
   while(index < s.size()) {
@@ -55,14 +83,14 @@ std::string Util::toBitString(int i) {
   return s;
 }
 
-void Util::printl(std::string m) {
-  std::cout << m << std::endl;
+void Util::printl(string m) {
+  cout << m << endl;
 }
 
 void Util::printl(int i) {
-  std::cout << i << std::endl;
+  cout << i << endl;
 }
 
 void Util::printl(char c) {
-  std::cout << c << std::endl;
+  cout << c << endl;
 }

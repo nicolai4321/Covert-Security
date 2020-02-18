@@ -12,7 +12,6 @@ int main() {
   PartyB partyB = PartyB(3);
 
   //Gates: XOR,AND
-
   unsigned char b = Util::toByte(13);
   unsigned char a = Util::toByte(8);
 

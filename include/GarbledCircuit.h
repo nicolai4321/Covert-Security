@@ -4,18 +4,19 @@
 #include <vector>
 #include <map>
 
+using namespace std;
+
 class GarbledCircuit
 {
   public:
-    std::map<std::string, std::vector<std::string>> gates;
-
     GarbledCircuit();
-    std::vector<std::string> addGate(std::string gateName);
-    void addXOR(std::string inputGateL, std::string inputGateR, std::string outputGate);
+    vector<string> addGate(string gateName);
+    void addXOR(string inputGateL, string inputGateR, string outputGate);
 
   protected:
 
   private:
+    map<string, vector<string>> gates;
 };
 
 #endif // GARBLEDCIRCUIT_H
