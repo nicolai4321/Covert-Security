@@ -9,7 +9,7 @@ using namespace std;
 class GarbledCircuit
 {
   public:
-    GarbledCircuit();
+    GarbledCircuit(int k);
     vector<string> addGate(string gateName);
     void addXOR(string inputGateL, string inputGateR, string outputGate);
 
@@ -17,6 +17,7 @@ class GarbledCircuit
 
   private:
     map<string, vector<string>> gates;
+    int kappa;
 };
 
 #endif // GARBLEDCIRCUIT_H

@@ -2,7 +2,11 @@
 #include <iostream>
 #include <string>
 #include <bitset>
+#include <iomanip>
 
+#include "modes.h"
+#include "aes.h"
+#include "filters.h"
 #include "cryptlib.h"
 #include "randpool.h"
 #include "integer.h"
@@ -11,6 +15,86 @@
 using namespace std;
 
 Util::Util() {}
+
+/*
+  hash function
+*/
+void Util::h(string m, CryptoPP::byte* b) {
+  CryptoPP::SHA256 hash;
+  hash.CalculateDigest(b, (CryptoPP::byte*) m.c_str(), m.length());
+}
+
+/*
+  byte to string
+*/
+string Util::byteToString(CryptoPP::byte* b, int byteSize) {
+  string output;
+  CryptoPP::HexEncoder encoder;
+  encoder.Attach(new CryptoPP::StringSink(output));
+  encoder.Put(b, byteSize);
+  encoder.MessageEnd();
+  return output;
+}
+
+/*
+  Constructs key and iv
+*/
+vector<CryptoPP::byte*> Util::generateKeys() {
+  CryptoPP::byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
+  memset(key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  memset(key, 4, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  //prng.GenerateBlock(key, sizeof(key));
+
+  CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
+  memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+  //prng.GenerateBlock(iv, sizeof(iv));
+
+  vector<CryptoPP::byte*> keys;
+  keys.push_back(key);
+  keys.push_back(iv);
+  return keys;
+}
+
+/*
+  Encrypts message
+*/
+string Util::encrypt(string p, vector<CryptoPP::byte*> keys) {
+  CryptoPP::byte* key = keys.at(0);
+  CryptoPP::byte* iv = keys.at(1);
+
+  std::string c;
+  CryptoPP::AES::Encryption aesEnc(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEnc(aesEnc, iv);
+
+  CryptoPP::StreamTransformationFilter stf(cbcEnc, new CryptoPP::StringSink(c));
+  stf.Put(reinterpret_cast<const unsigned char*>(p.c_str()), p.length());
+  stf.MessageEnd();
+
+  return c;
+}
+
+/*
+  Decrypts message
+*/
+string Util::decrypt(string c, vector<CryptoPP::byte*> keys) {
+  CryptoPP::byte* key = keys.at(0);
+  CryptoPP::byte* iv = keys.at(1);
+
+  string s;
+  CryptoPP::AES::Decryption aesDec(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDec(aesDec, iv);
+
+  CryptoPP::StreamTransformationFilter stf(cbcDec, new CryptoPP::StringSink(s));
+  stf.Put(reinterpret_cast<const unsigned char*>(c.c_str()), c.size());
+  stf.MessageEnd();
+
+  return s;
+}
+
+void Util::randomByte(CryptoPP::byte* b, int length) {
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.GenerateBlock(b, length);
+}
 
 /*
   Returns a random string that can contain
@@ -81,6 +165,21 @@ string Util::toBitString(int i) {
   s = s.substr(index, 64-index);
 
   return s;
+}
+
+void Util::printByte(CryptoPP::byte* b, int length) {
+  string s;
+	CryptoPP::StringSource(b, length, true,
+		new CryptoPP::HexEncoder(
+			new CryptoPP::StringSink(s)
+		)
+	);
+  cout << "byte: " << s << endl;
+}
+
+void Util::mergeBytes(CryptoPP::byte* b, CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
+  memcpy(b, b0, length);
+  memcpy(b+length, b1, length);
 }
 
 void Util::printl(string m) {

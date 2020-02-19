@@ -6,12 +6,24 @@
 #include "randpool.h"
 #include "integer.h"
 #include "osrng.h"
+#include "hex.h"
 
 using namespace std;
 
 class Util {
   public:
     Util();
+
+    static void randomByte(CryptoPP::byte* b, int length);
+    static void printByte(CryptoPP::byte* b, int length);
+    static void mergeBytes(CryptoPP::byte* b, CryptoPP::byte* b0, CryptoPP::byte* b1, int length);
+
+    static void h(string m, CryptoPP::byte*);
+    static string byteToString(CryptoPP::byte* b, int byteSize);
+
+    static vector<CryptoPP::byte*> generateKeys();
+    static string encrypt(string p, vector<CryptoPP::byte*> keys);
+    static string decrypt(string c, vector<CryptoPP::byte*> keys);
 
     static string randomString(int length);
     static long randomInt(int minInt, int maxInt);

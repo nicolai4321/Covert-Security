@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+
+covert.depend
+covert.layout
+bin/Release/covert
