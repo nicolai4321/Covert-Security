@@ -14,11 +14,11 @@ class Util {
   public:
     Util();
 
-    static void randomByte(CryptoPP::byte* b, int length);
+    static CryptoPP::byte* randomByte(int length);
     static void printByte(CryptoPP::byte* b, int length);
-    static void mergeBytes(CryptoPP::byte* b, CryptoPP::byte* b0, CryptoPP::byte* b1, int length);
+    static CryptoPP::byte* mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length);
 
-    static void h(string m, CryptoPP::byte*);
+    static CryptoPP::byte* h(string m);
     static string byteToString(CryptoPP::byte* b, int byteSize);
 
     static vector<CryptoPP::byte*> generateKeys();

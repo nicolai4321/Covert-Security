@@ -17,15 +17,17 @@ using namespace std;
 Util::Util() {}
 
 /*
-  hash function
+  Returns a hashed byte
 */
-void Util::h(string m, CryptoPP::byte* b) {
+CryptoPP::byte* Util::h(string m) {
+  CryptoPP::byte* b = new CryptoPP::byte[CryptoPP::SHA256::DIGESTSIZE];
   CryptoPP::SHA256 hash;
   hash.CalculateDigest(b, (CryptoPP::byte*) m.c_str(), m.length());
+  return b;
 }
 
 /*
-  byte to string
+  Transforms a byte to a string
 */
 string Util::byteToString(CryptoPP::byte* b, int byteSize) {
   string output;
@@ -37,16 +39,14 @@ string Util::byteToString(CryptoPP::byte* b, int byteSize) {
 }
 
 /*
-  Constructs key and iv
+  Constructs the encrytion key and iv
 */
 vector<CryptoPP::byte*> Util::generateKeys() {
-  CryptoPP::byte key[CryptoPP::AES::DEFAULT_KEYLENGTH];
-  memset(key, 0x00, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  memset(key, 4, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  CryptoPP::byte *key = new CryptoPP::byte[CryptoPP::AES::DEFAULT_KEYLENGTH];
+  CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
+  memset(key, 0x39, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  memset(iv, 0x37, CryptoPP::AES::BLOCKSIZE);
   //prng.GenerateBlock(key, sizeof(key));
-
-  CryptoPP::byte iv[CryptoPP::AES::BLOCKSIZE];
-  memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
   //prng.GenerateBlock(iv, sizeof(iv));
 
   vector<CryptoPP::byte*> keys;
@@ -56,7 +56,7 @@ vector<CryptoPP::byte*> Util::generateKeys() {
 }
 
 /*
-  Encrypts message
+  Encrypts message p
 */
 string Util::encrypt(string p, vector<CryptoPP::byte*> keys) {
   CryptoPP::byte* key = keys.at(0);
@@ -74,7 +74,7 @@ string Util::encrypt(string p, vector<CryptoPP::byte*> keys) {
 }
 
 /*
-  Decrypts message
+  Decrypts message c
 */
 string Util::decrypt(string c, vector<CryptoPP::byte*> keys) {
   CryptoPP::byte* key = keys.at(0);
@@ -91,9 +91,14 @@ string Util::decrypt(string c, vector<CryptoPP::byte*> keys) {
   return s;
 }
 
-void Util::randomByte(CryptoPP::byte* b, int length) {
+/*
+  Returns a random byte
+*/
+CryptoPP::byte* Util::randomByte(int length) {
+  CryptoPP::byte* b = new CryptoPP::byte[length];
   CryptoPP::AutoSeededRandomPool asrp;
   asrp.GenerateBlock(b, length);
+  return b;
 }
 
 /*
@@ -167,6 +172,9 @@ string Util::toBitString(int i) {
   return s;
 }
 
+/*
+  Prints a byte in string form
+*/
 void Util::printByte(CryptoPP::byte* b, int length) {
   string s;
 	CryptoPP::StringSource(b, length, true,
@@ -177,9 +185,14 @@ void Util::printByte(CryptoPP::byte* b, int length) {
   cout << "byte: " << s << endl;
 }
 
-void Util::mergeBytes(CryptoPP::byte* b, CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
+/*
+  Merges two bytes to one
+*/
+CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
+  CryptoPP::byte* b = new CryptoPP::byte[2*length];
   memcpy(b, b0, length);
   memcpy(b+length, b1, length);
+  return b;
 }
 
 void Util::printl(string m) {

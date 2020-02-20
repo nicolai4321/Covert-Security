@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <map>
+#include "cryptlib.h"
 
 using namespace std;
 
@@ -10,13 +11,13 @@ class GarbledCircuit
 {
   public:
     GarbledCircuit(int k);
-    vector<string> addGate(string gateName);
+    void addGate(string gateName);
     void addXOR(string inputGateL, string inputGateR, string outputGate);
 
   protected:
 
   private:
-    map<string, vector<string>> gates;
+    map<string, vector<CryptoPP::byte*>> gates;
     int kappa;
 };
 

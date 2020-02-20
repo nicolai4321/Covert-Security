@@ -17,23 +17,23 @@
 using namespace std;
 
 int main() {
-  //hash
+
+  //----------
+  //   HASH
+  //----------
   /*
-  CryptoPP::byte cc[CryptoPP::SHA256::DIGESTSIZE];
-  Util::h("lolol", cc);
-  cout << "1: " << Util::byteToString(cc, CryptoPP::SHA256::DIGESTSIZE) << endl;
+  CryptoPP::byte* h0 = Util::h("lolol");
+  CryptoPP::byte* h1 = Util::h("lolola");
+
+  cout << "0: " << Util::byteToString(h0, CryptoPP::SHA256::DIGESTSIZE) << endl;
+  cout << "1: " << Util::byteToString(h1, CryptoPP::SHA256::DIGESTSIZE) << endl;
   */
 
-  /*
-  CryptoPP::byte b0[CryptoPP::SHA256::DIGESTSIZE];
-  Util::h("lolol", b0);
-  cout << "0: " << Util::byteToString(b0, CryptoPP::SHA256::DIGESTSIZE) << endl;
-  */
-
-  //enc
+  //----------
+  //ENCRYPTION
+  //----------
   /*
   vector<CryptoPP::byte*> keys = Util::generateKeys();
-
   string p = " dette er en stoerre saetning saa lad os se hvad der sker";
   string c = Util::encrypt(p, keys);
   string de = Util::decrypt(c, keys);
@@ -43,8 +43,6 @@ int main() {
   cout << de << endl;
   Util::printl("-------");
   */
-
-
 
   PartyA partyA = PartyA(5);
   PartyB partyB = PartyB(3);

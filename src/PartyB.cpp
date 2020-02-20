@@ -2,7 +2,7 @@
 #include "GarbledCircuit.h"
 
 PartyB::PartyB(int y) {
-  GarbledCircuit F = GarbledCircuit(32);
+  GarbledCircuit F = GarbledCircuit(16);
 
   F.addGate("input0");
   F.addGate("input1");
