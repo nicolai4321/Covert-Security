@@ -33,10 +33,11 @@ int main() {
   //ENCRYPTION
   //----------
   /*
-  vector<CryptoPP::byte*> keys = Util::generateKeys();
+  CryptoPP::byte *key = Util::randomByte(CryptoPP::AES::DEFAULT_KEYLENGTH);
+  CryptoPP::byte *iv = Util::generateIV();
   string p = " dette er en stoerre saetning saa lad os se hvad der sker";
-  string c = Util::encrypt(p, keys);
-  string de = Util::decrypt(c, keys);
+  string c = Util::encrypt(p, key, iv);
+  string de = Util::decrypt(c, key, iv);
 
   Util::printl("-------");
   cout << p << endl;
@@ -46,9 +47,6 @@ int main() {
 
   PartyA partyA = PartyA(5);
   PartyB partyB = PartyB(3);
-
-  unsigned char b = Util::toByte(13);
-  unsigned char a = Util::toByte(8);
 
   return 0;
 }

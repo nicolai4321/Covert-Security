@@ -20,14 +20,14 @@ class Util {
 
     static CryptoPP::byte* h(string m);
     static string byteToString(CryptoPP::byte* b, int byteSize);
+    static CryptoPP::byte* stringToByte(string s, int byteSize);
 
-    static vector<CryptoPP::byte*> generateKeys();
-    static string encrypt(string p, vector<CryptoPP::byte*> keys);
-    static string decrypt(string c, vector<CryptoPP::byte*> keys);
+    static CryptoPP::byte* generateIV();
+    static string encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv);
+    static string decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv);
 
     static string randomString(int length);
     static long randomInt(int minInt, int maxInt);
-    static unsigned char toByte(int i);
     static string toBitString(int i);
     static void printl(string m);
     static void printl(int i);

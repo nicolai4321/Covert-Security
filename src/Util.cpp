@@ -27,45 +27,24 @@ CryptoPP::byte* Util::h(string m) {
 }
 
 /*
-  Transforms a byte to a string
+  Constructs the initialization vector
 */
-string Util::byteToString(CryptoPP::byte* b, int byteSize) {
-  string output;
-  CryptoPP::HexEncoder encoder;
-  encoder.Attach(new CryptoPP::StringSink(output));
-  encoder.Put(b, byteSize);
-  encoder.MessageEnd();
-  return output;
-}
-
-/*
-  Constructs the encrytion key and iv
-*/
-vector<CryptoPP::byte*> Util::generateKeys() {
-  CryptoPP::byte *key = new CryptoPP::byte[CryptoPP::AES::DEFAULT_KEYLENGTH];
+CryptoPP::byte* Util::generateIV() {
+  //CryptoPP::byte *key = new CryptoPP::byte[CryptoPP::AES::DEFAULT_KEYLENGTH];
   CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
-  memset(key, 0x39, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  memset(iv, 0x37, CryptoPP::AES::BLOCKSIZE);
-  //prng.GenerateBlock(key, sizeof(key));
-  //prng.GenerateBlock(iv, sizeof(iv));
-
-  vector<CryptoPP::byte*> keys;
-  keys.push_back(key);
-  keys.push_back(iv);
-  return keys;
+  //memset(key, 0x39, CryptoPP::AES::DEFAULT_KEYLENGTH);
+  memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+  return iv;
 }
 
 /*
   Encrypts message p
 */
-string Util::encrypt(string p, vector<CryptoPP::byte*> keys) {
-  CryptoPP::byte* key = keys.at(0);
-  CryptoPP::byte* iv = keys.at(1);
-
-  std::string c;
+string Util::encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv) {
   CryptoPP::AES::Encryption aesEnc(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
   CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEnc(aesEnc, iv);
 
+  std::string c;
   CryptoPP::StreamTransformationFilter stf(cbcEnc, new CryptoPP::StringSink(c));
   stf.Put(reinterpret_cast<const unsigned char*>(p.c_str()), p.length());
   stf.MessageEnd();
@@ -76,14 +55,11 @@ string Util::encrypt(string p, vector<CryptoPP::byte*> keys) {
 /*
   Decrypts message c
 */
-string Util::decrypt(string c, vector<CryptoPP::byte*> keys) {
-  CryptoPP::byte* key = keys.at(0);
-  CryptoPP::byte* iv = keys.at(1);
-
-  string s;
+string Util::decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv) {
   CryptoPP::AES::Decryption aesDec(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
   CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDec(aesDec, iv);
 
+  string s;
   CryptoPP::StreamTransformationFilter stf(cbcDec, new CryptoPP::StringSink(s));
   stf.Put(reinterpret_cast<const unsigned char*>(c.c_str()), c.size());
   stf.MessageEnd();
@@ -137,24 +113,6 @@ long Util::randomInt(int minInt, int maxInt) {
 }
 
 /*
- Char contains 8 bits
- - signed char [-128; 127]
- - unsigned char [0; 255]
- unsigned char can therefore be used as a byte
- since c++ does not have a byte type
-
- bitwise operations:
-  &: and
-  ^: xor
-  |: or
-  ~: not
-*/
-unsigned char Util::toByte(int i) {
-  unsigned char c = (unsigned char)i;
-  return c;
-}
-
-/*
   Transform integer to a bit-string
 */
 string Util::toBitString(int i) {
@@ -173,6 +131,54 @@ string Util::toBitString(int i) {
 }
 
 /*
+  Merges two bytes to one
+*/
+CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
+  CryptoPP::byte* b = new CryptoPP::byte[2*length];
+  memcpy(b, b0, length);
+  memcpy(b+length, b1, length);
+  return b;
+}
+
+/*
+  Transforms a byte to a string
+*/
+string Util::byteToString(CryptoPP::byte* b, int byteSize) {
+  string output;
+  CryptoPP::HexEncoder encoder;
+  encoder.Attach(new CryptoPP::StringSink(output));
+  encoder.Put(b, byteSize);
+  encoder.MessageEnd();
+  return output;
+}
+
+/*
+  Transform a string to a byte
+  bitwise operations:
+  &: and
+  ^: xor
+  |: or
+  ~: not
+*/
+CryptoPP::byte* Util::stringToByte(string s, int length) {
+  string sink;
+  CryptoPP::StringSource ss(s, true,
+    new CryptoPP::HexDecoder(
+        new CryptoPP::StringSink(sink)
+    )
+  );
+  CryptoPP::byte *b = (CryptoPP::byte*) sink.data();
+
+  //TODO find a better method
+  CryptoPP::byte *output = new CryptoPP::byte[length];
+  for(int i=0; i<length; i++) {
+    output[i] = b[i];
+  }
+
+  return output;
+}
+
+/*
   Prints a byte in string form
 */
 void Util::printByte(CryptoPP::byte* b, int length) {
@@ -183,16 +189,6 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 		)
 	);
   cout << "byte: " << s << endl;
-}
-
-/*
-  Merges two bytes to one
-*/
-CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
-  CryptoPP::byte* b = new CryptoPP::byte[2*length];
-  memcpy(b, b0, length);
-  memcpy(b+length, b1, length);
-  return b;
 }
 
 void Util::printl(string m) {
