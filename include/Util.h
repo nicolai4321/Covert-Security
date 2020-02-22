@@ -28,7 +28,7 @@ class Util {
 
     static string randomString(int length);
     static long randomInt(int minInt, int maxInt);
-    static string toBitString(int i);
+    static string toBitString(int i, int length);
     static void printl(string m);
     static void printl(int i);
     static void printl(char c);

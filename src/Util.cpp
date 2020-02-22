@@ -115,18 +115,9 @@ long Util::randomInt(int minInt, int maxInt) {
 /*
   Transform integer to a bit-string
 */
-string Util::toBitString(int i) {
+string Util::toBitString(int i, int length) {
   string s = bitset<64>(i).to_string();
-
-  int index = 0;
-  while(index < s.size()) {
-    if(s[index] != '0') {
-      break;
-    }
-    index++;
-  }
-  s = s.substr(index, 64-index);
-
+  s = s.substr(64-length, length);
   return s;
 }
 
