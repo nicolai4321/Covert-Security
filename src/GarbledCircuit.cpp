@@ -28,11 +28,13 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
   encodings.push_back(encT);
   gates[gateName] = encodings;
 
+  //permutation
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.Shuffle(encodings.begin(), encodings.end());
+
   gatesOutput.clear();
   gatesOutput.push_back(encF);
   gatesOutput.push_back(encT);
-
-  //TODO permute
 
   vector<string> info;
   info.push_back(gateType);
@@ -41,7 +43,7 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
   gateInfo[gateName] = info;
 
   gateOrder.push_back(gateName);
-  return encodings;
+  return {encF, encT};
 }
 
 /*
@@ -65,7 +67,7 @@ CryptoPP::byte* GarbledCircuit::doubleDecrypt(string c, CryptoPP::byte* keyL, Cr
 }
 
 /*
-  XOR gate
+  XOR-gate
 */
 void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputGate) {
   addGate(outputGate, "xor", inputGateL, inputGateR);
@@ -86,20 +88,42 @@ void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputG
   garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
   garbledTables[outputGate] = garbledTable;
 
-  //TODO permute
+  //permutation
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.Shuffle(garbledTable.begin(), garbledTable.end());
 }
 
 /*
-  Evaluate input
+  AND-gate
 */
-void GarbledCircuit::evaluateInput(vector<CryptoPP::byte*> inputs, int i, string gateName) {
-  gatesEvaluated[gateName] = inputs.at(i);
+void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputGate) {
+  addGate(outputGate, "and", inputGateL, inputGateR);
+
+  CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
+  CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
+
+  CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
+  CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
+
+  CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
+  CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+
+  vector<string> garbledTable;
+  garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
+  garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, trueEncodingR, iv));
+  garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, falseEncodingR, iv));
+  garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, trueEncodingR, iv));
+  garbledTables[outputGate] = garbledTable;
+
+  //permutation
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.Shuffle(garbledTable.begin(), garbledTable.end());
 }
 
 /*
-  Evaluate xor
+  Evaluate normal gate
 */
-void GarbledCircuit::evaluateXOR(string gateL, string gateR, string gateName) {
+void GarbledCircuit::evaluateGate(string gateL, string gateR, string gateName) {
   vector<string> garbledTable = garbledTables[gateName];
   CryptoPP::byte *keyL = gatesEvaluated[gateL];
   CryptoPP::byte *keyR = gatesEvaluated[gateR];
@@ -119,6 +143,7 @@ void GarbledCircuit::evaluateXOR(string gateL, string gateR, string gateName) {
     }
   }
 
+  //check that only one encoding was valid
   if(validEncodings.size() == 1) {
     gatesEvaluated[gateName] = validEncodings.at(0);
   } else {
@@ -165,10 +190,10 @@ pair<bool, CryptoPP::byte*> GarbledCircuit::evaluate(vector<CryptoPP::byte*> inp
       string gateR = info.at(2);
 
       if(gateType.compare("input") == 0) {
-        evaluateInput(inputs, i, gateName);
+        gatesEvaluated[gateName] = inputs.at(i);
         i++;
-      } else if(gateType.compare("xor") == 0) {
-        evaluateXOR(gateL, gateR, gateName);
+      } else {
+        evaluateGate(gateL, gateR, gateName);
       }
     }
 
