@@ -1,14 +1,14 @@
 #ifndef GARBLEDCIRCUIT_H
 #define GARBLEDCIRCUIT_H
+#include <iostream>
+#include <map>
 #include <string>
 #include <vector>
-#include <map>
 #include "cryptlib.h"
-
+#include "Util.h"
 using namespace std;
 
-class GarbledCircuit
-{
+class GarbledCircuit {
   public:
     GarbledCircuit(int k);
     vector<CryptoPP::byte*> addGate(string gateName);

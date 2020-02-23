@@ -1,7 +1,4 @@
-#include <iostream>
 #include "PartyB.h"
-#include "GarbledCircuit.h"
-#include "cryptlib.h"
 using namespace std;
 
 PartyB::PartyB(int y) {

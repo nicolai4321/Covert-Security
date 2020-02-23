@@ -1,9 +1,4 @@
-#include <iostream>
 #include "GarbledCircuit.h"
-#include "Util.h"
-#include <string>
-#include <vector>
-#include <map>
 using namespace std;
 
 GarbledCircuit::GarbledCircuit(int k) {

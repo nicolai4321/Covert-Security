@@ -1,6 +1,5 @@
 #include "PartyA.h"
-#include <string>
-#include <iostream>
+using namespace std;
 
 PartyA::PartyA(int x) {
 }

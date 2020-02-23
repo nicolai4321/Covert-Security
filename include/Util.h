@@ -1,13 +1,18 @@
 #ifndef UTIL_H
 #define UTIL_H
+#include <bitset>
+#include <iomanip>
+#include <iostream>
 #include <string>
 
+#include "aes.h"
 #include "cryptlib.h"
-#include "randpool.h"
-#include "integer.h"
-#include "osrng.h"
+#include "filters.h"
 #include "hex.h"
-
+#include "integer.h"
+#include "modes.h"
+#include "osrng.h"
+#include "randpool.h"
 using namespace std;
 
 class Util {
