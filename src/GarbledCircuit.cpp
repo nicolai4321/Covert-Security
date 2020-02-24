@@ -6,6 +6,8 @@ GarbledCircuit::GarbledCircuit(int k) {
   iv = Util::generateIV();
 }
 
+GarbledCircuit::~GarbledCircuit() {}
+
 /*
   Adds a new gate and names it with gateName and adds two encodings
   for false and true
@@ -23,10 +25,6 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
   encodings.push_back(encT);
   gates[gateName] = encodings;
 
-  //permutation
-  CryptoPP::AutoSeededRandomPool asrp;
-  asrp.Shuffle(encodings.begin(), encodings.end());
-
   gatesOutput.clear();
   gatesOutput.push_back(encF);
   gatesOutput.push_back(encT);
@@ -38,7 +36,7 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
   gateInfo[gateName] = info;
 
   gateOrder.push_back(gateName);
-  return {encF, encT};
+  return encodings;
 }
 
 /*
@@ -81,11 +79,12 @@ void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputG
   garbledTable.push_back(doubleEncrypt(trueEncodingO, falseEncodingL, trueEncodingR, iv));
   garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, falseEncodingR, iv));
   garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
-  garbledTables[outputGate] = garbledTable;
 
   //permutation
   CryptoPP::AutoSeededRandomPool asrp;
   asrp.Shuffle(garbledTable.begin(), garbledTable.end());
+
+  garbledTables[outputGate] = garbledTable;
 }
 
 /*
@@ -108,11 +107,12 @@ void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputG
   garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, trueEncodingR, iv));
   garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, falseEncodingR, iv));
   garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, trueEncodingR, iv));
-  garbledTables[outputGate] = garbledTable;
 
   //permutation
   CryptoPP::AutoSeededRandomPool asrp;
   asrp.Shuffle(garbledTable.begin(), garbledTable.end());
+
+  garbledTables[outputGate] = garbledTable;
 }
 
 /*

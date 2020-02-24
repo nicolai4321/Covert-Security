@@ -19,8 +19,9 @@ class Util {
   public:
     Util();
 
+    static CryptoPP::byte* byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length);
+
     static CryptoPP::byte* randomByte(int length);
-    static void printByte(CryptoPP::byte* b, int length);
     static CryptoPP::byte* mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length);
 
     static CryptoPP::byte* h(string m);
@@ -34,6 +35,9 @@ class Util {
     static string randomString(int length);
     static long randomInt(int minInt, int maxInt);
     static string toBitString(int i, int length);
+
+    static void printByte(CryptoPP::byte* b, int length);
+    static void printByteInBits(CryptoPP::byte* b, int length);
     static void printl(string m);
     static void printl(int i);
     static void printl(char c);

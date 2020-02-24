@@ -32,7 +32,11 @@
 				</Compiler>
 				<Linker>
 					<Add option="-s" />
-					<Add library="/home/nicolai/codeblocks-workspace/cryptopp820/libcryptopp.a" />
+					<Add library="/home/nicolai/codeblocks-workspace/lib/cryptopp/libcryptopp.a" />
+					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/libcryptoTools.a" />
+					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/liblibOTe.a" />
+					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/liblibOTe_Tests.a" />
+					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/libtests_cryptoTools.a" />
 				</Linker>
 			</Target>
 		</Build>
@@ -40,11 +44,15 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
+		<Unit filename="include/GarbleMethod.h" />
+		<Unit filename="include/GarbleMethodNormal.h" />
 		<Unit filename="include/GarbledCircuit.h" />
 		<Unit filename="include/PartyA.h" />
 		<Unit filename="include/PartyB.h" />
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />
+		<Unit filename="src/GarbleMethod.cpp" />
+		<Unit filename="src/GarbleMethodNormal.cpp" />
 		<Unit filename="src/GarbledCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />
 		<Unit filename="src/PartyB.cpp" />

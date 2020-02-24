@@ -3,6 +3,7 @@
 #include <iostream>
 #include "cryptlib.h"
 #include "GarbledCircuit.h"
+#include "HalfCircuit.h"
 using namespace std;
 
 class PartyB

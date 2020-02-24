@@ -4,6 +4,29 @@ using namespace std;
 Util::Util() {}
 
 /*
+  bitwise operations:
+  &: and
+  ^: xor
+  |: or
+  ~: not
+*/
+CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length) {
+  CryptoPP::byte *b = new CryptoPP::byte[length];
+  for(int i=0; i<length; i++) {
+    if(op.compare("xor") == 0) {
+      b[i] = b0[i] ^ b1[i];
+    } else if(op.compare("and") == 0) {
+      b[i] = b0[i] & b1[i];
+    } else if(op.compare("or") == 0) {
+      b[i] = b0[i] | b1[i];
+    } else {
+      cout << "Error! Unkown operator" << endl;
+    }
+  }
+  return b;
+}
+
+/*
   Returns a hashed byte
 */
 CryptoPP::byte* Util::h(string m) {
@@ -132,11 +155,6 @@ string Util::byteToString(CryptoPP::byte* b, int byteSize) {
 
 /*
   Transform a string to a byte
-  bitwise operations:
-  &: and
-  ^: xor
-  |: or
-  ~: not
 */
 CryptoPP::byte* Util::stringToByte(string s, int length) {
   string sink;
@@ -167,6 +185,15 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 		)
 	);
   cout << "byte: " << s << endl;
+}
+
+void Util::printByteInBits(CryptoPP::byte* b, int length) {
+  cout << "bits: ";
+  for(int i=0; i<length; i++) {
+    cout << toBitString((int) b[i],8) << " ";
+  }
+  cout << endl;
+
 }
 
 void Util::printl(string m) {
