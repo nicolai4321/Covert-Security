@@ -44,16 +44,14 @@
 			<Add option="-Wall" />
 			<Add option="-fexceptions" />
 		</Compiler>
-		<Unit filename="include/GarbleMethod.h" />
-		<Unit filename="include/GarbleMethodNormal.h" />
 		<Unit filename="include/GarbledCircuit.h" />
+		<Unit filename="include/HalfCircuit.h" />
 		<Unit filename="include/PartyA.h" />
 		<Unit filename="include/PartyB.h" />
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />
-		<Unit filename="src/GarbleMethod.cpp" />
-		<Unit filename="src/GarbleMethodNormal.cpp" />
 		<Unit filename="src/GarbledCircuit.cpp" />
+		<Unit filename="src/HalfCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />
 		<Unit filename="src/PartyB.cpp" />
 		<Unit filename="src/Util.cpp" />

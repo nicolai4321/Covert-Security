@@ -4,6 +4,14 @@ using namespace std;
 Util::Util() {}
 
 /*
+  Returns the least significant bit
+*/
+int Util::lsb(CryptoPP::byte* b, int length) {
+  string s = toBitString(b[length-1], 1);
+  return stoi(s);
+}
+
+/*
   bitwise operations:
   &: and
   ^: xor

@@ -9,11 +9,17 @@ PartyB::PartyB(int y) {
 
   vector<CryptoPP::byte*> g0 = G.addGate("input0");
   vector<CryptoPP::byte*> g1 = G.addGate("input1");
+  vector<CryptoPP::byte*> g2 = G.addGate("input2");
+  vector<CryptoPP::byte*> g3 = G.addGate("input3");
   G.addXOR("input0", "input1", "gate0");
+  G.addXOR("input2", "input3", "gate1");
+  G.addAND("gate0", "gate1", "gate2");
 
   vector<CryptoPP::byte*> inputsG;
   inputsG.push_back(g0.at(1));
   inputsG.push_back(g1.at(0));
+  inputsG.push_back(g2.at(1));
+  inputsG.push_back(g3.at(0));
 
   pair<bool, CryptoPP::byte*> evaluateOutputG = G.evaluate(inputsG);
   if(evaluateOutputG.first) {
@@ -21,8 +27,12 @@ PartyB::PartyB(int y) {
     pair<bool, bool> decodeOutput = G.decode(Z);
 
     if(decodeOutput.first) {
-      cout << "normal output: " << decodeOutput.second << endl;
+      cout << "half output: " << decodeOutput.second << endl;
+    } else {
+      cout << "Error! Decode is invalid" << endl;
     }
+  } else {
+    cout << "Error! Circuit could not evaluate" << endl;
   }
 
   //NORMAL CIRCUIT
@@ -50,6 +60,11 @@ PartyB::PartyB(int y) {
 
     if(decodeOutput.first) {
       cout << "normal output: " << decodeOutput.second << endl;
+    } else {
+      cout << "Error! Decode is invalid" << endl;
     }
-  }*/
+  } else {
+    cout << "Error! Circuit could not evaluate" << endl;
+  }
+  */
 }
