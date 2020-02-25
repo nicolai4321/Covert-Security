@@ -13,30 +13,40 @@ GarbledCircuit::~GarbledCircuit() {}
   for false and true
 */
 vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName) {
-  return addGate(gateName, "input", "", "");
+  if(canEdit) {
+    return addGate(gateName, "input", "", "");
+  } else {
+    Util::printl("Error! Circuit cannot be modified");
+    return vector<CryptoPP::byte*>();
+  }
 }
 
+/*
+  Adds a new gate and names it with gateName and adds two encodings
+  for false and true
+*/
 vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
-  CryptoPP::byte *encF = Util::randomByte(kappa);
-  CryptoPP::byte *encT = Util::randomByte(kappa);
+  if(canEdit) {
+    CryptoPP::byte *encF = Util::randomByte(kappa);
+    CryptoPP::byte *encT = Util::randomByte(kappa);
 
-  vector<CryptoPP::byte*> encodings;
-  encodings.push_back(encF);
-  encodings.push_back(encT);
-  gates[gateName] = encodings;
+    vector<CryptoPP::byte*> encodings;
+    encodings.push_back(encF);
+    encodings.push_back(encT);
+    gates[gateName] = encodings;
 
-  gatesOutput.clear();
-  gatesOutput.push_back(encF);
-  gatesOutput.push_back(encT);
+    vector<string> info;
+    info.push_back(gateType);
+    info.push_back(gateL);
+    info.push_back(gateR);
+    gateInfo[gateName] = info;
 
-  vector<string> info;
-  info.push_back(gateType);
-  info.push_back(gateL);
-  info.push_back(gateR);
-  gateInfo[gateName] = info;
-
-  gateOrder.push_back(gateName);
-  return encodings;
+    gateOrder.push_back(gateName);
+    return encodings;
+  } else {
+    Util::printl("Error! Circuit cannot be modified");
+    return vector<CryptoPP::byte*>();
+  }
 }
 
 /*
@@ -63,56 +73,60 @@ CryptoPP::byte* GarbledCircuit::doubleDecrypt(string c, CryptoPP::byte* keyL, Cr
   XOR-gate
 */
 void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputGate) {
-  addGate(outputGate, "xor", inputGateL, inputGateR);
+  if(canEdit) {
+    addGate(outputGate, "xor", inputGateL, inputGateR);
 
-  CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
-  CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
+    CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
+    CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
 
-  CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
-  CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
+    CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
+    CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
 
-  CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
-  CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+    CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
+    CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
 
-  vector<string> garbledTable;
-  garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(trueEncodingO, falseEncodingL, trueEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, falseEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
+    vector<string> garbledTable;
+    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(trueEncodingO, falseEncodingL, trueEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, falseEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
 
-  //permutation
-  CryptoPP::AutoSeededRandomPool asrp;
-  asrp.Shuffle(garbledTable.begin(), garbledTable.end());
+    //permutation
+    CryptoPP::AutoSeededRandomPool asrp;
+    asrp.Shuffle(garbledTable.begin(), garbledTable.end());
 
-  garbledTables[outputGate] = garbledTable;
+    garbledTables[outputGate] = garbledTable;
+  }
 }
 
 /*
   AND-gate
 */
 void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputGate) {
-  addGate(outputGate, "and", inputGateL, inputGateR);
+  if(canEdit) {
+    addGate(outputGate, "and", inputGateL, inputGateR);
 
-  CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
-  CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
+    CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
+    CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
 
-  CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
-  CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
+    CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
+    CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
 
-  CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
-  CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+    CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
+    CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
 
-  vector<string> garbledTable;
-  garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, trueEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, falseEncodingR, iv));
-  garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, trueEncodingR, iv));
+    vector<string> garbledTable;
+    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, trueEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, falseEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, trueEncodingR, iv));
 
-  //permutation
-  CryptoPP::AutoSeededRandomPool asrp;
-  asrp.Shuffle(garbledTable.begin(), garbledTable.end());
+    //permutation
+    CryptoPP::AutoSeededRandomPool asrp;
+    asrp.Shuffle(garbledTable.begin(), garbledTable.end());
 
-  garbledTables[outputGate] = garbledTable;
+    garbledTables[outputGate] = garbledTable;
+  }
 }
 
 /*
@@ -149,58 +163,42 @@ void GarbledCircuit::evaluateGate(string gateL, string gateR, string gateName) {
 }
 
 /*
-  Returns the decoding of the output.
-  The first bool determines if the decoding was successful
-  The second bool determines the output value
-*/
-pair<bool, bool> GarbledCircuit::decode(CryptoPP::byte* enc) {
-  pair<bool, bool> output;
-  if(memcmp(enc, gatesOutput.at(0), kappa) == 0) {
-    output.first = true;
-    output.second = false;
-  } else if(memcmp(enc, gatesOutput.at(1), kappa) == 0) {
-    output.first = true;
-    output.second = true;
-  } else {
-    output.first = false;
-    output.second = false;
-  }
-  return output;
-}
-
-/*
   Evaluates the circuit and returns a pair
   the first index is true if the evaluation was successful
   the second index is the output encoding if the evaluation was succesful
 */
 pair<bool, CryptoPP::byte*> GarbledCircuit::evaluate(vector<CryptoPP::byte*> inputs) {
   pair<bool, CryptoPP::byte*> output;
-
-  try {
-    int i=0;
-    for(string gateName : gateOrder) {
-      vector<string> info = gateInfo[gateName];
-      string gateType = info.at(0);
-      string gateL = info.at(1);
-      string gateR = info.at(2);
-
-      if(gateType.compare("input") == 0) {
-        gatesEvaluated[gateName] = inputs.at(i);
-        i++;
-      } else {
-        evaluateGate(gateL, gateR, gateName);
-      }
-    }
-
-    string lastGate = gateOrder.at(gateOrder.size()-1);
-    CryptoPP::byte *encodingOutput = gatesEvaluated[lastGate];
-    output.first = true;
-    output.second = encodingOutput;
-  } catch (...) {
-    Util::printl("Error! Could not evaluate circuit");
+  if(canEdit) {
+    Util::printl("Error! Cannot evaluate before circuit is build");
     output.first = false;
     output.second = Util::randomByte(kappa);
-  }
+  } else {
+    try {
+      int i=0;
+      for(string gateName : gateOrder) {
+        vector<string> info = gateInfo[gateName];
+        string gateType = info.at(0);
+        string gateL = info.at(1);
+        string gateR = info.at(2);
 
+        if(gateType.compare("input") == 0) {
+          gatesEvaluated[gateName] = inputs.at(i);
+          i++;
+        } else {
+          evaluateGate(gateL, gateR, gateName);
+        }
+      }
+
+      string lastGate = gateOrder.at(gateOrder.size()-1);
+      CryptoPP::byte *encodingOutput = gatesEvaluated[lastGate];
+      output.first = true;
+      output.second = encodingOutput;
+    } catch (...) {
+      Util::printl("Error! Could not evaluate circuit");
+      output.first = false;
+      output.second = Util::randomByte(kappa);
+    }
+  }
   return output;
 }

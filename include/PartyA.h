@@ -8,6 +8,7 @@ class PartyA
 {
   public:
     PartyA(int x);
+    virtual ~PartyA();
 
   protected:
 

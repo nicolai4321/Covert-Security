@@ -9,6 +9,7 @@ class PartyB
 {
   public:
     PartyB(int y, int kappa, CircuitInterface* F);
+    virtual ~PartyB();
 
   protected:
 
