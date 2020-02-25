@@ -18,8 +18,8 @@ PartyB::PartyB(int y) {
   vector<CryptoPP::byte*> inputsG;
   inputsG.push_back(g0.at(1));
   inputsG.push_back(g1.at(0));
-  inputsG.push_back(g2.at(1));
-  inputsG.push_back(g3.at(0));
+  inputsG.push_back(g2.at(0));
+  inputsG.push_back(g3.at(1));
 
   pair<bool, CryptoPP::byte*> evaluateOutputG = G.evaluate(inputsG);
   if(evaluateOutputG.first) {

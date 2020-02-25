@@ -37,6 +37,14 @@ CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, 
 /*
   Returns a hashed byte
 */
+CryptoPP::byte* Util::h(CryptoPP::byte* b, int length) {
+  string s = Util::byteToString(b, length);
+  return h(s);
+}
+
+/*
+  Returns a hashed byte
+*/
 CryptoPP::byte* Util::h(string m) {
   CryptoPP::byte* b = new CryptoPP::byte[CryptoPP::SHA256::DIGESTSIZE];
   CryptoPP::SHA256 hash;

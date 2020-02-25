@@ -23,7 +23,7 @@ class Util {
     static string encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv);
     static string decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv);
     static CryptoPP::byte* h(string m);
-
+    static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* randomByte(int length);
     static string randomString(int length);
     static long randomInt(int minInt, int maxInt);

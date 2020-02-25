@@ -22,6 +22,10 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
   return addGate(gateName, "input", "", "", encF, encT);
 }
 
+/*
+  Adds a new gate and names it with gateName and adds two encodings
+  for false and true
+*/
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte *encF, CryptoPP::byte *encT) {
   vector<CryptoPP::byte*> encodings;
   encodings.push_back(encF);
@@ -61,23 +65,26 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
   int pb = Util::lsb(rightEnc.at(0), kappa);
 
   //Generator part
-  string hashInput = Util::byteToString(leftEnc.at(pa), kappa);
+  CryptoPP::byte *waf = leftEnc.at(0);
+  CryptoPP::byte *wat = leftEnc.at(1);
+
   CryptoPP::byte *WGF = (pa*pb) ?
-    Util::byteOp(Util::h(hashInput), r, "xor", kappa):
-    Util::h(hashInput);
+    Util::byteOp(Util::h(leftEnc.at(pa), kappa), r, "xor", kappa):
+    Util::h(leftEnc.at(pa), kappa);
 
   CryptoPP::byte *WGT = Util::byteOp(WGF, r, "xor", kappa);
 
-  string hashInputF = Util::byteToString(leftEnc.at(0), kappa);
-  string hashInputT = Util::byteToString(leftEnc.at(1), kappa);
-  CryptoPP::byte *TG = (1*pb) ?
-    Util::byteOp(Util::h(hashInputF), Util::h(hashInputT), "xor", kappa):
-    Util::byteOp(Util::byteOp(Util::h(hashInputF), Util::h(hashInputT), "xor", kappa), r, "xor", kappa);
+  CryptoPP::byte *TG = (pb) ?
+    Util::byteOp(Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "xor", kappa), r, "xor", kappa):
+    Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "xor", kappa);
 
   //Evaluator part
-  CryptoPP::byte *WEF = Util::h(Util::byteToString(rightEnc.at(pb), kappa));
+  CryptoPP::byte *wbf = rightEnc.at(0);
+  CryptoPP::byte *wbt = rightEnc.at(1);
+
+  CryptoPP::byte *WEF = Util::h(rightEnc.at(pb), kappa);
   CryptoPP::byte *WET = Util::byteOp(WEF, r, "xor", kappa);
-  CryptoPP::byte *TE = Util::byteOp(Util::byteOp(rightEnc.at(0), rightEnc.at(1), "xor", kappa), leftEnc.at(0), "xor", kappa);
+  CryptoPP::byte *TE = Util::byteOp(Util::byteOp(Util::h(wbf, kappa), Util::h(wbt, kappa), "xor", kappa), waf, "xor", kappa);
 
   //Adding gates
   vector<CryptoPP::byte*> encodings;
@@ -120,12 +127,12 @@ pair<bool, CryptoPP::byte*> HalfCircuit::evaluate(vector<CryptoPP::byte*> inputs
         CryptoPP::byte *Wb = gatesEvaluated[gateR];
 
         CryptoPP::byte *WG = (sa) ?
-          Util::h(Util::byteToString(gatesEvaluated[gateL], kappa)):
-          Util::byteOp(Util::h(Util::byteToString(Wa, kappa)), TG, "xor", kappa);
+          Util::byteOp(Util::h(Wa, kappa), TG, "xor", kappa):
+          Util::h(Wa, kappa);
 
         CryptoPP::byte *WE = (sb) ?
-          Util::h(Util::byteToString(Wb, kappa)):
-          Util::byteOp(Util::h(Util::byteToString(Wb, kappa)), Util::byteOp(TE, Wa, "xor", kappa), "xor", kappa);
+          Util::byteOp(Util::h(Wb, kappa), Util::byteOp(TE, Wa, "xor", kappa), "xor", kappa):
+          Util::h(Wb, kappa);
 
         gatesEvaluated[gateName] = Util::byteOp(WG, WE, "xor", kappa);
       } else {
