@@ -5,12 +5,14 @@
 #include <regex>
 #include <string>
 #include "CircuitInterface.h"
+#include <boost/algorithm/string.hpp>
 using namespace std;
 
 class CircuitReader {
   public:
     CircuitReader();
     virtual ~CircuitReader();
+    vector<string> splitString(string s);
     void import(CircuitInterface* c, string filename);
 
   protected:

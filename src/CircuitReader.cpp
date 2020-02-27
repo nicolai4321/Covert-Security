@@ -18,10 +18,20 @@ string CircuitReader::readOneLine(ifstream& reader) {
 }
 
 /*
+  Splits a string and put them in a vector
+*/
+vector<string> CircuitReader::splitString(string s) {
+  vector<string> output;
+  boost::split(output, s, [](char c) {return c == ' ';});
+  return output;
+}
+
+/*
   The circuit reader reads the file
 */
 void CircuitReader::import(CircuitInterface* c, string filename) {
   string line;
+  vector<string> data;
   string filepath = "circuits/"+filename;
 
   ifstream reader;
@@ -32,59 +42,86 @@ void CircuitReader::import(CircuitInterface* c, string filename) {
 
     //first line
     line = readOneLine(reader);
-    regex_search(line, m, r);
-    int totalNrGates = stoi(m[0]);
-    line = m.suffix().str();
-    regex_search(line, m, r);
-    int totalNrWires = stoi(m[0]);
+    data = splitString(line);
+    int totalNrGates = stoi(data[0]);
+    int totalNrWires = stoi(data[1]);
 
     //second line
     line = readOneLine(reader);
-    regex_search(line, m, r);
-    int nrInputValues = stoi(m[0]);
+    data = splitString(line);
+    int nrInputValues = stoi(data[0]);
     int totalInputGates = 0;
     vector<int> inputList;
     for(int i=0; i<nrInputValues; i++) {
-      line = m.suffix().str();
-      regex_search(line, m, r);
-      int v = stoi(m[0]);
-      inputList.push_back(v);
+      int v = stoi(data[i+1]);
       totalInputGates += v;
+      inputList.push_back(v);
     }
 
     //third line
     line = readOneLine(reader);
-    regex_search(line, m, r);
-    int nrOutputValues = stoi(m[0]);
+    data = splitString(line);
+    int nrOutputValues = stoi(data[0]);
+    int totalOutputGates = 0;
     vector<int> outputList;
     for(int i=0; i<nrOutputValues; i++) {
-      line = m.suffix().str();
-      regex_search(line, m, r);
-      outputList.push_back(stoi(m[0]));
+      int v = stoi(data[i+1]);
+      totalOutputGates += v;
+      outputList.push_back(v);
     }
 
-    //fourth line
+    //fourth line (empty)
     readOneLine(reader);
 
-    cout << "#gates: " << totalNrGates << endl;
-    cout << "#input gates: " << totalInputGates << endl;
-    cout << "#wires: " << totalNrWires << " (including ouput wires for the circuit)" << endl;
-    cout << "#input values: " << nrInputValues << endl;
-    for(int i : inputList) {
-      cout << "  " << i << endl;
-    }
-    cout << "#output values: " << nrOutputValues << endl;
-    for(int i : outputList) {
-      cout << "  " << i << endl;
+    //adds input gates
+    for(int i=0; i<totalInputGates; i++) {
+      string gateName = "w"+i;
+      c->addGate(gateName);
     }
 
-    //gates
-    int gateNr = 0;
+    //adds remaining gates
+    int i = totalInputGates;
     while (!reader.eof()) {
-      gateNr++;
       getline(reader, line);
-      if(line.compare("") == 0) break;
-      //cout << line << endl;
+
+      if(line.compare("") == 0) {
+        break;
+      } else {
+        i++;
+      }
+
+      string gateName = "w"+i;
+      data = splitString(line);
+
+      int nrInputWires = stoi(data[0]);
+      int nrOutputWires = stoi(data[1]);
+
+      vector<int> inputWires;
+      for(int j=0; j<nrInputWires; j++) {
+        inputWires.push_back(stoi(data[j+2]));
+      }
+
+      vector<int> outputWires;
+      for(int j=0; j<nrOutputWires; j++) {
+        outputWires.push_back(stoi(data[j+nrInputWires+2]));
+      }
+
+      string gateType = data[nrInputWires+nrOutputWires+2];
+
+      if(gateType.compare("XOR") == 0) {
+        string gateL = "w"+inputWires[0];
+        string gateR = "w"+inputWires[1];
+        string gateO = "w"+outputWires[0];
+        c->addXOR(gateL, gateR, gateO);
+      } else if(gateType.compare("AND") == 0) {
+        string gateL = "w"+inputWires[0];
+        string gateR = "w"+inputWires[1];
+        string gateO = "w"+outputWires[0];
+        c->addAND(gateL, gateR, gateO);
+      } else {
+        cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
+        break;
+      }
     }
   }
   reader.close();

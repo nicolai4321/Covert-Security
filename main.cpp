@@ -15,7 +15,7 @@ int main() {
 
   CircuitInterface *H = new GarbledCircuit(kappa);
   CircuitReader cr = CircuitReader();
-  cr.import(H, "zero_equal.txt");
+  cr.import(H, "adder64.txt");
 
   //Normal circuit
   clock_t start = clock();
