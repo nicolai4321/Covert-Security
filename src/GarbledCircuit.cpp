@@ -156,7 +156,7 @@ void GarbledCircuit::evaluateGate(string gateL, string gateR, string gateName) {
   if(validEncodings.size() == 1) {
     gatesEvaluated[gateName] = validEncodings.at(0);
   } else {
-    string msg = "Error! Invalid evaluation of xor-gate";
+    string msg = "Error! Invalid evaluation of gate";
     Util::printl(msg);
     throw msg;
   }
