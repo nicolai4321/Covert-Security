@@ -13,7 +13,7 @@ class CircuitReader {
     CircuitReader();
     virtual ~CircuitReader();
     vector<string> splitString(string s);
-    void import(CircuitInterface* c, string filename);
+    pair<bool, vector<vector<CryptoPP::byte*>>> import(CircuitInterface* c, string filename);
 
   protected:
 

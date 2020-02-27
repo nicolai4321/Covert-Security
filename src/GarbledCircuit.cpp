@@ -42,6 +42,7 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
     gateInfo[gateName] = info;
 
     gateOrder.push_back(gateName);
+    if(gateType.compare("input") == 0) nrInputGates++;
     return encodings;
   } else {
     Util::printl("Error! Circuit cannot be modified");
@@ -183,7 +184,15 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
         string gateL = info.at(1);
         string gateR = info.at(2);
 
+
         if(gateType.compare("input") == 0) {
+          if(nrInputGates == i) {
+            Util::printl("Error! Wrong number of input gates");
+            bytes.clear();
+            output.first = false;
+            output.second = bytes;
+            return output;
+          }
           gatesEvaluated[gateName] = inputs.at(i);
           i++;
         } else {

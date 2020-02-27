@@ -44,6 +44,7 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
     info.push_back(gateR);
     gateInfo[gateName] = info;
 
+    if(gateType.compare("input") == 0) nrInputGates++;
     gateOrder.push_back(gateName);
     return encodings;
   } else {
@@ -130,6 +131,14 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
         string gateR = info.at(2);
 
         if(gateType.compare("input") == 0) {
+          if(nrInputGates == i) {
+            Util::printl("Error! Wrong number of input gates");
+            bytes.clear();
+            output.first = false;
+            output.second = bytes;
+            return output;
+          }
+
           gatesEvaluated[gateName] = inputs.at(i);
           i++;
         } else if(gateType.compare("xor") == 0) {

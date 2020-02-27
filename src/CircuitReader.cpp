@@ -27,11 +27,15 @@ vector<string> CircuitReader::splitString(string s) {
 }
 
 /*
-  The circuit reader reads the file
+  The circuit reader imports the file as a circuit.
+  The boolean determines if it was successful
+  The vector contains the input encodings
 */
-void CircuitReader::import(CircuitInterface* c, string filename) {
+pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterface* c, string filename) {
+  pair<bool, vector<vector<CryptoPP::byte*>>> output;
   string line;
   vector<string> data;
+  vector<vector<CryptoPP::byte*>> inputEncs;
   string filepath = "circuits/"+filename;
 
   ifstream reader;
@@ -75,8 +79,9 @@ void CircuitReader::import(CircuitInterface* c, string filename) {
 
     //adds input gates
     for(int i=0; i<totalInputGates; i++) {
-      string gateName = "w"+i;
-      c->addGate(gateName);
+      string gateName = "w"+to_string(i);
+      vector<CryptoPP::byte*> inputEnc = c->addGate(gateName);
+      inputEncs.push_back(inputEnc);
     }
 
     //adds remaining gates
@@ -90,7 +95,7 @@ void CircuitReader::import(CircuitInterface* c, string filename) {
         i++;
       }
 
-      string gateName = "w"+i;
+      string gateName = "w"+to_string(i);
       data = splitString(line);
 
       int nrInputWires = stoi(data[0]);
@@ -109,20 +114,35 @@ void CircuitReader::import(CircuitInterface* c, string filename) {
       string gateType = data[nrInputWires+nrOutputWires+2];
 
       if(gateType.compare("XOR") == 0) {
-        string gateL = "w"+inputWires[0];
-        string gateR = "w"+inputWires[1];
-        string gateO = "w"+outputWires[0];
+        string gateL = "w"+to_string(inputWires[0]);
+        string gateR = "w"+to_string(inputWires[1]);
+        string gateO = "w"+to_string(outputWires[0]);
         c->addXOR(gateL, gateR, gateO);
       } else if(gateType.compare("AND") == 0) {
-        string gateL = "w"+inputWires[0];
-        string gateR = "w"+inputWires[1];
-        string gateO = "w"+outputWires[0];
+        string gateL = "w"+to_string(inputWires[0]);
+        string gateR = "w"+to_string(inputWires[1]);
+        string gateO = "w"+to_string(outputWires[0]);
         c->addAND(gateL, gateR, gateO);
       } else {
         cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
-        break;
+        inputEncs.clear();
+        output.first = false;
+        output.second = inputEncs;
+        return output;
       }
     }
+
+    //Output gates
+    vector<string> outputGates;
+    for(int j=0; j<totalOutputGates; j++) {
+      string gateName = "w"+to_string(i-totalOutputGates+j);
+      outputGates.push_back(gateName);
+    }
+    c->setOutputGates(outputGates);
   }
   reader.close();
+
+  output.first = true;
+  output.second = inputEncs;
+  return output;
 }

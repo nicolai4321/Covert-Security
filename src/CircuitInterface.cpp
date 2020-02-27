@@ -23,6 +23,7 @@ pair<bool, vector<bool>> CircuitInterface::decode(vector<CryptoPP::byte*> encs) 
     Util::printl("Error! Cannot decode before circuit is build");
     output.first = false;
     output.second = outputBools;
+    return output;
   } else {
     int i=0;
     for(string gateName : gatesOutput) {

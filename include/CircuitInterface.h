@@ -23,6 +23,7 @@ class CircuitInterface {
     vector<string> gatesOutput;
     vector<string> gateOrder;
     bool canEdit = true;
+    int nrInputGates;
     int kappa;
 
   private:
