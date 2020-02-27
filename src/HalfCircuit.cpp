@@ -110,15 +110,16 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
 
 /*
   Evaluates the circuit and returns a pair
-  the first index is true if the evaluation was successful
-  the second index is the output encoding if the evaluation was succesful
+  the boolean is true if the evaluation was successful
+  the vector is the output encodings if the evaluation was succesful
 */
-pair<bool, CryptoPP::byte*> HalfCircuit::evaluate(vector<CryptoPP::byte*> inputs) {
-  pair<bool, CryptoPP::byte*> output;
+pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*> inputs) {
+  pair<bool, vector<CryptoPP::byte*>> output;
+  vector<CryptoPP::byte*> bytes;
   if(canEdit) {
     Util::printl("Error! Cannot evaluate before circuit is build");
     output.first = false;
-    output.second = Util::randomByte(kappa);
+    output.second = bytes;
   } else {
     try {
       int i=0;
@@ -153,20 +154,26 @@ pair<bool, CryptoPP::byte*> HalfCircuit::evaluate(vector<CryptoPP::byte*> inputs
           gatesEvaluated[gateName] = Util::byteOp(WG, WE, "xor", kappa);
         } else {
           Util::printl("Error! Invalid gate type");
+          bytes.clear();
           output.first = false;
-          output.second = Util::randomByte(kappa);
+          output.second = bytes;
           return output;
         }
       }
 
-      string lastGate = gateOrder.at(gateOrder.size()-1);
-      CryptoPP::byte *encodingOutput = gatesEvaluated[lastGate];
+      //gets the output
+      for(string gateName : gatesOutput) {
+        CryptoPP::byte *encodingOutput = gatesEvaluated[gateName];
+        bytes.push_back(encodingOutput);
+      }
+
       output.first = true;
-      output.second = encodingOutput;
+      output.second = bytes;
     } catch (...) {
       Util::printl("Error! Could not evaluate circuit");
+      bytes.clear();
       output.first = false;
-      output.second = Util::randomByte(kappa);
+      output.second = bytes;
     }
   }
   return output;

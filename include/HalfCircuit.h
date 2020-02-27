@@ -15,7 +15,7 @@ class HalfCircuit: public CircuitInterface {
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
-    virtual pair<bool, CryptoPP::byte*> evaluate(vector<CryptoPP::byte*> inputs);
+    virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
 
   protected:
 

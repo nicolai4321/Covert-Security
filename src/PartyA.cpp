@@ -20,32 +20,39 @@ PartyA::PartyA(int x, int kappa, CircuitInterface* F) {
 
   F->addAND("xorGate0", "xorGate1", "andGate0");
   F->addAND("xorGate2", "xorGate3", "andGate1");
-  F->addAND("andGate0", "andGate1", "andGate2");
 
-  F->setOutputGate("andGate2");
+  //output
+  vector<string> outputs;
+  outputs.push_back("andGate0");
+  outputs.push_back("andGate1");
+  F->setOutputGates(outputs);
 
   //Input
   vector<CryptoPP::byte*> inputs;
-  inputs.push_back(i0.at(1));
-  inputs.push_back(i1.at(0));
-  inputs.push_back(i2.at(1));
+  inputs.push_back(i0.at(0));
+  inputs.push_back(i1.at(1));
+  inputs.push_back(i2.at(0));
   inputs.push_back(i3.at(0));
-  inputs.push_back(i4.at(0));
-  inputs.push_back(i5.at(1));
-  inputs.push_back(i6.at(0));
-  inputs.push_back(i7.at(1));
+  inputs.push_back(i4.at(1));
+  inputs.push_back(i5.at(0));
+  inputs.push_back(i6.at(1));
+  inputs.push_back(i7.at(0));
 
   //Evaluating
-  pair<bool, CryptoPP::byte*> evaluateOutput = F->evaluate(inputs);
+  pair<bool, vector<CryptoPP::byte*>> evaluateOutput = F->evaluate(inputs);
 
   //Checking valid evaluation
   if(evaluateOutput.first) {
-    CryptoPP::byte* Z = evaluateOutput.second;
-    pair<bool, bool> decodeOutput = F->decode(Z);
+    vector<CryptoPP::byte*> Z = evaluateOutput.second;
+    pair<bool, vector<bool>> decodeOutput = F->decode(Z);
 
     //Checking valid decoding
     if(decodeOutput.first) {
-      cout << "Circuit output: " << decodeOutput.second << endl;
+      cout << "Circuit output: ";
+      for(bool b : decodeOutput.second) {
+        cout << " " << b;
+      }
+      cout << endl;
     } else {
       cout << "Error! Invalid decoding" << endl;
     }

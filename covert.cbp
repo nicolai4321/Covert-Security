@@ -45,6 +45,7 @@
 			<Add option="-fexceptions" />
 		</Compiler>
 		<Unit filename="include/CircuitInterface.h" />
+		<Unit filename="include/CircuitReader.h" />
 		<Unit filename="include/GarbledCircuit.h" />
 		<Unit filename="include/HalfCircuit.h" />
 		<Unit filename="include/PartyA.h" />
@@ -52,6 +53,7 @@
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="src/CircuitInterface.cpp" />
+		<Unit filename="src/CircuitReader.cpp" />
 		<Unit filename="src/GarbledCircuit.cpp" />
 		<Unit filename="src/HalfCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />

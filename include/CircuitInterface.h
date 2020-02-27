@@ -11,16 +11,16 @@ class CircuitInterface {
     virtual vector<CryptoPP::byte*> addGate(string gateName) = 0;
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate) = 0;
     virtual void addAND(string inputGateL, string inputGateR, string outputGate) = 0;
-    virtual pair<bool, CryptoPP::byte*> evaluate(vector<CryptoPP::byte*> inputs) = 0;
+    virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs) = 0;
 
-    void setOutputGate(string outputGate);
-    pair<bool, bool> decode(CryptoPP::byte* enc);
+    void setOutputGates(vector<string> outputGates);
+    pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
 
   protected:
     map<string, vector<string>> gateInfo; //(gateType, gateL, gateR)
     map<string, vector<CryptoPP::byte*>> gates;
     map<string, CryptoPP::byte*> gatesEvaluated;
-    vector<CryptoPP::byte*> gatesOutput;
+    vector<string> gatesOutput;
     vector<string> gateOrder;
     bool canEdit = true;
     int kappa;
