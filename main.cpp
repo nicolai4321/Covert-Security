@@ -13,14 +13,13 @@ int main() {
 
   int kappa = 16;
 
-  CircuitInterface *H = new GarbledCircuit(kappa);
-  //CircuitInterface *H = new HalfCircuit(kappa);
+  /*
+  CircuitInterface *H = new HalfCircuit(kappa);
 
   CircuitReader cr = CircuitReader();
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(H, "adder64.txt");
   if(import.first) {
     vector<vector<CryptoPP::byte*>> encodings = import.second;
-
 
     string i0 = "1000000000000000000000000000000000000000000000000000000000000000";
     string i1 = "1000000000000000000000000000000000000000000000000000000000000000";
@@ -56,9 +55,8 @@ int main() {
   } else {
     cout << "Error! Could not import circuit" << endl;
   }
+*/
 
-
-  /*
   //Normal circuit
   clock_t start = clock();
   CircuitInterface *F = new GarbledCircuit(kappa);
@@ -75,7 +73,6 @@ int main() {
 
   cout << "time: " << durationGC << " (normal)" << endl;
   cout << "time: " << durationHC << " (half gates)" << endl;
-  */
 
   return 0;
 }

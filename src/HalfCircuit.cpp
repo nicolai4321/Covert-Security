@@ -8,6 +8,13 @@ HalfCircuit::HalfCircuit(int k) {
   //Ensuring that the last bit in r is 1
   unsigned char b = (unsigned char) 1;
   r[kappa-1] = r[kappa-1] | b;
+
+  //Add constant 1
+  string gateName = "const1";
+  CryptoPP::byte *encF = Util::randomByte(kappa);
+  CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
+  vector<CryptoPP::byte*> encs = addGate(gateName, "const", "", "", encF, encT);
+  gatesEvaluated[gateName] = encs.at(1);
 }
 
 HalfCircuit::~HalfCircuit() {}
@@ -50,6 +57,17 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
   } else {
     Util::printl("Error! Circuit cannot be modified");
     return vector<CryptoPP::byte*>();
+  }
+}
+
+/*
+  INV-gate
+*/
+void HalfCircuit::addINV(string inputGate, string outputGate) {
+  if(canEdit) {
+    CryptoPP::byte *encF = Util::byteOp(gates[inputGate].at(0), gates["const1"].at(0), "xor", kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
+    addGate(outputGate, "xor", inputGate, "const1", encF, encT);
   }
 }
 
@@ -141,6 +159,7 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
 
           gatesEvaluated[gateName] = inputs.at(i);
           i++;
+        } else if(gateType.compare("const") == 0) {
         } else if(gateType.compare("xor") == 0) {
           gatesEvaluated[gateName] = Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], "xor", kappa);
         } else if(gateType.compare("and") == 0) {
