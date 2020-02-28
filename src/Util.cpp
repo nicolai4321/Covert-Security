@@ -21,14 +21,14 @@ int Util::lsb(CryptoPP::byte* b, int length) {
 CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length) {
   CryptoPP::byte *b = new CryptoPP::byte[length];
   for(int i=0; i<length; i++) {
-    if(op.compare("xor") == 0) {
+    if(op.compare("XOR") == 0) {
       b[i] = b0[i] ^ b1[i];
-    } else if(op.compare("and") == 0) {
+    } else if(op.compare("AND") == 0) {
       b[i] = b0[i] & b1[i];
-    } else if(op.compare("or") == 0) {
+    } else if(op.compare("OR") == 0) {
       b[i] = b0[i] | b1[i];
     } else {
-      cout << "Error! Unkown operator" << endl;
+      cout << "Error! Unkown operator: '" << op << "'" << endl;
     }
   }
   return b;

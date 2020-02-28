@@ -123,6 +123,14 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
         string gateR = "w"+to_string(inputWires[1]);
         string gateO = "w"+to_string(outputWires[0]);
         c->addAND(gateL, gateR, gateO);
+      } else if(gateType.compare("INV") == 0) {
+        string gateI = "w"+to_string(inputWires[0]);
+        string gateO = "w"+to_string(outputWires[0]);
+        c->addINV(gateI, gateO);
+      } else if(gateType.compare("EQW") == 0) {
+        string gateI = "w"+to_string(inputWires[0]);
+        string gateO = "w"+to_string(outputWires[0]);
+        c->addEQW(gateI, gateO);
       } else {
         cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
         inputEncs.clear();

@@ -8,13 +8,6 @@ HalfCircuit::HalfCircuit(int k) {
   //Ensuring that the last bit in r is 1
   unsigned char b = (unsigned char) 1;
   r[kappa-1] = r[kappa-1] | b;
-
-  //Add constant 1
-  string gateName = "const1";
-  CryptoPP::byte *encF = Util::randomByte(kappa);
-  CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
-  vector<CryptoPP::byte*> encs = addGate(gateName, "const", "", "", encF, encT);
-  gatesEvaluated[gateName] = encs.at(1);
 }
 
 HalfCircuit::~HalfCircuit() {}
@@ -26,8 +19,8 @@ HalfCircuit::~HalfCircuit() {}
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
   if(canEdit) {
     CryptoPP::byte *encF = Util::randomByte(kappa);
-    CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
-    return addGate(gateName, "input", "", "", encF, encT);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
+    return addGate(gateName, "INPUT", "", "", encF, encT);
   } else {
     Util::printl("Error! Circuit cannot be modified");
     return vector<CryptoPP::byte*>();
@@ -51,7 +44,7 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
     info.push_back(gateR);
     gateInfo[gateName] = info;
 
-    if(gateType.compare("input") == 0) nrInputGates++;
+    if(gateType.compare("INPUT") == 0) nrInputGates++;
     gateOrder.push_back(gateName);
     return encodings;
   } else {
@@ -61,13 +54,54 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
 }
 
 /*
+  EQ-gate
+*/
+void HalfCircuit::addEQ(bool b, string outputGate) {
+  if(canEdit) {
+    constCounter++;
+    string gateName = "const"+constCounter;
+    CryptoPP::byte *encF = Util::randomByte(kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
+    vector<CryptoPP::byte*> encs = addGate(gateName, "CONST", "", "", encF, encT);
+    gatesEvaluated[gateName] = (b) ? encs.at(1) : encs.at(0);
+
+    addEQW(gateName, outputGate);
+  }
+}
+
+/*
+  EQW-gate
+*/
+void HalfCircuit::addEQW(string inputGate, string outputGate) {
+  if(canEdit) {
+    constCounter++;
+    string gateConst = "const"+constCounter;
+    CryptoPP::byte *encFC = Util::randomByte(kappa);
+    CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
+    vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);
+    gatesEvaluated[gateConst] = encs.at(0);
+
+    CryptoPP::byte *encF = Util::byteOp(gates[inputGate].at(0), gates[gateConst].at(0), "XOR", kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
+    addGate(outputGate, "XOR", inputGate, gateConst, encF, encT);
+  }
+}
+
+/*
   INV-gate
 */
 void HalfCircuit::addINV(string inputGate, string outputGate) {
   if(canEdit) {
-    CryptoPP::byte *encF = Util::byteOp(gates[inputGate].at(0), gates["const1"].at(0), "xor", kappa);
-    CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
-    addGate(outputGate, "xor", inputGate, "const1", encF, encT);
+    constCounter++;
+    string gateConst = "const"+constCounter;
+    CryptoPP::byte *encFC = Util::randomByte(kappa);
+    CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
+    vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);
+    gatesEvaluated[gateConst] = encs.at(1);
+
+    CryptoPP::byte *encF = Util::byteOp(gates[inputGate].at(0), gates[gateConst].at(0), "XOR", kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
+    addGate(outputGate, "XOR", inputGate, gateConst, encF, encT);
   }
 }
 
@@ -76,9 +110,9 @@ void HalfCircuit::addINV(string inputGate, string outputGate) {
 */
 void HalfCircuit::addXOR(string inputGateL, string inputGateR, string outputGate) {
   if(canEdit) {
-    CryptoPP::byte *encF = Util::byteOp(gates[inputGateL].at(0), gates[inputGateR].at(0), "xor", kappa);
-    CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
-    addGate(outputGate, "xor", inputGateL, inputGateR, encF, encT);
+    CryptoPP::byte *encF = Util::byteOp(gates[inputGateL].at(0), gates[inputGateR].at(0), "XOR", kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
+    addGate(outputGate, "XOR", inputGateL, inputGateR, encF, encT);
   }
 }
 
@@ -97,22 +131,22 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
     CryptoPP::byte *wat = leftEnc.at(1);
 
     CryptoPP::byte *WGF = (pa*pb) ?
-      Util::byteOp(Util::h(leftEnc.at(pa), kappa), r, "xor", kappa):
+      Util::byteOp(Util::h(leftEnc.at(pa), kappa), r, "XOR", kappa):
       Util::h(leftEnc.at(pa), kappa);
 
-    CryptoPP::byte *WGT = Util::byteOp(WGF, r, "xor", kappa);
+    CryptoPP::byte *WGT = Util::byteOp(WGF, r, "XOR", kappa);
 
     CryptoPP::byte *TG = (pb) ?
-      Util::byteOp(Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "xor", kappa), r, "xor", kappa):
-      Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "xor", kappa);
+      Util::byteOp(Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "XOR", kappa), r, "XOR", kappa):
+      Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "XOR", kappa);
 
     //Evaluator part
     CryptoPP::byte *wbf = rightEnc.at(0);
     CryptoPP::byte *wbt = rightEnc.at(1);
 
     CryptoPP::byte *WEF = Util::h(rightEnc.at(pb), kappa);
-    CryptoPP::byte *WET = Util::byteOp(WEF, r, "xor", kappa);
-    CryptoPP::byte *TE = Util::byteOp(Util::byteOp(Util::h(wbf, kappa), Util::h(wbt, kappa), "xor", kappa), waf, "xor", kappa);
+    CryptoPP::byte *WET = Util::byteOp(WEF, r, "XOR", kappa);
+    CryptoPP::byte *TE = Util::byteOp(Util::byteOp(Util::h(wbf, kappa), Util::h(wbt, kappa), "XOR", kappa), waf, "XOR", kappa);
 
     //Adding gates
     vector<CryptoPP::byte*> encodings;
@@ -120,10 +154,10 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
     encodings.push_back(TE);
     andEncodings[outputGate] = encodings;
 
-    CryptoPP::byte *encF = Util::byteOp(WGF, WEF, "xor", kappa);
-    CryptoPP::byte *encT = Util::byteOp(encF, r, "xor", kappa);
+    CryptoPP::byte *encF = Util::byteOp(WGF, WEF, "XOR", kappa);
+    CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
 
-    addGate(outputGate, "and", inputGateL, inputGateR, encF, encT);
+    addGate(outputGate, "AND", inputGateL, inputGateR, encF, encT);
   }
 }
 
@@ -148,7 +182,7 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
         string gateL = info.at(1);
         string gateR = info.at(2);
 
-        if(gateType.compare("input") == 0) {
+        if(gateType.compare("INPUT") == 0) {
           if(nrInputGates == i) {
             Util::printl("Error! Wrong number of input gates");
             bytes.clear();
@@ -159,10 +193,10 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
 
           gatesEvaluated[gateName] = inputs.at(i);
           i++;
-        } else if(gateType.compare("const") == 0) {
-        } else if(gateType.compare("xor") == 0) {
-          gatesEvaluated[gateName] = Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], "xor", kappa);
-        } else if(gateType.compare("and") == 0) {
+        } else if(gateType.compare("CONST") == 0) {
+        } else if(gateType.compare("XOR") == 0) {
+          gatesEvaluated[gateName] = Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], "XOR", kappa);
+        } else if(gateType.compare("AND") == 0) {
           int sa = Util::lsb(gatesEvaluated[gateL], kappa);
           int sb = Util::lsb(gatesEvaluated[gateR], kappa);
 
@@ -172,14 +206,14 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
           CryptoPP::byte *Wb = gatesEvaluated[gateR];
 
           CryptoPP::byte *WG = (sa) ?
-            Util::byteOp(Util::h(Wa, kappa), TG, "xor", kappa):
+            Util::byteOp(Util::h(Wa, kappa), TG, "XOR", kappa):
             Util::h(Wa, kappa);
 
           CryptoPP::byte *WE = (sb) ?
-            Util::byteOp(Util::h(Wb, kappa), Util::byteOp(TE, Wa, "xor", kappa), "xor", kappa):
+            Util::byteOp(Util::h(Wb, kappa), Util::byteOp(TE, Wa, "XOR", kappa), "XOR", kappa):
             Util::h(Wb, kappa);
 
-          gatesEvaluated[gateName] = Util::byteOp(WG, WE, "xor", kappa);
+          gatesEvaluated[gateName] = Util::byteOp(WG, WE, "XOR", kappa);
         } else {
           Util::printl("Error! Invalid gate type");
           bytes.clear();

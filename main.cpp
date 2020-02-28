@@ -14,15 +14,15 @@ int main() {
   int kappa = 16;
 
   /*
-  CircuitInterface *H = new HalfCircuit(kappa);
+  CircuitInterface *H = new GarbledCircuit(kappa);
 
   CircuitReader cr = CircuitReader();
-  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(H, "adder64.txt");
+  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(H, "neg64.txt");
   if(import.first) {
     vector<vector<CryptoPP::byte*>> encodings = import.second;
 
-    string i0 = "1000000000000000000000000000000000000000000000000000000000000000";
-    string i1 = "1000000000000000000000000000000000000000000000000000000000000000";
+    string i0 = "0101000000000000000000000000000000000000000000000000000000000000";
+    string i1 = "";//"0100000000000000000000000000000000000000000000000000000000000000";
     string input = i0 + i1;
 
     vector<CryptoPP::byte*> inputs;
@@ -55,7 +55,7 @@ int main() {
   } else {
     cout << "Error! Could not import circuit" << endl;
   }
-*/
+  */
 
   //Normal circuit
   clock_t start = clock();

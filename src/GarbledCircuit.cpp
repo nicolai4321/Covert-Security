@@ -4,11 +4,6 @@ using namespace std;
 GarbledCircuit::GarbledCircuit(int k) {
   kappa = k;
   iv = Util::generateIV();
-
-  //Add constant 1
-  string gateName = "const1";
-  vector<CryptoPP::byte*> encs = addGate(gateName, "const", "", "");
-  gatesEvaluated[gateName] = encs.at(1);
 }
 
 GarbledCircuit::~GarbledCircuit() {}
@@ -19,7 +14,7 @@ GarbledCircuit::~GarbledCircuit() {}
 */
 vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName) {
   if(canEdit) {
-    return addGate(gateName, "input", "", "");
+    return addGate(gateName, "INPUT", "", "");
   } else {
     Util::printl("Error! Circuit cannot be modified");
     return vector<CryptoPP::byte*>();
@@ -47,7 +42,7 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
     gateInfo[gateName] = info;
 
     gateOrder.push_back(gateName);
-    if(gateType.compare("input") == 0) nrInputGates++;
+    if(gateType.compare("INPUT") == 0) nrInputGates++;
     return encodings;
   } else {
     Util::printl("Error! Circuit cannot be modified");
@@ -76,32 +71,71 @@ CryptoPP::byte* GarbledCircuit::doubleDecrypt(string c, CryptoPP::byte* keyL, Cr
 }
 
 /*
+  EQ
+*/
+void GarbledCircuit::addEQ(bool b, string outputGate) {
+  if(canEdit) {
+    string gateConst = "const"+outputGate;
+    addGate(gateConst, "CONST", "", "");
+    gatesEvaluated[gateConst] = (b) ? gates[gateConst].at(1) : gates[gateConst].at(0);
+    addEQW(gateConst, outputGate);
+  }
+}
+
+/*
+  EQW-gate
+*/
+void GarbledCircuit::addEQW(string inputGate, string outputGate) {
+  if(canEdit) {
+    addGate(outputGate, "EQW", inputGate, inputGate);
+
+    CryptoPP::byte *encF = gates[inputGate].at(0);
+    CryptoPP::byte *encT = gates[inputGate].at(1);
+
+    CryptoPP::byte *encFO = gates[outputGate].at(0);
+    CryptoPP::byte *encTO = gates[outputGate].at(1);
+
+    vector<string> garbledTable;
+    garbledTable.push_back(doubleEncrypt(encFO, encF, encF, iv));
+    garbledTable.push_back(doubleEncrypt(encTO, encT, encT, iv));
+
+    //Permutation
+    CryptoPP::AutoSeededRandomPool asrp;
+    asrp.Shuffle(garbledTable.begin(), garbledTable.end());
+
+    garbledTables[outputGate] = garbledTable;
+  }
+}
+
+/*
   INV-gate
 */
 void GarbledCircuit::addINV(string inputGate, string outputGate) {
   if(canEdit) {
-    addGate(outputGate, "xor", inputGate, "const1");
+    constCounter++;
+    string constGate = "const"+constCounter;
+    vector<CryptoPP::byte*> encs = addGate(constGate, "CONST", "", "");
+    gatesEvaluated[constGate] = encs.at(1);
+    addGate(outputGate, "XOR", inputGate, constGate);
 
-    CryptoPP::byte *falseEncodingL = gates[inputGate].at(0);
-    CryptoPP::byte *trueEncodingL = gates[inputGate].at(1);
+    CryptoPP::byte *encFL = gates[inputGate].at(0);
+    CryptoPP::byte *encTL = gates[inputGate].at(1);
 
-    CryptoPP::byte *falseEncodingR = gates["const1"].at(0);
-    CryptoPP::byte *trueEncodingR = gates["const1"].at(1);
+    CryptoPP::byte *encTR = gates[constGate].at(1);
 
-    CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
-    CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+    CryptoPP::byte *encFO = gates[outputGate].at(0);
+    CryptoPP::byte *encTO = gates[outputGate].at(1);
 
     vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(trueEncodingO, falseEncodingL, trueEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
 
     //permutation
     CryptoPP::AutoSeededRandomPool asrp;
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
 
-    garbledTables[outputGate] = garbledTable;  }
+    garbledTables[outputGate] = garbledTable;
+  }
 }
 
 /*
@@ -109,22 +143,22 @@ void GarbledCircuit::addINV(string inputGate, string outputGate) {
 */
 void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputGate) {
   if(canEdit) {
-    addGate(outputGate, "xor", inputGateL, inputGateR);
+    addGate(outputGate, "XOR", inputGateL, inputGateR);
 
-    CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
-    CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
+    CryptoPP::byte *encFL = gates[inputGateL].at(0);
+    CryptoPP::byte *encTL = gates[inputGateL].at(1);
 
-    CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
-    CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
+    CryptoPP::byte *encFR = gates[inputGateR].at(0);
+    CryptoPP::byte *encTR = gates[inputGateR].at(1);
 
-    CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
-    CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+    CryptoPP::byte *encFO = gates[outputGate].at(0);
+    CryptoPP::byte *encTO = gates[outputGate].at(1);
 
     vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(trueEncodingO, falseEncodingL, trueEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, trueEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encFL, encFR, iv));
+    garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
+    garbledTable.push_back(doubleEncrypt(encTO, encTL, encFR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
 
     //permutation
     CryptoPP::AutoSeededRandomPool asrp;
@@ -139,22 +173,22 @@ void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputG
 */
 void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputGate) {
   if(canEdit) {
-    addGate(outputGate, "and", inputGateL, inputGateR);
+    addGate(outputGate, "AND", inputGateL, inputGateR);
 
-    CryptoPP::byte *falseEncodingL = gates[inputGateL].at(0);
-    CryptoPP::byte *trueEncodingR = gates[inputGateR].at(1);
+    CryptoPP::byte *encFL = gates[inputGateL].at(0);
+    CryptoPP::byte *encTL = gates[inputGateL].at(1);
 
-    CryptoPP::byte *falseEncodingR = gates[inputGateR].at(0);
-    CryptoPP::byte *trueEncodingL = gates[inputGateL].at(1);
+    CryptoPP::byte *encFR = gates[inputGateR].at(0);
+    CryptoPP::byte *encTR = gates[inputGateR].at(1);
 
-    CryptoPP::byte *falseEncodingO = gates[outputGate].at(0);
-    CryptoPP::byte *trueEncodingO = gates[outputGate].at(1);
+    CryptoPP::byte *encFO = gates[outputGate].at(0);
+    CryptoPP::byte *encTO = gates[outputGate].at(1);
 
     vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, falseEncodingL, trueEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(falseEncodingO, trueEncodingL, falseEncodingR, iv));
-    garbledTable.push_back(doubleEncrypt(trueEncodingO, trueEncodingL, trueEncodingR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encFL, encFR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encFL, encTR, iv));
+    garbledTable.push_back(doubleEncrypt(encFO, encTL, encFR, iv));
+    garbledTable.push_back(doubleEncrypt(encTO, encTL, encTR, iv));
 
     //permutation
     CryptoPP::AutoSeededRandomPool asrp;
@@ -219,7 +253,7 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
         string gateR = info.at(2);
 
 
-        if(gateType.compare("input") == 0) {
+        if(gateType.compare("INPUT") == 0) {
           if(nrInputGates == i) {
             Util::printl("Error! Wrong number of input gates");
             bytes.clear();
@@ -229,7 +263,7 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
           }
           gatesEvaluated[gateName] = inputs.at(i);
           i++;
-        } else if(gateType.compare("const") == 0) {
+        } else if(gateType.compare("CONST") == 0) {
         } else {
           evaluateGate(gateL, gateR, gateName);
         }
