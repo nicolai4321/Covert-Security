@@ -20,8 +20,13 @@ PartyA::PartyA(int x, int kappa, CircuitInterface* F) {
 
   F->addAND("xorGate0", "xorGate1", "andGate0");
   F->addAND("xorGate2", "xorGate3", "andGate1");
-  F->addEQW("andGate1", "eqwGate");
+
+  F->addEQW("input0", "eqwGate");
   F->addEQ(true, "eqGate");
+  F->addINV("eqGate", "invGate");
+  F->addINV("invGate", "invGate0");
+  F->addINV("invGate0", "invGate1");
+  F->addINV("invGate1", "invGate2");
 
   //output
   vector<string> outputs;
@@ -29,6 +34,10 @@ PartyA::PartyA(int x, int kappa, CircuitInterface* F) {
   outputs.push_back("andGate1");
   outputs.push_back("eqwGate");
   outputs.push_back("eqGate");
+  outputs.push_back("invGate");
+  outputs.push_back("invGate0");
+  outputs.push_back("invGate1");
+  outputs.push_back("invGate2");
   F->setOutputGates(outputs);
 
   //Input

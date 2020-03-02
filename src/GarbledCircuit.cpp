@@ -8,6 +8,10 @@ GarbledCircuit::GarbledCircuit(int k) {
 
 GarbledCircuit::~GarbledCircuit() {}
 
+string GarbledCircuit::toString() {
+  return "Normal garbled circuit";
+}
+
 /*
   Adds a new gate and names it with gateName and adds two encodings
   for false and true
@@ -43,7 +47,7 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
 
     gateOrder.push_back(gateName);
     if(gateType.compare("INPUT") == 0) nrInputGates++;
-    return encodings;
+    return {encF, encT};
   } else {
     Util::printl("Error! Circuit cannot be modified");
     return vector<CryptoPP::byte*>();
@@ -75,9 +79,10 @@ CryptoPP::byte* GarbledCircuit::doubleDecrypt(string c, CryptoPP::byte* keyL, Cr
 */
 void GarbledCircuit::addEQ(bool b, string outputGate) {
   if(canEdit) {
-    string gateConst = "const"+outputGate;
-    addGate(gateConst, "CONST", "", "");
-    gatesEvaluated[gateConst] = (b) ? gates[gateConst].at(1) : gates[gateConst].at(0);
+    constCounter++;
+    string gateConst = "const"+to_string(constCounter);
+    vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "");
+    gatesEvaluated[gateConst] = (b) ? encs.at(1) : encs.at(0);
     addEQW(gateConst, outputGate);
   }
 }
@@ -98,11 +103,7 @@ void GarbledCircuit::addEQW(string inputGate, string outputGate) {
     vector<string> garbledTable;
     garbledTable.push_back(doubleEncrypt(encFO, encF, encF, iv));
     garbledTable.push_back(doubleEncrypt(encTO, encT, encT, iv));
-
-    //Permutation
-    CryptoPP::AutoSeededRandomPool asrp;
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
-
     garbledTables[outputGate] = garbledTable;
   }
 }
@@ -113,7 +114,7 @@ void GarbledCircuit::addEQW(string inputGate, string outputGate) {
 void GarbledCircuit::addINV(string inputGate, string outputGate) {
   if(canEdit) {
     constCounter++;
-    string constGate = "const"+constCounter;
+    string constGate = "const"+to_string(constCounter);
     vector<CryptoPP::byte*> encs = addGate(constGate, "CONST", "", "");
     gatesEvaluated[constGate] = encs.at(1);
     addGate(outputGate, "XOR", inputGate, constGate);
@@ -129,11 +130,7 @@ void GarbledCircuit::addINV(string inputGate, string outputGate) {
     vector<string> garbledTable;
     garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
     garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
-
-    //permutation
-    CryptoPP::AutoSeededRandomPool asrp;
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
-
     garbledTables[outputGate] = garbledTable;
   }
 }
@@ -159,11 +156,7 @@ void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputG
     garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
     garbledTable.push_back(doubleEncrypt(encTO, encTL, encFR, iv));
     garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
-
-    //permutation
-    CryptoPP::AutoSeededRandomPool asrp;
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
-
     garbledTables[outputGate] = garbledTable;
   }
 }
@@ -189,11 +182,7 @@ void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputG
     garbledTable.push_back(doubleEncrypt(encFO, encFL, encTR, iv));
     garbledTable.push_back(doubleEncrypt(encFO, encTL, encFR, iv));
     garbledTable.push_back(doubleEncrypt(encTO, encTL, encTR, iv));
-
-    //permutation
-    CryptoPP::AutoSeededRandomPool asrp;
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
-
     garbledTables[outputGate] = garbledTable;
   }
 }
@@ -224,8 +213,12 @@ void GarbledCircuit::evaluateGate(string gateL, string gateR, string gateName) {
   //check that only one encoding was valid
   if(validEncodings.size() == 1) {
     gatesEvaluated[gateName] = validEncodings.at(0);
+  } else if (validEncodings.size() > 1) {
+    string msg = "Error! Multiple valid encodings";
+    Util::printl(msg);
+    throw msg;
   } else {
-    string msg = "Error! Invalid evaluation of gate";
+    string msg = "Error! No valid encodings";
     Util::printl(msg);
     throw msg;
   }
@@ -251,7 +244,6 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
         string gateType = info.at(0);
         string gateL = info.at(1);
         string gateR = info.at(2);
-
 
         if(gateType.compare("INPUT") == 0) {
           if(nrInputGates == i) {

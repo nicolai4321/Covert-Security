@@ -1,8 +1,15 @@
 #include "CircuitReader.h"
 using namespace std;
 
-CircuitReader::CircuitReader() {}
+CircuitReader::CircuitReader() {
+  totalInputGates = 0;
+}
+
 CircuitReader::~CircuitReader() {}
+
+int CircuitReader::getInputGates() {
+  return totalInputGates;
+}
 
 /*
   The reader reads one line and returns the line as a string
@@ -31,7 +38,7 @@ vector<string> CircuitReader::splitString(string s) {
   The boolean determines if it was successful
   The vector contains the input encodings
 */
-pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterface* c, string filename) {
+pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterface* F, string filename) {
   pair<bool, vector<vector<CryptoPP::byte*>>> output;
   string line;
   vector<string> data;
@@ -54,7 +61,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
     line = readOneLine(reader);
     data = splitString(line);
     int nrInputValues = stoi(data[0]);
-    int totalInputGates = 0;
+    totalInputGates = 0;
     vector<int> inputList;
     for(int i=0; i<nrInputValues; i++) {
       int v = stoi(data[i+1]);
@@ -80,7 +87,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
     //adds input gates
     for(int i=0; i<totalInputGates; i++) {
       string gateName = "w"+to_string(i);
-      vector<CryptoPP::byte*> inputEnc = c->addGate(gateName);
+      vector<CryptoPP::byte*> inputEnc = F->addGate(gateName);
       inputEncs.push_back(inputEnc);
     }
 
@@ -117,20 +124,20 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
         string gateL = "w"+to_string(inputWires[0]);
         string gateR = "w"+to_string(inputWires[1]);
         string gateO = "w"+to_string(outputWires[0]);
-        c->addXOR(gateL, gateR, gateO);
+        F->addXOR(gateL, gateR, gateO);
       } else if(gateType.compare("AND") == 0) {
         string gateL = "w"+to_string(inputWires[0]);
         string gateR = "w"+to_string(inputWires[1]);
         string gateO = "w"+to_string(outputWires[0]);
-        c->addAND(gateL, gateR, gateO);
+        F->addAND(gateL, gateR, gateO);
       } else if(gateType.compare("INV") == 0) {
         string gateI = "w"+to_string(inputWires[0]);
         string gateO = "w"+to_string(outputWires[0]);
-        c->addINV(gateI, gateO);
+        F->addINV(gateI, gateO);
       } else if(gateType.compare("EQW") == 0) {
         string gateI = "w"+to_string(inputWires[0]);
         string gateO = "w"+to_string(outputWires[0]);
-        c->addEQW(gateI, gateO);
+        F->addEQW(gateI, gateO);
       } else {
         cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
         inputEncs.clear();
@@ -146,8 +153,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
       string gateName = "w"+to_string(i-totalOutputGates+j);
       outputGates.push_back(gateName);
     }
-    c->setOutputGates(outputGates);
-  }
+    F->setOutputGates(outputGates);  }
   reader.close();
 
   output.first = true;

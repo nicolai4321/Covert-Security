@@ -12,6 +12,11 @@ HalfCircuit::HalfCircuit(int k) {
 
 HalfCircuit::~HalfCircuit() {}
 
+string HalfCircuit::toString() {
+  return "Half garbled circuit";
+}
+
+
 /*
   Adds a new gate and names it with gateName and adds two encodings
   for false and true
@@ -59,7 +64,7 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
 void HalfCircuit::addEQ(bool b, string outputGate) {
   if(canEdit) {
     constCounter++;
-    string gateName = "const"+constCounter;
+    string gateName = "const"+to_string(constCounter);
     CryptoPP::byte *encF = Util::randomByte(kappa);
     CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateName, "CONST", "", "", encF, encT);
@@ -75,7 +80,7 @@ void HalfCircuit::addEQ(bool b, string outputGate) {
 void HalfCircuit::addEQW(string inputGate, string outputGate) {
   if(canEdit) {
     constCounter++;
-    string gateConst = "const"+constCounter;
+    string gateConst = "const"+to_string(constCounter);
     CryptoPP::byte *encFC = Util::randomByte(kappa);
     CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);
@@ -93,7 +98,7 @@ void HalfCircuit::addEQW(string inputGate, string outputGate) {
 void HalfCircuit::addINV(string inputGate, string outputGate) {
   if(canEdit) {
     constCounter++;
-    string gateConst = "const"+constCounter;
+    string gateConst = "const"+to_string(constCounter);
     CryptoPP::byte *encFC = Util::randomByte(kappa);
     CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);

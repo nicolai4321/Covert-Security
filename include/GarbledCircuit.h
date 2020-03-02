@@ -20,6 +20,7 @@ class GarbledCircuit: public CircuitInterface {
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
+    virtual string toString();
 
   protected:
 
@@ -30,6 +31,7 @@ class GarbledCircuit: public CircuitInterface {
     CryptoPP::byte* doubleDecrypt(string c, CryptoPP::byte* keyL, CryptoPP::byte* keyR, CryptoPP::byte* iv);
 
     map<string, vector<string>> garbledTables;
+    CryptoPP::AutoSeededRandomPool asrp;
     CryptoPP::byte *iv;
 };
 

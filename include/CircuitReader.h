@@ -14,11 +14,13 @@ class CircuitReader {
     virtual ~CircuitReader();
     vector<string> splitString(string s);
     pair<bool, vector<vector<CryptoPP::byte*>>> import(CircuitInterface* c, string filename);
+    int getInputGates();
 
   protected:
 
   private:
     string readOneLine(ifstream& reader);
+    int totalInputGates;
 };
 
 #endif // CIRCUITREADER_H
