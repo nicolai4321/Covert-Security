@@ -18,7 +18,7 @@ void runCircuit(CircuitInterface* F, int kappa) {
   cout << "time: " << durationGC << " ("+F->toString()+")" << endl;
 }
 
-void runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
+double runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
   try {
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(F, filename);
@@ -74,33 +74,40 @@ void runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
     }
     cout << endl;
 
-    double durationGC = (clock()-start) / (double) CLOCKS_PER_SEC;
-    cout << "time: " << durationGC << " ("+F->toString()+")" << endl;
-  } catch (...) {}
+    double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
+    return duration;
+  } catch (...) {
+    return 0;
+  }
 }
 
 int main() {
-  string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
   int kappa = 16;
+  string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
+
+  double timeTotal0 = 0;
+  double timeTotal1 = 0;
 
   for(string filename : files) {
-    cout << "------------------------------" << endl;
+    cout << filename << endl;
     string input = "";
-    input += "0101000000000000000000000000000000000000000000000000000000000000";
+    input += "0101000000000000000000000000000000000000000000000000000000000000"; //10
     if(filename.compare("neg64.txt") != 0 && filename.compare("zero_equal.txt") != 0) {
-      input += "0100000000000000000000000000000000000000000000000000000000000000";
+      input += "0100000000000000000000000000000000000000000000000000000000000000"; //2
     }
     CircuitInterface *F = new GarbledCircuit(kappa);
     CircuitInterface *G = new HalfCircuit(kappa);
 
-    runCircuit(F, kappa, filename, input);
-    runCircuit(G, kappa, filename, input);
+    double time0 = runCircuit(F, kappa, filename, input);
+    double time1 = runCircuit(G, kappa, filename, input);
+    timeTotal0 += time0;
+    timeTotal1 += time1;
 
-    cout << "------------------------------" << endl;
+    cout << "Time: " << time0 << " ("+F->toString()+"), " << time1 << " ("+G->toString()+")" << endl;
+    cout << endl;
   }
 
-  //runCircuit(F, kappa);
-  //runCircuit(G, kappa);
+  cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
 
   return 0;
 }

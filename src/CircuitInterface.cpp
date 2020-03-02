@@ -43,6 +43,16 @@ pair<bool, vector<bool>> CircuitInterface::decode(vector<CryptoPP::byte*> encs) 
       }
       i++;
     }
+
+    map<string, vector<CryptoPP::byte*>>::iterator it = gates.begin();
+    while(it != gates.end()) {
+      string gateName = it->first;
+      vector<CryptoPP::byte*> encs = it->second;
+
+      asrp.Shuffle(encs.begin(), encs.end());
+      gates[gateName] = encs;
+      it++;
+    }
   }
 
   output.first = true;

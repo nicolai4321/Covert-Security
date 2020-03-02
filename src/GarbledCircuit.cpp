@@ -55,23 +55,42 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType
 }
 
 /*
-  Encryption: E(keyL, iv, E(keyR, iv, m))
+  Encodes the gate: H(W_l || W_r) xor (W_o || 0^k)
 */
-string GarbledCircuit::doubleEncrypt(CryptoPP::byte* m, CryptoPP::byte* keyL, CryptoPP::byte* keyR, CryptoPP::byte* iv) {
-  string msg = Util::byteToString(m, kappa);
-  string cipherText0 = Util::encrypt(msg, keyR, iv);
-  string cipherText1 = Util::encrypt(cipherText0, keyL, iv);
-  return cipherText1;
+CryptoPP::byte* GarbledCircuit::encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO) {
+  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
+  memset(zero, 0x00, kappa);
+
+  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *r = Util::mergeBytes(encO, zero, kappa);
+  return Util::byteOp(l, r, "XOR", 2*kappa);
 }
 
 /*
-  Decryption: D(keyR, iv, D(keyL, iv, c))
+  Decodes a gate if the last characters are zeros
 */
-CryptoPP::byte* GarbledCircuit::doubleDecrypt(string c, CryptoPP::byte* keyL, CryptoPP::byte* keyR, CryptoPP::byte* iv) {
-  string clearText0 = Util::decrypt(c, keyL, iv);
-  string clearText1 = Util::decrypt(clearText0, keyR, iv);
-  CryptoPP::byte *clearTextB = Util::stringToByte(clearText1, kappa);
-  return clearTextB;
+pair<bool, CryptoPP::byte*> GarbledCircuit::decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc) {
+  pair<bool, CryptoPP::byte*> output;
+  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*kappa);
+
+  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
+  memset(zero, 0x00, kappa);
+
+  CryptoPP::byte *left = new CryptoPP::byte[kappa];
+  CryptoPP::byte *right = new CryptoPP::byte[kappa];
+  left = decoded;
+  right = (decoded+kappa);
+
+  if(memcmp(right, zero, kappa) == 0) {
+    output.first = true;
+    output.second = left;
+    return output;
+  } else {
+    output.first = false;
+    output.second = zero;
+    return output;
+  }
 }
 
 /*
@@ -100,9 +119,9 @@ void GarbledCircuit::addEQW(string inputGate, string outputGate) {
     CryptoPP::byte *encFO = gates[outputGate].at(0);
     CryptoPP::byte *encTO = gates[outputGate].at(1);
 
-    vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(encFO, encF, encF, iv));
-    garbledTable.push_back(doubleEncrypt(encTO, encT, encT, iv));
+    vector<CryptoPP::byte*> garbledTable;
+    garbledTable.push_back(encodeGate(encF, encF, encFO));
+    garbledTable.push_back(encodeGate(encT, encT, encTO));
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
     garbledTables[outputGate] = garbledTable;
   }
@@ -127,9 +146,9 @@ void GarbledCircuit::addINV(string inputGate, string outputGate) {
     CryptoPP::byte *encFO = gates[outputGate].at(0);
     CryptoPP::byte *encTO = gates[outputGate].at(1);
 
-    vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
-    garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
+    vector<CryptoPP::byte*> garbledTable;
+    garbledTable.push_back(encodeGate(encFL, encTR, encTO));
+    garbledTable.push_back(encodeGate(encTL, encTR, encFO));
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
     garbledTables[outputGate] = garbledTable;
   }
@@ -151,11 +170,11 @@ void GarbledCircuit::addXOR(string inputGateL, string inputGateR, string outputG
     CryptoPP::byte *encFO = gates[outputGate].at(0);
     CryptoPP::byte *encTO = gates[outputGate].at(1);
 
-    vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(encFO, encFL, encFR, iv));
-    garbledTable.push_back(doubleEncrypt(encTO, encFL, encTR, iv));
-    garbledTable.push_back(doubleEncrypt(encTO, encTL, encFR, iv));
-    garbledTable.push_back(doubleEncrypt(encFO, encTL, encTR, iv));
+    vector<CryptoPP::byte*> garbledTable;
+    garbledTable.push_back(encodeGate(encFL, encFR, encFO));
+    garbledTable.push_back(encodeGate(encFL, encTR, encTO));
+    garbledTable.push_back(encodeGate(encTL, encFR, encTO));
+    garbledTable.push_back(encodeGate(encTL, encTR, encFO));
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
     garbledTables[outputGate] = garbledTable;
   }
@@ -177,11 +196,11 @@ void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputG
     CryptoPP::byte *encFO = gates[outputGate].at(0);
     CryptoPP::byte *encTO = gates[outputGate].at(1);
 
-    vector<string> garbledTable;
-    garbledTable.push_back(doubleEncrypt(encFO, encFL, encFR, iv));
-    garbledTable.push_back(doubleEncrypt(encFO, encFL, encTR, iv));
-    garbledTable.push_back(doubleEncrypt(encFO, encTL, encFR, iv));
-    garbledTable.push_back(doubleEncrypt(encTO, encTL, encTR, iv));
+    vector<CryptoPP::byte*> garbledTable;
+    garbledTable.push_back(encodeGate(encFL, encFR, encFO));
+    garbledTable.push_back(encodeGate(encFL, encTR, encFO));
+    garbledTable.push_back(encodeGate(encTL, encFR, encFO));
+    garbledTable.push_back(encodeGate(encTL, encTR, encTO));
     asrp.Shuffle(garbledTable.begin(), garbledTable.end());
     garbledTables[outputGate] = garbledTable;
   }
@@ -191,22 +210,17 @@ void GarbledCircuit::addAND(string inputGateL, string inputGateR, string outputG
   Evaluate normal gate
 */
 void GarbledCircuit::evaluateGate(string gateL, string gateR, string gateName) {
-  vector<string> garbledTable = garbledTables[gateName];
-  CryptoPP::byte *keyL = gatesEvaluated[gateL];
-  CryptoPP::byte *keyR = gatesEvaluated[gateR];
+  vector<CryptoPP::byte*> garbledTable = garbledTables[gateName];
+  CryptoPP::byte *encL = gatesEvaluated[gateL];
+  CryptoPP::byte *encR = gatesEvaluated[gateR];
   CryptoPP::byte *output0 = gates[gateName].at(0);
   CryptoPP::byte *output1 = gates[gateName].at(1);
 
   vector<CryptoPP::byte*> validEncodings;
-  for(string c : garbledTable) {
-    try {
-      CryptoPP::byte *enc = doubleDecrypt(c, keyL, keyR, iv);
-
-      if(memcmp(enc, output0, kappa) == 0 || memcmp(enc, output1, kappa) == 0) {
-        validEncodings.push_back(enc);
-      }
-    } catch (...) {
-        //ignore invalud encodings
+  for(CryptoPP::byte *b : garbledTable) {
+    pair<bool, CryptoPP::byte*> result = decodeGate(encL, encR, b);
+    if(result.first) {
+      validEncodings.push_back(result.second);
     }
   }
 

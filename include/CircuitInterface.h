@@ -26,6 +26,7 @@ class CircuitInterface {
     map<string, CryptoPP::byte*> gatesEvaluated;
     vector<string> gatesOutput;
     vector<string> gateOrder;
+    CryptoPP::AutoSeededRandomPool asrp;
     bool canEdit = true;
     int nrInputGates;
     int kappa;
