@@ -4,38 +4,58 @@ CircuitInterface::~CircuitInterface() {}
 /*
   Sets the output gate
 */
-void CircuitInterface::setOutputGate(string outputGate) {
+void CircuitInterface::setOutputGates(vector<string> outputGates) {
   if(canEdit) {
-    vector<CryptoPP::byte*> encodings = gates[outputGate];
-    gatesOutput.push_back(encodings.at(0));
-    gatesOutput.push_back(encodings.at(1));
+    gatesOutput = outputGates;
     canEdit = false;
   }
 }
 
 /*
   Returns the decoding of the output.
-  The first bool determines if the decoding was successful
-  The second bool determines the output value
+  The bool determines if the decoding was successful
+  The vector contains the output value
 */
-pair<bool, bool> CircuitInterface::decode(CryptoPP::byte* enc) {
-  pair<bool, bool> output;
+pair<bool, vector<bool>> CircuitInterface::decode(vector<CryptoPP::byte*> encs) {
+  pair<bool, vector<bool>> output;
+  vector<bool> outputBools;
   if(canEdit) {
     Util::printl("Error! Cannot decode before circuit is build");
     output.first = false;
-    output.second = false;
+    output.second = outputBools;
+    return output;
   } else {
-    if(memcmp(enc, gatesOutput.at(0), kappa) == 0) {
-      output.first = true;
-      output.second = false;
-    } else if(memcmp(enc, gatesOutput.at(1), kappa) == 0) {
-      output.first = true;
-      output.second = true;
-    } else {
-      Util::printl("Error! Invalid decoding");
-      output.first = false;
-      output.second = false;
+    int i=0;
+    for(string gateName : gatesOutput) {
+      CryptoPP::byte *encF = gates[gateName].at(0);
+      CryptoPP::byte *encT = gates[gateName].at(1);
+      CryptoPP::byte *enc = encs.at(i);
+
+      if(memcmp(enc, encF, kappa) == 0) {
+        outputBools.push_back(false);
+      } else if(memcmp(enc, encT, kappa) == 0) {
+        outputBools.push_back(true);
+      } else {
+        Util::printl("Error! Invalid decoding");
+        output.first = false;
+        output.second = outputBools;
+        return output;
+      }
+      i++;
+    }
+
+    map<string, vector<CryptoPP::byte*>>::iterator it = gates.begin();
+    while(it != gates.end()) {
+      string gateName = it->first;
+      vector<CryptoPP::byte*> encs = it->second;
+
+      asrp.Shuffle(encs.begin(), encs.end());
+      gates[gateName] = encs;
+      it++;
     }
   }
+
+  output.first = true;
+  output.second = outputBools;
   return output;
 }

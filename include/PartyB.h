@@ -8,7 +8,7 @@ using namespace std;
 class PartyB
 {
   public:
-    PartyB(int y, int kappa, CircuitInterface* F);
+    PartyB(int y);
     virtual ~PartyB();
 
   protected:
