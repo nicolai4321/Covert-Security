@@ -1,9 +1,10 @@
 #include "HalfCircuit.h"
 using namespace std;
 
-HalfCircuit::HalfCircuit(int k) {
+HalfCircuit::HalfCircuit(int k, unsigned int s) {
   kappa = k;
-  r = Util::randomByte(kappa);
+  seed = s;
+  r = Util::randomByte(kappa, seed); seed++;
 
   //Ensuring that the last bit in r is 1
   unsigned char b = (unsigned char) 1;
@@ -23,7 +24,7 @@ string HalfCircuit::toString() {
 */
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
   if(canEdit) {
-    CryptoPP::byte *encF = Util::randomByte(kappa);
+    CryptoPP::byte *encF = Util::randomByte(kappa, seed); seed++;
     CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
     return addGate(gateName, "INPUT", "", "", encF, encT);
   } else {
@@ -65,7 +66,7 @@ void HalfCircuit::addEQ(bool b, string outputGate) {
   if(canEdit) {
     constCounter++;
     string gateName = "const"+to_string(constCounter);
-    CryptoPP::byte *encF = Util::randomByte(kappa);
+    CryptoPP::byte *encF = Util::randomByte(kappa, seed); seed++;
     CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateName, "CONST", "", "", encF, encT);
     gatesEvaluated[gateName] = (b) ? encs.at(1) : encs.at(0);
@@ -81,7 +82,7 @@ void HalfCircuit::addEQW(string inputGate, string outputGate) {
   if(canEdit) {
     constCounter++;
     string gateConst = "const"+to_string(constCounter);
-    CryptoPP::byte *encFC = Util::randomByte(kappa);
+    CryptoPP::byte *encFC = Util::randomByte(kappa, seed); seed++;
     CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);
     gatesEvaluated[gateConst] = encs.at(0);
@@ -99,7 +100,7 @@ void HalfCircuit::addINV(string inputGate, string outputGate) {
   if(canEdit) {
     constCounter++;
     string gateConst = "const"+to_string(constCounter);
-    CryptoPP::byte *encFC = Util::randomByte(kappa);
+    CryptoPP::byte *encFC = Util::randomByte(kappa, seed); seed++;
     CryptoPP::byte *encTC = Util::byteOp(encFC, r, "XOR", kappa);
     vector<CryptoPP::byte*> encs = addGate(gateConst, "CONST", "", "", encFC, encTC);
     gatesEvaluated[gateConst] = encs.at(1);

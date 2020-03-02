@@ -10,7 +10,7 @@ using namespace std;
 
 class HalfCircuit: public CircuitInterface {
   public:
-    HalfCircuit(int kappa);
+    HalfCircuit(int kappa, unsigned int seed);
     virtual ~HalfCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);

@@ -56,10 +56,11 @@ CryptoPP::byte* Util::h(string m) {
   Constructs the initialization vector
 */
 CryptoPP::byte* Util::generateIV() {
-  //CryptoPP::byte *key = new CryptoPP::byte[CryptoPP::AES::DEFAULT_KEYLENGTH];
+  CryptoPP::AutoSeededRandomPool asrp;
   CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
-  //memset(key, 0x39, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+  //memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
+  asrp.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
+
   return iv;
 }
 
@@ -97,28 +98,20 @@ string Util::decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv) {
   Returns a random byte
 */
 CryptoPP::byte* Util::randomByte(int length) {
-  CryptoPP::byte* b = new CryptoPP::byte[length];
   CryptoPP::AutoSeededRandomPool asrp;
+  CryptoPP::byte* b = new CryptoPP::byte[length];
   asrp.GenerateBlock(b, length);
   return b;
 }
 
 /*
-  Returns a random string that can contain
-  numbers, upper- and lower-case letters.
+  Returns a random byte with a seed
 */
-string Util::randomString(int length) {
-  string lettersLower = "abcdefghijklmnopqrstuvwxyz";
-  string lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  string numbers = "0123456789";
-  string combine = lettersLower+lettersUpper+numbers;
-  string s = "";
-  for(int i=0; i<length; i++) {
-    long l = Util::randomInt(0, combine.size());
-    s += combine[l];
-  }
-
-  return s;
+CryptoPP::byte* Util::randomByte(int length, unsigned int seed) {
+  CryptoPP::byte *b = new CryptoPP::byte[length];
+  CryptoPP::LC_RNG lc(seed);
+  lc.GenerateBlock(b, length);
+  return b;
 }
 
 /*

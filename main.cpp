@@ -9,15 +9,12 @@
 #include "Util.h"
 using namespace std;
 
-void runCircuit(CircuitInterface* F, int kappa) {
-  clock_t start = clock();
-  PartyA partyA = PartyA(5, kappa, F);
-  PartyB partyB = PartyB(3);
-  double durationGC = (clock()-start) / (double) CLOCKS_PER_SEC;
-
-  cout << "time: " << durationGC << " ("+F->toString()+")" << endl;
-}
-
+/*
+  Runs a circuit from a file and checks that the amount of
+  input is correct, the circuit can be evaluated and that
+  the encoding can be decoded. The time for the evaluation
+  is returned
+*/
 double runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
   try {
     CircuitReader cr = CircuitReader();
@@ -81,8 +78,10 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
   }
 }
 
-int main() {
-  int kappa = 16;
+/*
+  Runs the circuit files
+*/
+void runCircuitFiles(int kappa, unsigned int seed) {
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -95,8 +94,8 @@ int main() {
     if(filename.compare("neg64.txt") != 0 && filename.compare("zero_equal.txt") != 0) {
       input += "0100000000000000000000000000000000000000000000000000000000000000"; //2
     }
-    CircuitInterface *F = new GarbledCircuit(kappa);
-    CircuitInterface *G = new HalfCircuit(kappa);
+    CircuitInterface *F = new GarbledCircuit(kappa, seed);
+    CircuitInterface *G = new HalfCircuit(kappa, seed);
 
     double time0 = runCircuit(F, kappa, filename, input);
     double time1 = runCircuit(G, kappa, filename, input);
@@ -108,6 +107,12 @@ int main() {
   }
 
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
+}
+
+int main() {
+  int kappa = 16;
+  unsigned int seed = 3329;
+  runCircuitFiles(kappa, seed);
 
   return 0;
 }

@@ -25,7 +25,7 @@ class Util {
     static CryptoPP::byte* h(string m);
     static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* randomByte(int length);
-    static string randomString(int length);
+    static CryptoPP::byte* randomByte(int length, unsigned int seed);
     static long randomInt(int minInt, int maxInt);
 
     static string toBitString(int i, int length);

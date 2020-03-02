@@ -31,6 +31,7 @@ class CircuitInterface {
     int nrInputGates;
     int kappa;
     int constCounter = 0;
+    unsigned int seed;
 
   private:
 };

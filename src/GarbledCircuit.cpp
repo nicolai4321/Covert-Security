@@ -1,9 +1,9 @@
 #include "GarbledCircuit.h"
 using namespace std;
 
-GarbledCircuit::GarbledCircuit(int k) {
+GarbledCircuit::GarbledCircuit(int k, unsigned int s) {
   kappa = k;
-  iv = Util::generateIV();
+  seed = s;
 }
 
 GarbledCircuit::~GarbledCircuit() {}
@@ -31,8 +31,8 @@ vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName) {
 */
 vector<CryptoPP::byte*> GarbledCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
   if(canEdit) {
-    CryptoPP::byte *encF = Util::randomByte(kappa);
-    CryptoPP::byte *encT = Util::randomByte(kappa);
+    CryptoPP::byte *encF = Util::randomByte(kappa, seed); seed++;
+    CryptoPP::byte *encT = Util::randomByte(kappa, seed); seed++;
 
     vector<CryptoPP::byte*> encodings;
     encodings.push_back(encF);
