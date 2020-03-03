@@ -53,12 +53,20 @@ CryptoPP::byte* Util::h(string m) {
 }
 
 /*
+  Commit
+*/
+CryptoPP::byte* Util::commit(CryptoPP::byte* b, int r) {
+  osuCrypto::Commit *c = new osuCrypto::Commit(b, r % 55104);
+  CryptoPP::byte *ptr = c->data();
+  return ptr;
+}
+
+/*
   Constructs the initialization vector
 */
 CryptoPP::byte* Util::generateIV() {
   CryptoPP::AutoSeededRandomPool asrp;
   CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
-  //memset(iv, 0x00, CryptoPP::AES::BLOCKSIZE);
   asrp.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
 
   return iv;
@@ -132,12 +140,40 @@ long Util::randomInt(int minInt, int maxInt) {
 }
 
 /*
+  Returns a random string that can contain
+  numbers, upper- and lower-case letters.
+  Returns a random byte with a seed
+*/
+string Util::randomString(int length) {
+  string lettersLower = "abcdefghijklmnopqrstuvwxyz";
+  string lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+  string numbers = "0123456789";
+  string combine = lettersLower+lettersUpper+numbers;
+  string s = "";
+  for(int i=0; i<length; i++) {
+    long l = Util::randomInt(0, combine.size());
+    s += combine[l];
+  }
+
+  return s;
+}
+
+/*
   Transform integer to a bit-string
 */
 string Util::toBitString(int i, int length) {
-  string s = bitset<64>(i).to_string();
-  s = s.substr(64-length, length);
+  string s = bitset<256>(i).to_string();
+  s = s.substr(256-length, length);
   return s;
+}
+
+/*
+  Transform integer to byte
+*/
+CryptoPP::byte* Util::intToByte(int i) {
+  CryptoPP::byte *b = new CryptoPP::byte[sizeof(int)];
+  memcpy(b, &i, sizeof i);
+  return b;
 }
 
 /*
@@ -198,11 +234,10 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 
 void Util::printByteInBits(CryptoPP::byte* b, int length) {
   cout << "bits: ";
-  for(int i=0; i<length; i++) {
+  for(int i=(length-1); i>=0; i--) {
     cout << toBitString((int) b[i],8) << " ";
   }
   cout << endl;
-
 }
 
 void Util::printl(string m) {

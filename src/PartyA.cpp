@@ -1,7 +1,17 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int x, int kappa, CircuitInterface* F) {
+PartyA::PartyA(int x, int kappa, int lambda, CircuitInterface* F) {
+  vector<unsigned int> seedsA;
+  vector<string> witnesses;
+  for(int i=0; i<lambda; i++) {
+    seedsA.push_back(Util::randomInt(0, (INT_MAX-1000000)));
+    witnesses.push_back(Util::randomString(kappa));
+  }
+
+
+
+/*
   //Input gates
   vector<CryptoPP::byte*> i0 = F->addGate("input0");
   vector<CryptoPP::byte*> i1 = F->addGate("input1");
@@ -71,7 +81,7 @@ PartyA::PartyA(int x, int kappa, CircuitInterface* F) {
     }
   } else {
     cout << "Error! Circuit could not evaluate" << endl;
-  }
+  }*/
 }
 
 PartyA::~PartyA() {}

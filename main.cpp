@@ -81,7 +81,8 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
 /*
   Runs the circuit files
 */
-void runCircuitFiles(int kappa, unsigned int seed) {
+void runCircuitFiles(int kappa) {
+  unsigned int seed = 3329;
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -109,10 +110,21 @@ void runCircuitFiles(int kappa, unsigned int seed) {
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
 }
 
+void startProtocol(int kappa, int lambda) {
+  CircuitInterface *F = new GarbledCircuit(kappa, 0);
+  int x = 5;
+  int y = 5;
+
+  PartyA partyA = PartyA(x, kappa, lambda, F);
+  PartyB partyB = PartyB(y, kappa, lambda);
+}
+
 int main() {
   int kappa = 16;
-  unsigned int seed = 3329;
-  runCircuitFiles(kappa, seed);
+  int lambda = 8;
+
+  //runCircuitFiles(kappa);
+  startProtocol(kappa, lambda);
 
   return 0;
 }
