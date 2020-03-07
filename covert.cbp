@@ -33,7 +33,6 @@
 				<Linker>
 					<Add option="-s" />
 					<Add library="/home/nicolai/codeblocks-workspace/lib/cryptopp/libcryptopp.a" />
-					<Add library="/usr/local/lib/libemp-tool.so" />
 					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/libcryptoTools.a" />
 					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/liblibOTe.a" />
 					<Add library="/home/nicolai/codeblocks-workspace/lib/libOTe/lib/liblibOTe_Tests.a" />

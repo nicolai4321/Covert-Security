@@ -2,8 +2,12 @@
 #include <string>
 #include "CircuitInterface.h"
 #include "CircuitReader.h"
+#include "cryptoTools/Common/BitVector.h"
+#include "cryptoTools/Network/IOService.h"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
+#include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
+#include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "PartyA.h"
 #include "PartyB.h"
 #include "Util.h"
@@ -119,12 +123,57 @@ void startProtocol(int kappa, int lambda) {
   PartyB partyB = PartyB(y, kappa, lambda);
 }
 
+void otExample() {
+  osuCrypto::IOService ios;
+  osuCrypto::Channel senderChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel recverChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Client).addChannel();
+
+  // The number of OTs.
+  int n = 2;
+
+  // The code to be run by the OT receiver.
+  auto recverThread = std::thread([&]() {
+      osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
+      osuCrypto::KosOtExtReceiver recver;
+
+      // Choose which messages should be received.
+      osuCrypto::BitVector choices(n);
+      choices[0] = 1;
+      choices[1] = 0;
+
+      // Receive the messages
+      vector<osuCrypto::block> m(n);
+      recver.receiveChosen(choices, m, prng, recverChl);
+
+      for(int i=0; i<n; i++) {
+        cout << i << "," << choices[i] <<":"<< m[i] << endl;
+      }
+  });
+
+  // Choose which messages should be sent.
+  vector<array<osuCrypto::block, 2>> sendMessages(n);
+  sendMessages[0] = {osuCrypto::toBlock(1), osuCrypto::toBlock(2)};
+  sendMessages[1] = {osuCrypto::toBlock(3), osuCrypto::toBlock(4)};
+
+  for(int i=0; i<n; i++) {
+    cout << i << ",0:" << sendMessages[i][0] << endl;
+    cout << i << ",1:" << sendMessages[i][1] << endl;
+  }
+  cout << endl;
+
+  osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
+  osuCrypto::KosOtExtSender sender;
+  sender.sendChosen(sendMessages, prng, senderChl);
+  recverThread.join();
+}
+
 int main() {
   int kappa = 16;
   int lambda = 8;
 
+  otExample();
   //runCircuitFiles(kappa);
-  startProtocol(kappa, lambda);
+  //startProtocol(kappa, lambda);
 
   return 0;
 }
