@@ -15,9 +15,19 @@ class PartyA
     PartyA(int x, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, CircuitInterface* F);
     virtual ~PartyA();
 
+    void startProtocol();
+    void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
+    pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* F, vector<unsigned int> seedsA);
+
   protected:
 
   private:
+    int x;
+    int kappa;
+    int lambda;
+    osuCrypto::Channel serverChl;
+    osuCrypto::Channel clientChl;
+    CircuitInterface *F;
 };
 
 #endif // PARTYA_H

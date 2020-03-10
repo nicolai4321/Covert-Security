@@ -129,8 +129,14 @@ void startProtocol(int kappa, int lambda) {
   int x = 5;
   int y = 2;
 
-  auto threadA = thread([&]() { PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, F); });
-  auto threadB = thread([&]() { PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl); });
+  auto threadA = thread([&]() {
+    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, F);
+    partyA.startProtocol();
+  });
+  auto threadB = thread([&]() {
+    PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl);
+    partyB.startProtocol();
+  });
 
   threadA.join();
   threadB.join();
