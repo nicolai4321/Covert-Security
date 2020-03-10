@@ -50,11 +50,13 @@
 		<Unit filename="circuits/mult2_64.txt" />
 		<Unit filename="circuits/mult64.txt" />
 		<Unit filename="circuits/neg64.txt" />
+		<Unit filename="circuits/simple.txt" />
 		<Unit filename="circuits/sub64.txt" />
 		<Unit filename="circuits/udivide.txt" />
 		<Unit filename="circuits/zero_equal.txt" />
 		<Unit filename="include/CircuitInterface.h" />
 		<Unit filename="include/CircuitReader.h" />
+		<Unit filename="include/GV.h" />
 		<Unit filename="include/GarbledCircuit.h" />
 		<Unit filename="include/HalfCircuit.h" />
 		<Unit filename="include/PartyA.h" />

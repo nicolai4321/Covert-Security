@@ -35,6 +35,9 @@ class Util {
     static string toBitString(int i, int length);
     static string byteToString(CryptoPP::byte* b, int byteSize);
     static CryptoPP::byte* intToByte(int i);
+    static int byteToInt(CryptoPP::byte* b);
+    static CryptoPP::byte* longToByte(long i);
+    static long byteToLong(CryptoPP::byte* b);
     static CryptoPP::byte* stringToByte(string s, int byteSize);
 
     static CryptoPP::byte* byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length);

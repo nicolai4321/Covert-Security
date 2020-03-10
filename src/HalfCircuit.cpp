@@ -13,6 +13,11 @@ HalfCircuit::HalfCircuit(int k, unsigned int s) {
 
 HalfCircuit::~HalfCircuit() {}
 
+CircuitInterface* HalfCircuit::createInstance(int kappa, int seed) {
+  return new HalfCircuit(kappa, seed);
+}
+
+
 string HalfCircuit::toString() {
   return "Half garbled circuit";
 }

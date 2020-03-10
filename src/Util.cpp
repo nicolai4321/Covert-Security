@@ -56,7 +56,7 @@ CryptoPP::byte* Util::h(string m) {
   Commit
 */
 CryptoPP::byte* Util::commit(CryptoPP::byte* b, int r) {
-  osuCrypto::Commit *c = new osuCrypto::Commit(b, r % 55104);
+  osuCrypto::Commit *c = new osuCrypto::Commit(b, r % 55104); //TODO: longer commit, length?
   CryptoPP::byte *ptr = c->data();
   return ptr;
 }
@@ -168,12 +168,39 @@ string Util::toBitString(int i, int length) {
 }
 
 /*
-  Transform integer to byte
+  Transform integer to byte (32 bits)
 */
 CryptoPP::byte* Util::intToByte(int i) {
   CryptoPP::byte *b = new CryptoPP::byte[sizeof(int)];
   memcpy(b, &i, sizeof i);
   return b;
+}
+
+/*
+  Transform byte to integer (32 bits)
+*/
+int Util::byteToInt(CryptoPP::byte* b) {
+  int i;
+  memcpy(&i, b, sizeof i);
+  return i;
+}
+
+/*
+  Transform integer to byte (64 bits)
+*/
+CryptoPP::byte* Util::longToByte(long i) {
+  CryptoPP::byte *b = new CryptoPP::byte[sizeof(long)];
+  memcpy(b, &i, sizeof(long));
+  return b;
+}
+
+/*
+  Transform byte to integer (64 bits)
+*/
+long Util::byteToLong(CryptoPP::byte* b) {
+  long i;
+  memcpy(&i, b, sizeof(long));
+  return i;
 }
 
 /*

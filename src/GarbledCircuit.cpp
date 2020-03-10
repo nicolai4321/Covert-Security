@@ -8,6 +8,10 @@ GarbledCircuit::GarbledCircuit(int k, unsigned int s) {
 
 GarbledCircuit::~GarbledCircuit() {}
 
+CircuitInterface* GarbledCircuit::createInstance(int kappa, int seed) {
+  return new GarbledCircuit(kappa, seed);
+}
+
 string GarbledCircuit::toString() {
   return "Normal garbled circuit";
 }

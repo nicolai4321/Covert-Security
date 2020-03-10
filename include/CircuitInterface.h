@@ -16,6 +16,7 @@ class CircuitInterface {
     virtual void addAND(string inputGateL, string inputGateR, string outputGate) = 0;
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs) = 0;
     virtual string toString() = 0;
+    virtual CircuitInterface* createInstance(int kappa, int seed) = 0;
 
     void setOutputGates(vector<string> outputGates);
     pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);

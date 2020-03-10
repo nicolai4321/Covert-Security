@@ -115,65 +115,100 @@ void runCircuitFiles(int kappa) {
 }
 
 void startProtocol(int kappa, int lambda) {
+  //Network
+  int port = 1212;
+  string ip = "localhost";
+  string ipAddress = ip+":"+to_string(port);
+  osuCrypto::IOService ios;
+  osuCrypto::Channel serverChl = osuCrypto::Session(ios, ipAddress, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel clientChl = osuCrypto::Session(ios, ipAddress, osuCrypto::SessionMode::Client).addChannel();
+  clientChl.waitForConnection();
+
+  //Etc.
   CircuitInterface *F = new GarbledCircuit(kappa, 0);
   int x = 5;
-  int y = 5;
+  int y = 2;
 
-  PartyA partyA = PartyA(x, kappa, lambda, F);
-  PartyB partyB = PartyB(y, kappa, lambda);
+  auto threadA = thread([&]() { PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, F); });
+  auto threadB = thread([&]() { PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl); });
+
+  threadA.join();
+  threadB.join();
+  serverChl.close();
+  clientChl.close();
+  ios.stop();
 }
 
 void otExample() {
   osuCrypto::IOService ios;
-  osuCrypto::Channel senderChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel recverChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::Channel serverChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel clientChl = osuCrypto::Session(ios, "localhost:1212", osuCrypto::SessionMode::Client).addChannel();
+  clientChl.waitForConnection();
 
   // The number of OTs.
   int n = 2;
 
   // The code to be run by the OT receiver.
-  auto recverThread = std::thread([&]() {
-      osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
-      osuCrypto::KosOtExtReceiver recver;
+  auto recverThread = thread([&]() {
+    osuCrypto::BitVector choices(n);
+    choices[0] = 1;
+    choices[1] = 0;
 
-      // Choose which messages should be received.
-      osuCrypto::BitVector choices(n);
-      choices[0] = 1;
-      choices[1] = 0;
+    vector<osuCrypto::block> dest(n);
+    osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
+    osuCrypto::KosOtExtReceiver recver;
+    recver.receiveChosen(choices, dest, prng, clientChl);
 
-      // Receive the messages
-      vector<osuCrypto::block> m(n);
-      recver.receiveChosen(choices, m, prng, recverChl);
+    for(int i=0; i<n; i++) {
+      cout << i << "," << choices[i] <<":"<< dest[i] << endl;
+    }
+    cout << endl;
 
-      for(int i=0; i<n; i++) {
-        cout << i << "," << choices[i] <<":"<< m[i] << endl;
-      }
+    int data[4] = {0,1,2,3};
+    clientChl.asyncSend(move(data));
+
+    clientChl.close();
   });
 
-  // Choose which messages should be sent.
-  vector<array<osuCrypto::block, 2>> sendMessages(n);
-  sendMessages[0] = {osuCrypto::toBlock(1), osuCrypto::toBlock(2)};
-  sendMessages[1] = {osuCrypto::toBlock(3), osuCrypto::toBlock(4)};
+  auto senderThread = thread([&]() {
+    vector<array<osuCrypto::block, 2>> data(n);
+    data[0] = {osuCrypto::toBlock(1), osuCrypto::toBlock(2)};
+    data[1] = {osuCrypto::toBlock(3), osuCrypto::toBlock(4)};
 
-  for(int i=0; i<n; i++) {
-    cout << i << ",0:" << sendMessages[i][0] << endl;
-    cout << i << ",1:" << sendMessages[i][1] << endl;
-  }
-  cout << endl;
+    for(int i=0; i<n; i++) {
+      cout << i << ",0:" << data[i][0] << endl;
+      cout << i << ",1:" << data[i][1] << endl;
+    }
+    cout << endl;
 
-  osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
-  osuCrypto::KosOtExtSender sender;
-  sender.sendChosen(sendMessages, prng, senderChl);
+    osuCrypto::PRNG prng(osuCrypto::sysRandomSeed());
+    osuCrypto::KosOtExtSender sender;
+    sender.sendChosen(data, prng, serverChl);
+
+    int dest[4];
+    serverChl.recv(dest);
+    for(int i : dest) {
+      cout << i << ",";
+    }
+    cout << endl;
+
+    serverChl.close();
+  });
+
   recverThread.join();
+  senderThread.join();
+  ios.stop();
 }
 
 int main() {
+  cout << "covert start" << endl;
   int kappa = 16;
   int lambda = 8;
 
-  otExample();
+  //otExample();
   //runCircuitFiles(kappa);
-  //startProtocol(kappa, lambda);
+  startProtocol(kappa, lambda);
 
+  cout << "covert end" << endl;
   return 0;
 }

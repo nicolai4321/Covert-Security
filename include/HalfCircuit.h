@@ -20,6 +20,7 @@ class HalfCircuit: public CircuitInterface {
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
     virtual string toString();
+    virtual CircuitInterface* createInstance(int kappa, int seed);
 
   protected:
 
