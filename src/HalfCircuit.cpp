@@ -29,10 +29,6 @@ CircuitInterface* HalfCircuit::createInstance(int kappa, int seed) {
   return new HalfCircuit(kappa, seed);
 }
 
-string HalfCircuit::toString() {
-  return "Half garbled circuit";
-}
-
 /*
   Adds a new gate and names it with gateName and adds two encodings
   for false and true
@@ -225,6 +221,10 @@ pair<CryptoPP::byte*, CryptoPP::byte*> HalfCircuit::getConstEnc() {
 
 map<string, vector<CryptoPP::byte*>> HalfCircuit::getAndEncodings() {
   return andEncodings;
+}
+
+string HalfCircuit::toString() {
+  return "Half garbled circuit";
 }
 
 

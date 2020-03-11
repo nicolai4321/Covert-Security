@@ -26,8 +26,8 @@ class CircuitInterface {
     map<string, vector<string>> getGateInfo();
     vector<vector<CryptoPP::byte*>> getDecodings();
 
-    string CONST_ZERO = "constZero";
-    string CONST_ONE = "constOne";
+    inline static const string CONST_ZERO = "constZero";
+    inline static const string CONST_ONE = "constOne";
 
   protected:
     map<string, vector<string>> gateInfo; //(gateType, gateL, gateR)

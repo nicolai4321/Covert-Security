@@ -13,7 +13,7 @@ using namespace std;
 class EvaluatorHalf
 {
   public:
-    EvaluatorHalf(vector<string> outputGates, vector<string> gateOrder, map<string, vector<string>> gateInfo, CryptoPP::byte* constZero, CryptoPP::byte* constOne, map<string, vector<CryptoPP::byte*>> andEncodings);
+    EvaluatorHalf(vector<string> outputGates, vector<string> gateOrder, map<string, vector<string>> gateInfo, pair<CryptoPP::byte*,CryptoPP::byte*> constEncodings, map<string, vector<CryptoPP::byte*>> andEncodings);
     virtual ~EvaluatorHalf();
     pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
     pair<bool, vector<bool>> decode(vector<vector<CryptoPP::byte*>> decodings, vector<CryptoPP::byte*> encs);

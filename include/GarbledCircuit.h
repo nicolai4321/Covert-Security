@@ -24,6 +24,8 @@ class GarbledCircuit: public CircuitInterface {
     virtual CircuitInterface* createInstance(int kappa, int seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
 
+    map<string, vector<CryptoPP::byte*>> getGarbledTables();
+
   protected:
 
   private:

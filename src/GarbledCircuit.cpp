@@ -20,10 +20,6 @@ CircuitInterface* GarbledCircuit::createInstance(int kappa, int seed) {
   return new GarbledCircuit(kappa, seed);
 }
 
-string GarbledCircuit::toString() {
-  return "Normal garbled circuit";
-}
-
 /*
   Adds a new gate and names it with gateName and adds two encodings
   for false and true
@@ -278,4 +274,12 @@ pair<CryptoPP::byte*, CryptoPP::byte*> GarbledCircuit::getConstEnc() {
   output.first = gatesEvaluated[CONST_ZERO];
   output.second = gatesEvaluated[CONST_ONE];
   return output;
+}
+
+map<string, vector<CryptoPP::byte*>> GarbledCircuit::getGarbledTables() {
+  return garbledTables;
+}
+
+string GarbledCircuit::toString() {
+  return "Normal garbled circuit";
 }

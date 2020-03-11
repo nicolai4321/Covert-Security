@@ -1,22 +1,24 @@
 #include "EvaluatorHalf.h"
 using namespace std;
 
-EvaluatorHalf::EvaluatorHalf(vector<string> oG, vector<string> gOrd, map<string, vector<string>> gI, CryptoPP::byte* cZ, CryptoPP::byte* cO, map<string, vector<CryptoPP::byte*>> andEncs) {
+EvaluatorHalf::EvaluatorHalf(vector<string> oG, vector<string> gOrd, map<string, vector<string>> gI, pair<CryptoPP::byte*,CryptoPP::byte*> cEncs, map<string, vector<CryptoPP::byte*>> andEncs) {
   outputGates = oG;
   gateOrder = gOrd;
   gateInfo = gI;
-  constZero = cZ;
-  constOne = cO;
+  constZero = cEncs.first;
+  constOne = cEncs.second;
   andEncodings = andEncs;
 
-  gatesEvaluated["constZero"] = constZero;
-  gatesEvaluated["constOne"] = constOne;
+  gatesEvaluated[CircuitInterface::CONST_ZERO] = constZero;
+  gatesEvaluated[CircuitInterface::CONST_ONE] = constOne;
 }
 
 EvaluatorHalf::~EvaluatorHalf() {}
 
 /*
-  Evaluates the circuit
+  Evaluates the circuit and returns a pair
+  the boolean is true if the evaluation was successful
+  the vector is the output encodings if the evaluation was succesful
 */
 pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byte*> inputs) {
   pair<bool, vector<CryptoPP::byte*>> output;
@@ -71,7 +73,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
     output.second = bytes;
     return output;
   } catch (...) {
-    Util::printl("Error! Could not evaluate circuit");
+    cout << "Error! Could not evaluate circuit" << endl;
     output.first = false;
     output.second = vector<CryptoPP::byte*>();
     return output;
