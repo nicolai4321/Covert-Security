@@ -213,14 +213,60 @@ void otExample() {
   ios.stop();
 }
 
+void tmp(CircuitInterface* F) {
+  vector<CryptoPP::byte*> enc0 = F->addGate("i0");
+  vector<CryptoPP::byte*> enc1 = F->addGate("i1");
+  vector<CryptoPP::byte*> enc2 = F->addGate("i2");
+  vector<CryptoPP::byte*> enc3 = F->addGate("i3");
+  F->addEQ(true, "n0");
+  F->addEQ(true, "n1");
+
+  F->addAND("i0", "i1", "and0");
+  F->addAND("i2", "i3", "and1");
+  F->addAND("n0", "n1", "and2");
+  F->addINV("and0", "inv0");
+  F->addEQW("i0", "eqw0");
+
+  vector<string> outputs;
+  outputs.push_back("and0");
+  outputs.push_back("and1");
+  outputs.push_back("and2");
+  outputs.push_back("inv0");
+  outputs.push_back("eqw0");
+  F->setOutputGates(outputs);
+
+  vector<CryptoPP::byte*> inputs;
+  inputs.push_back(enc0.at(0));
+  inputs.push_back(enc1.at(1));
+  inputs.push_back(enc2.at(1));
+  inputs.push_back(enc3.at(0));
+
+  pair<bool, vector<CryptoPP::byte*>> evaluated = F->evaluate(inputs);
+  if(evaluated.first) {
+    pair<bool, vector<bool>> decoded = F->decode(evaluated.second);
+    if(decoded.first) {
+      for(bool b : decoded.second) {
+        cout << b;
+      }
+      cout << " (" << F->toString() << ")" << endl;
+    }
+  }
+}
+
 int main() {
   cout << "covert start" << endl;
   int kappa = 16;
   int lambda = 8;
 
   //otExample();
-  runCircuitFiles(kappa);
+  //runCircuitFiles(kappa);
   //startProtocol(kappa, lambda);
+
+
+  CircuitInterface *F = new HalfCircuit(kappa, 2);
+  CircuitInterface *G = new GarbledCircuit(kappa, 2);
+  tmp(F);
+  tmp(G);
 
   cout << "covert end" << endl;
   return 0;

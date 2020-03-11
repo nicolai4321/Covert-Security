@@ -28,11 +28,11 @@ class CircuitInterface {
     vector<string> gatesOutput;
     vector<string> gateOrder;
     CryptoPP::AutoSeededRandomPool asrp;
-    bool canEdit = true;
     int nrInputGates;
     int kappa;
-    int constCounter = 0;
     unsigned int seed;
+    string CONST_ZERO = "constZero";
+    string CONST_ONE = "constOne";
 
   private:
 };
