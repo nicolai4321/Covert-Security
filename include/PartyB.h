@@ -27,7 +27,7 @@ class PartyB
     int y;
     int kappa;
     int lambda;
-    int gamma;
+    unsigned int gamma;
     osuCrypto::Channel serverChl;
     osuCrypto::Channel clientChl;
 };

@@ -38,6 +38,15 @@ void PartyB::startProtocol() {
 
   //Second OT
   vector<CryptoPP::byte*> encInputsB = otEncodingsB(&recver, clientChl);
+
+  //
+
+  //
+  vector<unsigned int> blocks;
+  blocks.push_back(gamma);
+  for(int j=0; j<lambda; j++) {
+    blocks.push_back(seedsWitnessA.at(j)[0]);
+  }
 }
 
 /*

@@ -7,32 +7,6 @@ CircuitReader::CircuitReader() {
 
 CircuitReader::~CircuitReader() {}
 
-int CircuitReader::getInputGates() {
-  return totalInputGates;
-}
-
-/*
-  The reader reads one line and returns the line as a string
-*/
-string CircuitReader::readOneLine(ifstream& reader) {
-  string line;
-  if(!reader.eof()) {
-    getline(reader, line);
-    return line;
-  } else {
-    return "";
-  }
-}
-
-/*
-  Splits a string and put them in a vector
-*/
-vector<string> CircuitReader::splitString(string s) {
-  vector<string> output;
-  boost::split(output, s, [](char c) {return c == ' ';});
-  return output;
-}
-
 /*
   The circuit reader imports the file as a circuit.
   The boolean determines if it was successful
@@ -149,14 +123,65 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
 
     //Output gates
     vector<string> outputGates;
-    for(int j=0; j<totalOutputGates; j++) {
-      string gateName = "w"+to_string(i-totalOutputGates+j);
-      outputGates.push_back(gateName);
+    if(reverseOutput) {
+      for(int j=totalOutputGates-1; j>=0; j--) {
+        string gateName = "w"+to_string(i-totalOutputGates+j);
+        outputGates.push_back(gateName);
+      }
+    } else {
+      for(int j=0; j<totalOutputGates; j++) {
+        string gateName = "w"+to_string(i-totalOutputGates+j);
+        outputGates.push_back(gateName);
+      }
     }
-    F->setOutputGates(outputGates);  }
+    outputEncs = F->setOutputGates(outputGates);
+  }
   reader.close();
 
   output.first = true;
   output.second = inputEncs;
   return output;
+}
+
+/*
+  The reader reads one line and returns the line as a string
+*/
+string CircuitReader::readOneLine(ifstream& reader) {
+  string line;
+  if(!reader.eof()) {
+    getline(reader, line);
+    return line;
+  } else {
+    return "";
+  }
+}
+
+/*
+  Splits a string and put them in a vector
+*/
+vector<string> CircuitReader::splitString(string s) {
+  vector<string> output;
+  boost::split(output, s, [](char c) {return c == ' ';});
+  return output;
+}
+
+/*
+  Returns the number of total input gates
+*/
+int CircuitReader::getInputGates() {
+  return totalInputGates;
+}
+
+/*
+  Returns the encodings of the output gates
+*/
+vector<vector<CryptoPP::byte*>> CircuitReader::getOutputEnc() {
+  return outputEncs;
+}
+
+/*
+  Can set the output to be in reverse
+*/
+void CircuitReader::setReverseOutput(bool b) {
+  reverseOutput = b;
 }

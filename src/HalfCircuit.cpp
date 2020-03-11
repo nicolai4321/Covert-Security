@@ -9,6 +9,8 @@ HalfCircuit::HalfCircuit(int k, unsigned int s) {
   //Ensuring that the last bit in r is 1
   unsigned char b = (unsigned char) 1;
   r[kappa-1] = r[kappa-1] | b;
+
+
 }
 
 HalfCircuit::~HalfCircuit() {}
@@ -17,11 +19,9 @@ CircuitInterface* HalfCircuit::createInstance(int kappa, int seed) {
   return new HalfCircuit(kappa, seed);
 }
 
-
 string HalfCircuit::toString() {
   return "Half garbled circuit";
 }
-
 
 /*
   Adds a new gate and names it with gateName and adds two encodings

@@ -18,7 +18,7 @@ class CircuitInterface {
     virtual string toString() = 0;
     virtual CircuitInterface* createInstance(int kappa, int seed) = 0;
 
-    void setOutputGates(vector<string> outputGates);
+    vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
     pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
 
   protected:

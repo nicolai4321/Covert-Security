@@ -40,6 +40,25 @@ void PartyA::startProtocol() {
   //Second OT
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
   sender.sendChosen(otData, prng, serverChl);
+
+  //Commitments
+  vector<pair<CryptoPP::byte*,CryptoPP::byte*>> commitmentsA;
+  for(int j=0; j<lambda; j++) {
+    for(int i=0; i<GV::n1; i++) {
+      pair<CryptoPP::byte*, CryptoPP::byte*> p;
+      p.first = Util::commit(encs[j].at(i).at(0), seedsA.at(j));
+      p.second = Util::commit(encs[j].at(i).at(1), seedsA.at(j));
+      commitmentsA.push_back(p);
+    }
+  }
+
+  for(int j=0; j<lambda; j++) {
+    vector<vector<CryptoPP::byte*>> outputEncodings = outputEncs[j];
+    //outputEncodings
+  }
+
+  //Receive gamma, seeds and witness
+
 }
 
 /*
@@ -50,11 +69,11 @@ pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garb
   vector<CircuitInterface*> circuits;
   vector<array<osuCrypto::block, 2>> otData(lambda*GV::n2);
 
-  map<int, vector<vector<CryptoPP::byte*>>> encs;
   for(int j=0; j<lambda; j++) {
     CircuitInterface *G = F->createInstance(kappa, seedsA.at(j));
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
+    outputEncs[j] = cr.getOutputEnc();
 
     if(!import.first) {
       string msg = "Error! Could not import circuit";

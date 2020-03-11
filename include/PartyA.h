@@ -28,6 +28,9 @@ class PartyA
     osuCrypto::Channel serverChl;
     osuCrypto::Channel clientChl;
     CircuitInterface *F;
+
+    map<int, vector<vector<CryptoPP::byte*>>> encs;
+    map<int, vector<vector<CryptoPP::byte*>>> outputEncs;
 };
 
 #endif // PARTYA_H

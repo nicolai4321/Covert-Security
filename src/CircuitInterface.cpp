@@ -4,10 +4,22 @@ CircuitInterface::~CircuitInterface() {}
 /*
   Sets the output gate
 */
-void CircuitInterface::setOutputGates(vector<string> outputGates) {
+vector<vector<CryptoPP::byte*>> CircuitInterface::setOutputGates(vector<string> outputGates) {
   if(canEdit) {
     gatesOutput = outputGates;
     canEdit = false;
+
+    vector<vector<CryptoPP::byte*>> encsOutput;
+    for(string s : gatesOutput) {
+      vector<CryptoPP::byte*> encs;
+      encs.push_back(gates[s].at(0));
+      encs.push_back(gates[s].at(1));
+      encsOutput.push_back(encs);
+    }
+
+    return encsOutput;
+  } else {
+    return vector<vector<CryptoPP::byte*>>();
   }
 }
 

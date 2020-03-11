@@ -23,6 +23,7 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
   try {
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(F, filename);
+    int inputGatesNr = cr.getInputGates();
 
     if(!import.first) {
       string msg = "Error! Could not import circuit";
@@ -35,8 +36,8 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
     vector<CryptoPP::byte*> inputs;
     int i=0;
     for(char c : input) {
-      if(i == cr.getInputGates()) {
-        string msg = "Error! To many input gates";
+      if(i == inputGatesNr) {
+        string msg = "Error! To many input gates. There are only "+to_string(inputGatesNr)+" input gates";
         cout << msg << endl;
         throw msg;
       }
@@ -45,8 +46,8 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
       i++;
     }
 
-    if(i != cr.getInputGates()) {
-        string msg = "Error! To few input gates";
+    if(i != inputGatesNr) {
+        string msg = "Error! To few input gates. There should be "+to_string(inputGatesNr)+" input gates";
         cout << msg << endl;
         throw msg;
     }
@@ -93,12 +94,18 @@ void runCircuitFiles(int kappa) {
   double timeTotal1 = 0;
 
   for(string filename : files) {
+    string i0 = "0101000000000000000000000000000000000000000000000000000000000000"; //10
+    string i1 = "0100000000000000000000000000000000000000000000000000000000000000"; //2
+
     cout << filename << endl;
+    cout << "Input: " << i0;
     string input = "";
-    input += "0101000000000000000000000000000000000000000000000000000000000000"; //10
+    input += i0;
     if(filename.compare("neg64.txt") != 0 && filename.compare("zero_equal.txt") != 0) {
-      input += "0100000000000000000000000000000000000000000000000000000000000000"; //2
+      input += i1;
+      cout << " | " << i1;
     }
+    cout << endl;
     CircuitInterface *F = new GarbledCircuit(kappa, seed);
     CircuitInterface *G = new HalfCircuit(kappa, seed);
 
@@ -212,8 +219,8 @@ int main() {
   int lambda = 8;
 
   //otExample();
-  //runCircuitFiles(kappa);
-  startProtocol(kappa, lambda);
+  runCircuitFiles(kappa);
+  //startProtocol(kappa, lambda);
 
   cout << "covert end" << endl;
   return 0;

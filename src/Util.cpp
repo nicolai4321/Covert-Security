@@ -129,10 +129,27 @@ long Util::randomInt(int minInt, int maxInt) {
   CryptoPP::AutoSeededRandomPool asrp;
   CryptoPP::Integer r;
 
-  if(minInt = 0) {
+  if(minInt == 0) {
     r = CryptoPP::Integer(asrp, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
   } else {
     r = CryptoPP::Integer(asrp, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
+  }
+
+  long l = r.ConvertToLong();
+  return l;
+}
+
+/*
+  Returns random number between minInt and maxInt with seed
+*/
+long Util::randomInt(int minInt, int maxInt, unsigned int seed) {
+  CryptoPP::LC_RNG lc(seed);
+  CryptoPP::Integer r;
+
+  if(minInt == 0) {
+    r = CryptoPP::Integer(lc, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
+  } else {
+    r = CryptoPP::Integer(lc, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
   }
 
   long l = r.ConvertToLong();
