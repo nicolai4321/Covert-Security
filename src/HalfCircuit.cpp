@@ -200,7 +200,7 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
     }
 
     //gets the output
-    for(string gateName : gatesOutput) {
+    for(string gateName : outputGates) {
       CryptoPP::byte *encodingOutput = gatesEvaluated[gateName];
       bytes.push_back(encodingOutput);
     }
@@ -215,3 +215,16 @@ pair<bool, vector<CryptoPP::byte*>> HalfCircuit::evaluate(vector<CryptoPP::byte*
   }
   return output;
 }
+
+pair<CryptoPP::byte*, CryptoPP::byte*> HalfCircuit::getConstEnc() {
+  pair<CryptoPP::byte*, CryptoPP::byte*> output;
+  output.first = gatesEvaluated[CONST_ZERO];
+  output.second = gatesEvaluated[CONST_ONE];
+  return output;
+}
+
+map<string, vector<CryptoPP::byte*>> HalfCircuit::getAndEncodings() {
+  return andEncodings;
+}
+
+

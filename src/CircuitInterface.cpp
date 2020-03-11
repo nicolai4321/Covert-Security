@@ -4,11 +4,11 @@ CircuitInterface::~CircuitInterface() {}
 /*
   Sets the output gate
 */
-vector<vector<CryptoPP::byte*>> CircuitInterface::setOutputGates(vector<string> outputGates) {
-  gatesOutput = outputGates;
+vector<vector<CryptoPP::byte*>> CircuitInterface::setOutputGates(vector<string> oG) {
+  outputGates = oG;
 
   vector<vector<CryptoPP::byte*>> encsOutput;
-  for(string s : gatesOutput) {
+  for(string s : outputGates) {
     vector<CryptoPP::byte*> encs;
     encs.push_back(gates[s].at(0));
     encs.push_back(gates[s].at(1));
@@ -27,7 +27,7 @@ pair<bool, vector<bool>> CircuitInterface::decode(vector<CryptoPP::byte*> encs) 
   pair<bool, vector<bool>> output;
   vector<bool> outputBools;
   int i=0;
-  for(string gateName : gatesOutput) {
+  for(string gateName : outputGates) {
     CryptoPP::byte *encF = gates[gateName].at(0);
     CryptoPP::byte *encT = gates[gateName].at(1);
     CryptoPP::byte *enc = encs.at(i);
@@ -58,4 +58,27 @@ pair<bool, vector<bool>> CircuitInterface::decode(vector<CryptoPP::byte*> encs) 
   output.first = true;
   output.second = outputBools;
   return output;
+}
+
+vector<vector<CryptoPP::byte*>> CircuitInterface::getDecodings() {
+  vector<vector<CryptoPP::byte*>> decodings;
+
+  for(string s : outputGates) {
+    vector<CryptoPP::byte*> encs = gates[s];
+    decodings.push_back(encs);
+  }
+
+  return decodings;
+}
+
+vector<string> CircuitInterface::getOutputGates() {
+  return outputGates;
+}
+
+vector<string> CircuitInterface::getGateOrder() {
+  return gateOrder;
+}
+
+map<string, vector<string>> CircuitInterface::getGateInfo() {
+  return gateInfo;
 }

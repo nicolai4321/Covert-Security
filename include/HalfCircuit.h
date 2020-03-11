@@ -21,6 +21,8 @@ class HalfCircuit: public CircuitInterface {
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
     virtual string toString();
     virtual CircuitInterface* createInstance(int kappa, int seed);
+    virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
+    map<string, vector<CryptoPP::byte*>> getAndEncodings();
 
   protected:
 
@@ -29,6 +31,7 @@ class HalfCircuit: public CircuitInterface {
 
     map<string, vector<CryptoPP::byte*>> andEncodings;
     CryptoPP::byte* r;
+
 };
 
 #endif // HALFCIRCUIT_H

@@ -4,6 +4,7 @@
 #include "CircuitReader.h"
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
+#include "EvaluatorHalf.h"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
@@ -236,10 +237,10 @@ void tmp(CircuitInterface* F) {
   F->setOutputGates(outputs);
 
   vector<CryptoPP::byte*> inputs;
-  inputs.push_back(enc0.at(0));
+  inputs.push_back(enc0.at(1));
   inputs.push_back(enc1.at(1));
   inputs.push_back(enc2.at(1));
-  inputs.push_back(enc3.at(0));
+  inputs.push_back(enc3.at(1));
 
   pair<bool, vector<CryptoPP::byte*>> evaluated = F->evaluate(inputs);
   if(evaluated.first) {
@@ -262,11 +263,66 @@ int main() {
   //runCircuitFiles(kappa);
   //startProtocol(kappa, lambda);
 
-
+  /*
   CircuitInterface *F = new HalfCircuit(kappa, 2);
   CircuitInterface *G = new GarbledCircuit(kappa, 2);
   tmp(F);
   tmp(G);
+  */
+
+  CircuitInterface *F = new HalfCircuit(kappa, 2);
+
+  vector<CryptoPP::byte*> enc0 = F->addGate("i0");
+  vector<CryptoPP::byte*> enc1 = F->addGate("i1");
+  vector<CryptoPP::byte*> enc2 = F->addGate("i2");
+  vector<CryptoPP::byte*> enc3 = F->addGate("i3");
+  F->addEQ(false, "n0");
+  F->addEQ(false, "n1");
+
+  F->addAND("i0", "i1", "and0");
+  F->addAND("i2", "i3", "and1");
+  F->addAND("n0", "n1", "and2");
+  F->addINV("and0", "inv0");
+  F->addEQW("i0", "eqw0");
+  F->addXOR("i0", "i1", "xor0");
+
+  vector<string> outputs;
+  outputs.push_back("and0");
+  outputs.push_back("and1");
+  outputs.push_back("and2");
+  outputs.push_back("inv0");
+  outputs.push_back("eqw0");
+  outputs.push_back("xor0");
+  F->setOutputGates(outputs);
+
+  vector<CryptoPP::byte*> inputs;
+  inputs.push_back(enc0.at(1));
+  inputs.push_back(enc1.at(1));
+  inputs.push_back(enc2.at(0));
+  inputs.push_back(enc3.at(0));
+
+  vector<string> outputGates = F->getOutputGates();
+  vector<string> gateOrder = F->getGateOrder();
+  map<string, vector<string>> gateInfo = F->getGateInfo();
+  pair<CryptoPP::byte*, CryptoPP::byte*> constEnc = F->getConstEnc();
+
+  HalfCircuit *G = (HalfCircuit*) F;
+  map<string, vector<CryptoPP::byte*>> andEncodings = G->getAndEncodings();
+  EvaluatorHalf eH = EvaluatorHalf(outputGates, gateOrder, gateInfo, constEnc.first, constEnc.second, andEncodings);
+  pair<bool, vector<CryptoPP::byte*>> evaluated = eH.evaluate(inputs);
+  if(evaluated.first) {
+    pair<bool, vector<bool>> decoded = eH.decode(F->getDecodings(), evaluated.second);
+    if(decoded.first) {
+      for(bool b : decoded.second) {
+        cout << b;
+      }
+      cout << endl;
+    } else {
+      cout << "Error! Could not decode" << endl;
+    }
+  } else {
+    cout << "Error! Could not evaluate" << endl;
+  }
 
   cout << "covert end" << endl;
   return 0;

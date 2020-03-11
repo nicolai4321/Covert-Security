@@ -257,7 +257,7 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
     }
 
     //output gates
-    for(string gateName : gatesOutput) {
+    for(string gateName : outputGates) {
       CryptoPP::byte *encoded = gatesEvaluated[gateName];
       bytes.push_back(encoded);
     }
@@ -270,5 +270,12 @@ pair<bool, vector<CryptoPP::byte*>> GarbledCircuit::evaluate(vector<CryptoPP::by
     output.second = bytes;
   }
 
+  return output;
+}
+
+pair<CryptoPP::byte*, CryptoPP::byte*> GarbledCircuit::getConstEnc() {
+  pair<CryptoPP::byte*, CryptoPP::byte*> output;
+  output.first = gatesEvaluated[CONST_ZERO];
+  output.second = gatesEvaluated[CONST_ONE];
   return output;
 }
