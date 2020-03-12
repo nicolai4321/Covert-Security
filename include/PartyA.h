@@ -5,12 +5,13 @@
 #include "CircuitReader.h"
 #include "cryptlib.h"
 #include "cryptoTools/Network/IOService.h"
+#include "EvaluatorInterface.h" //TODO: remove
+#include "EvaluatorHalf.h" //TODO: remove
 #include "GV.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 using namespace std;
 
-class PartyA
-{
+class PartyA {
   public:
     PartyA(int x, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, CircuitInterface* circuit);
     virtual ~PartyA();
@@ -18,6 +19,7 @@ class PartyA
     void startProtocol();
     void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
     pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* circuit, vector<unsigned int> seedsA);
+    bool checkSeedsWitness(vector<unsigned int> block, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
 
   protected:
 

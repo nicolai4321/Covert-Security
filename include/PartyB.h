@@ -5,6 +5,7 @@
 #include "cryptlib.h"
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
+#include "EvaluatorInterface.h"
 #include "GV.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "Util.h"
@@ -13,7 +14,7 @@ using namespace std;
 class PartyB
 {
   public:
-    PartyB(int y, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl);
+    PartyB(int y, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, EvaluatorInterface* evaluator);
     virtual ~PartyB();
 
     void startProtocol();
@@ -30,6 +31,7 @@ class PartyB
     unsigned int gamma;
     osuCrypto::Channel serverChl;
     osuCrypto::Channel clientChl;
+    EvaluatorInterface* evaluator;
 };
 
 #endif // PARTYB_H

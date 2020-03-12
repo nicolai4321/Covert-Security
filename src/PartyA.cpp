@@ -42,6 +42,7 @@ void PartyA::startProtocol() {
   sender.sendChosen(otData, prng, serverChl);
 
   //Commitments
+  /*
   vector<pair<CryptoPP::byte*,CryptoPP::byte*>> commitmentsA;
   for(int j=0; j<lambda; j++) {
     for(int i=0; i<GV::n1; i++) {
@@ -55,10 +56,31 @@ void PartyA::startProtocol() {
   for(int j=0; j<lambda; j++) {
     vector<vector<CryptoPP::byte*>> outputEncodings = outputEncs[j];
     //outputEncodings
-  }
+  }*/
 
   //Receive gamma, seeds and witness
+  vector<unsigned int> gammaSeedsWitnessBlock;
+  serverChl.recv(gammaSeedsWitnessBlock);
+  unsigned int gamma = gammaSeedsWitnessBlock.at(0);
 
+  //Checks the seeds and witness
+  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {throw "Error!";}
+
+  //Send garbled circuit, encoding inputs, commitments and decommitments to other party
+  //TODO: commitments and decommitments
+  CircuitInterface *circuit = circuits.at(gamma);
+  GarbledCircuit *F = circuit->exportCircuit();
+
+  vector<CryptoPP::byte*> encsInputsA;
+  vector<vector<CryptoPP::byte*>> circuitEncs = encs[gamma];
+  string xBitString = Util::toBitString(x, GV::n1);
+  for(int j=0; j<GV::n1; j++) {
+    int b = (int) xBitString[j] - 48;
+    encsInputsA.push_back(circuitEncs.at(j).at(b));
+  }
+
+  clientChl.asyncSend(move(F));
+  clientChl.asyncSend(move(encsInputsA));
 }
 
 /*
@@ -91,9 +113,10 @@ pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garb
       //An entry in a block can hold the size of long (8 bytes)
       osuCrypto::block block0;
       osuCrypto::block block1;
-      for(int x=0; x<blockIndexesRequired; x++) {
-        block0[x] = Util::byteToLong(encsB.at(0)+(x*sizeof(long)));
-        block1[x] = Util::byteToLong(encsB.at(1)+(x*sizeof(long)));
+
+      for(int l=0; l<blockIndexesRequired; l++) {
+        block0[l] = Util::byteToLong(encsB.at(0)+(l*sizeof(long)));
+        block1[l] = Util::byteToLong(encsB.at(1)+(l*sizeof(long)));
       }
 
       otData[index] = {block0, block1};
@@ -117,4 +140,24 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Chan
 
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
   sender->sendChosen(otData, prng, serverChl);
+}
+
+/*
+  Checks that party A has correct seeds and witness
+*/
+bool PartyA::checkSeedsWitness(vector<unsigned int> block, vector<unsigned int> seedsA, vector<unsigned int> witnesses) {
+  unsigned int gamma = block.at(0);
+
+  for(int j=0; j<lambda; j++) {
+    if(lambda == j) {
+      if(witnesses.at(j) != block.at(j+1)) {
+        cout << "Error! Witness is not correct" << endl;
+        return false;
+      }
+    } else if(seedsA.at(j) != block.at(j+1) && j!=gamma) {
+      cout << "Error! Seed is not correct" << endl;
+      return false;
+    }
+  }
+  return true;
 }

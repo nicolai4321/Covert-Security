@@ -1,12 +1,13 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, int k, int l, osuCrypto::Channel sChl, osuCrypto::Channel cChl) {
+PartyB::PartyB(int input, int k, int l, osuCrypto::Channel sChl, osuCrypto::Channel cChl, EvaluatorInterface* eI) {
   y = input;
   kappa = k;
   lambda = l;
   serverChl = sChl;
   clientChl = cChl;
+  evaluator = eI;
 }
 
 PartyB::~PartyB() {}
@@ -37,15 +38,53 @@ void PartyB::startProtocol() {
   vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, clientChl);
 
   //Second OT
-  vector<CryptoPP::byte*> encInputsB = otEncodingsB(&recver, clientChl);
+  vector<CryptoPP::byte*> encsInputsGammaB = otEncodingsB(&recver, clientChl);
 
-  //
+  //TODO: check party A
 
-  //
-  vector<unsigned int> blocks;
-  blocks.push_back(gamma);
+  //Sends gamma, witness and seeds to other party
+  vector<unsigned int> gammaSeedsWitnessBlock;
+  gammaSeedsWitnessBlock.push_back(gamma);
   for(int j=0; j<lambda; j++) {
-    blocks.push_back(seedsWitnessA.at(j)[0]);
+    gammaSeedsWitnessBlock.push_back(seedsWitnessA.at(j)[0]);
+  }
+  clientChl.asyncSend(move(gammaSeedsWitnessBlock));
+
+  //Receive garbled circuit and input encodings from the other party
+  GarbledCircuit *F;
+  vector<CryptoPP::byte*> encsInputsA;
+
+  serverChl.recv(F);
+  serverChl.recv(encsInputsA);
+
+  vector<CryptoPP::byte*> encsInputs;
+  for(int j=0; j<GV::n1; j++) {
+    encsInputs.push_back(encsInputsA.at(j));
+  }
+  for(int j=0; j<GV::n2; j++) {
+    encsInputs.push_back(encsInputsGammaB.at(j+(GV::n2*gamma)));
+  }
+
+  evaluator->giveCircuit(F);
+  pair<bool, vector<CryptoPP::byte*>> evaluated = evaluator->evaluate(encsInputs);
+  if(evaluated.first) {
+    pair<bool, vector<bool>> decoded = evaluator->decode(evaluated.second);
+    if(decoded.first) {
+      vector<bool> output = decoded.second;
+      cout << "Output B: ";
+      for(bool b : output) {
+        cout << b;
+      }
+      cout << endl;
+    } else {
+      string msg = "Error! Could not decode circuit";
+      cout << msg << endl;
+      throw msg;
+    }
+  } else {
+    string msg = "Error! Could not evaluate circuit";
+    cout << msg << endl;
+    throw msg;
   }
 }
 
@@ -77,7 +116,8 @@ vector<CryptoPP::byte*> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver
     for(int i=0; i<GV::n2; i++) {
       int index = i+(j*GV::n2);
       if(j==gamma) {
-        b[index] = yString[i];
+        int yIndex = (int) yString[i] - 48;
+        b[index] = yIndex;
       } else {
         b[index] = 0;
       }

@@ -140,7 +140,8 @@ void startProtocol(int kappa, int lambda) {
   clientChl.waitForConnection();
 
   //Etc.
-  CircuitInterface *circuit = new NormalCircuit(kappa, 0);
+  CircuitInterface *circuit = new HalfCircuit(kappa, 0);
+  EvaluatorInterface *evaluator = new EvaluatorHalf();
   int x = 5;
   int y = 2;
 
@@ -149,7 +150,7 @@ void startProtocol(int kappa, int lambda) {
     partyA.startProtocol();
   });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl);
+    PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl, evaluator);
     partyB.startProtocol();
   });
 
@@ -276,8 +277,8 @@ int main() {
   int lambda = 8;
 
   //otExample();
-  runCircuitFiles(kappa);
-  //startProtocol(kappa, lambda);
+  //runCircuitFiles(kappa);
+  startProtocol(kappa, lambda);
 
   /*
   CircuitInterface *circuitN = new NormalCircuit(kappa, 2);
