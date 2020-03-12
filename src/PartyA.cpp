@@ -7,7 +7,7 @@ PartyA::PartyA(int input, int k, int l, osuCrypto::Channel sChl, osuCrypto::Chan
   lambda = l;
   serverChl = sChl;
   clientChl = cChl;
-  F = cI;
+  circuit = cI;
 }
 
 PartyA::~PartyA() {}
@@ -33,7 +33,7 @@ void PartyA::startProtocol() {
   otSeedsWitnesses(&sender, serverChl, seedsA, witnesses);
 
   //Garbling
-  pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garblingInfo = garbling(F, seedsA);
+  pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garblingInfo = garbling(circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   vector<array<osuCrypto::block, 2>> otData = garblingInfo.second;
 
@@ -64,13 +64,13 @@ void PartyA::startProtocol() {
 /*
   Garbling the circuits and prepare the ot data
 */
-pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garbling(CircuitInterface* F, vector<unsigned int> seedsA) {
+pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garbling(CircuitInterface* circuit, vector<unsigned int> seedsA) {
   int blockIndexesRequired = ceil(((float) kappa)/((float) sizeof(long)));
   vector<CircuitInterface*> circuits;
   vector<array<osuCrypto::block, 2>> otData(lambda*GV::n2);
 
   for(int j=0; j<lambda; j++) {
-    CircuitInterface *G = F->createInstance(kappa, seedsA.at(j));
+    CircuitInterface *G = circuit->createInstance(kappa, seedsA.at(j));
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
     outputEncs[j] = cr.getOutputEnc();

@@ -4,8 +4,12 @@
 #include "CircuitReader.h"
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
+#include "EvaluatorHalf.h"
+#include "EvaluatorInterface.h"
+#include "EvaluatorNormal.h"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
+#include "NormalCircuit.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "PartyA.h"
@@ -19,10 +23,10 @@ using namespace std;
   the encoding can be decoded. The time for the evaluation
   is returned
 */
-double runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
+double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int kappa, string filename, string input) {
   try {
     CircuitReader cr = CircuitReader();
-    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(F, filename);
+    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, filename);
     int inputGatesNr = cr.getInputGates();
 
     if(!import.first) {
@@ -30,6 +34,7 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
       cout << msg << endl;
       throw msg;
     }
+
     clock_t start = clock();
 
     vector<vector<CryptoPP::byte*>> encodings = import.second;
@@ -52,32 +57,32 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
         throw msg;
     }
 
-    pair<bool, vector<CryptoPP::byte*>> evaluation = F->evaluate(inputs);
-    if(!evaluation.first) {
+    GarbledCircuit *F = circuit->exportCircuit();
+    evaluator->giveCircuit(F);
+    pair<bool, vector<CryptoPP::byte*>> evaluation = evaluator->evaluate(inputs);
+    if(evaluation.first) {
+      vector<CryptoPP::byte*> Z = evaluation.second;
+      pair<bool, vector<bool>> decoded = evaluator->decode(Z);
+
+      if(decoded.first) {
+        cout << "output: ";
+        for(bool b : decoded.second) {
+          cout << b;
+        }
+        cout << endl;
+
+        double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
+        return duration;
+      } else {
+        string msg = "Error! Could not decode the encoding";
+        cout << msg << endl;
+        throw msg;
+      }
+    } else {
       string msg = "Error! Could not evaluate circuit";
       cout << msg << endl;
       throw msg;
     }
-
-    vector<CryptoPP::byte*> Z = evaluation.second;
-    pair<bool, vector<bool>> decoded = F->decode(Z);
-
-    if(!decoded.first) {
-      string msg = "Error! Could not decode the encoding";
-      cout << msg << endl;
-      throw msg;
-    }
-
-    vector<bool> z = decoded.second;
-
-    cout << "output: ";
-    for(bool b : z) {
-      cout << b;
-    }
-    cout << endl;
-
-    double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
-    return duration;
   } catch (...) {
     return 0;
   }
@@ -87,7 +92,7 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
   Runs the circuit files
 */
 void runCircuitFiles(int kappa) {
-  unsigned int seed = 3329;
+  unsigned int seed = Util::randomInt(0, 10000);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -106,15 +111,18 @@ void runCircuitFiles(int kappa) {
       cout << " | " << i1;
     }
     cout << endl;
-    CircuitInterface *F = new GarbledCircuit(kappa, seed);
-    CircuitInterface *G = new HalfCircuit(kappa, seed);
 
-    double time0 = runCircuit(F, kappa, filename, input);
-    double time1 = runCircuit(G, kappa, filename, input);
+    CircuitInterface *circuitN = new NormalCircuit(kappa, seed);
+    CircuitInterface *circuitH = new HalfCircuit(kappa, seed);
+    EvaluatorInterface *evalN = new EvaluatorNormal();
+    EvaluatorInterface *evalH = new EvaluatorHalf();
+
+    double time0 = runCircuit(circuitN, evalN, kappa, filename, input);
+    double time1 = runCircuit(circuitH, evalH, kappa, filename, input);
     timeTotal0 += time0;
     timeTotal1 += time1;
 
-    cout << "Time: " << time0 << " ("+F->toString()+"), " << time1 << " ("+G->toString()+")" << endl;
+    cout << "Time: " << time0 << " ("+circuitN->toString()+"), " << time1 << " ("+circuitH->toString()+")" << endl;
     cout << endl;
   }
 
@@ -132,12 +140,12 @@ void startProtocol(int kappa, int lambda) {
   clientChl.waitForConnection();
 
   //Etc.
-  CircuitInterface *F = new GarbledCircuit(kappa, 0);
+  CircuitInterface *circuit = new NormalCircuit(kappa, 0);
   int x = 5;
   int y = 2;
 
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, F);
+    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, circuit);
     partyA.startProtocol();
   });
   auto threadB = thread([&]() {
@@ -213,6 +221,55 @@ void otExample() {
   ios.stop();
 }
 
+void tmp(CircuitInterface* c, EvaluatorInterface *e) {
+  vector<CryptoPP::byte*> enc0 = c->addGate("i0");
+  vector<CryptoPP::byte*> enc1 = c->addGate("i1");
+  vector<CryptoPP::byte*> enc2 = c->addGate("i2");
+  vector<CryptoPP::byte*> enc3 = c->addGate("i3");
+  c->addEQ(true, "n0");
+  c->addEQ(false, "n1");
+
+  c->addAND("i0", "i1", "and0");
+  c->addAND("i2", "i3", "and1");
+  c->addAND("n0", "n1", "and2");
+  c->addINV("and0", "inv0");
+  c->addEQW("i0", "eqw0");
+  c->addXOR("i0", "i1", "xor0");
+
+  vector<string> outputs;
+  outputs.push_back("and0");
+  outputs.push_back("and1");
+  outputs.push_back("and2");
+  outputs.push_back("inv0");
+  outputs.push_back("eqw0");
+  outputs.push_back("xor0");
+
+  c->setOutputGates(outputs);
+
+  vector<CryptoPP::byte*> inputs;
+  inputs.push_back(enc0.at(1));
+  inputs.push_back(enc1.at(1));
+  inputs.push_back(enc2.at(1));
+  inputs.push_back(enc3.at(1));
+
+  GarbledCircuit *F = c->exportCircuit();
+  e->giveCircuit(F);
+  pair<bool, vector<CryptoPP::byte*>> evaluated = e->evaluate(inputs);
+  if(evaluated.first) {
+    pair<bool, vector<bool>> decoded = e->decode(evaluated.second);
+    if(decoded.first) {
+        for(bool b : decoded.second) {
+          cout << b;
+        }
+        cout << endl;
+    } else {
+      cout << "Error! Could not decode" << endl;
+    }
+  } else {
+    cout << "Error! Could not evaluate" << endl;
+  }
+}
+
 int main() {
   cout << "covert start" << endl;
   int kappa = 16;
@@ -221,6 +278,16 @@ int main() {
   //otExample();
   runCircuitFiles(kappa);
   //startProtocol(kappa, lambda);
+
+  /*
+  CircuitInterface *circuitN = new NormalCircuit(kappa, 2);
+  CircuitInterface *circuitH = new HalfCircuit(kappa, 2);
+
+  EvaluatorInterface *evalN = new EvaluatorNormal();
+  EvaluatorInterface *evalH = new EvaluatorHalf();
+  tmp(circuitN, evalN);
+  tmp(circuitH, evalH);
+  */
 
   cout << "covert end" << endl;
   return 0;

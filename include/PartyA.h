@@ -12,12 +12,12 @@ using namespace std;
 class PartyA
 {
   public:
-    PartyA(int x, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, CircuitInterface* F);
+    PartyA(int x, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, CircuitInterface* circuit);
     virtual ~PartyA();
 
     void startProtocol();
     void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
-    pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* F, vector<unsigned int> seedsA);
+    pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* circuit, vector<unsigned int> seedsA);
 
   protected:
 
@@ -27,7 +27,7 @@ class PartyA
     int lambda;
     osuCrypto::Channel serverChl;
     osuCrypto::Channel clientChl;
-    CircuitInterface *F;
+    CircuitInterface *circuit;
 
     map<int, vector<vector<CryptoPP::byte*>>> encs;
     map<int, vector<vector<CryptoPP::byte*>>> outputEncs;

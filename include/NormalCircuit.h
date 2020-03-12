@@ -1,6 +1,7 @@
-#ifndef HALFCIRCUIT_H
-#define HALFCIRCUIT_H
+#ifndef GARBLEDCIRCUIT_H
+#define GARBLEDCIRCUIT_H
 #include <iostream>
+#include <map>
 #include <string>
 #include <vector>
 #include "CircuitInterface.h"
@@ -9,10 +10,10 @@
 #include "Util.h"
 using namespace std;
 
-class HalfCircuit: public CircuitInterface {
+class NormalCircuit: public CircuitInterface {
   public:
-    HalfCircuit(int kappa, unsigned int seed);
-    virtual ~HalfCircuit();
+    NormalCircuit(int kappa, unsigned int seed);
+    virtual ~NormalCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
     virtual void addEQW(string inputGate, string outputGate);
@@ -24,16 +25,15 @@ class HalfCircuit: public CircuitInterface {
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual GarbledCircuit* exportCircuit();
 
-    map<string, vector<CryptoPP::byte*>> getAndEncodings();
+    map<string, vector<CryptoPP::byte*>> getGarbledTables();
 
   protected:
 
   private:
-    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte* encT);
+    CryptoPP::byte* encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO);
+    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR);
 
-    map<string, vector<CryptoPP::byte*>> andEncodings;
-    CryptoPP::byte* r;
-
+    map<string, vector<CryptoPP::byte*>> garbledTables;
 };
 
-#endif // HALFCIRCUIT_H
+#endif // GARBLEDCIRCUIT_H
