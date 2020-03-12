@@ -14,8 +14,11 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
   try {
     int inputIndex = 0;
     int kappa = F->getKappa();
-    for(string gateName : F->getGateOrder()) {
-      vector<string> info = F->getGateInfo()[gateName];
+    vector<string> gateOrder = F->getGateOrder();
+    map<string, vector<string>> gateInfo = F->getGateInfo();
+    map<string, vector<CryptoPP::byte*>> andEncodings = F->getAndEncodings();
+    for(string gateName : gateOrder) {
+      vector<string> info = gateInfo[gateName];
       string gateType = info.at(0);
       string gateL = info.at(1);
       string gateR = info.at(2);
@@ -29,8 +32,6 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
       } else if(gateType.compare("AND") == 0) {
         int sa = Util::lsb(gatesEvaluated[gateL], kappa);
         int sb = Util::lsb(gatesEvaluated[gateR], kappa);
-
-        map<string, vector<CryptoPP::byte*>> andEncodings = F->getAndEncodings();
         CryptoPP::byte *TG = andEncodings[gateName].at(0);
         CryptoPP::byte *TE = andEncodings[gateName].at(1);
         CryptoPP::byte *Wa = gatesEvaluated[gateL];
@@ -55,7 +56,8 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
 
     //Gets the output
     vector<CryptoPP::byte*> bytes;
-    for(string gateName : F->getOutputGates()) {
+    vector<string> outputGates = F->getOutputGates();
+    for(string gateName : outputGates) {
       CryptoPP::byte *encodingOutput = gatesEvaluated[gateName];
       bytes.push_back(encodingOutput);
     }

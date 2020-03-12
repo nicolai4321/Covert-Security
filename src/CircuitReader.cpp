@@ -12,7 +12,7 @@ CircuitReader::~CircuitReader() {}
   The boolean determines if it was successful
   The vector contains the input encodings
 */
-pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterface* F, string filename) {
+pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterface* circuit, string filename) {
   pair<bool, vector<vector<CryptoPP::byte*>>> output;
   string line;
   vector<string> data;
@@ -61,7 +61,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
     //adds input gates
     for(int i=0; i<totalInputGates; i++) {
       string gateName = "w"+to_string(i);
-      vector<CryptoPP::byte*> inputEnc = F->addGate(gateName);
+      vector<CryptoPP::byte*> inputEnc = circuit->addGate(gateName);
       inputEncs.push_back(inputEnc);
     }
 
@@ -98,20 +98,20 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
         string gateL = "w"+to_string(inputWires[0]);
         string gateR = "w"+to_string(inputWires[1]);
         string gateO = "w"+to_string(outputWires[0]);
-        F->addXOR(gateL, gateR, gateO);
+        circuit->addXOR(gateL, gateR, gateO);
       } else if(gateType.compare("AND") == 0) {
         string gateL = "w"+to_string(inputWires[0]);
         string gateR = "w"+to_string(inputWires[1]);
         string gateO = "w"+to_string(outputWires[0]);
-        F->addAND(gateL, gateR, gateO);
+        circuit->addAND(gateL, gateR, gateO);
       } else if(gateType.compare("INV") == 0) {
         string gateI = "w"+to_string(inputWires[0]);
         string gateO = "w"+to_string(outputWires[0]);
-        F->addINV(gateI, gateO);
+        circuit->addINV(gateI, gateO);
       } else if(gateType.compare("EQW") == 0) {
         string gateI = "w"+to_string(inputWires[0]);
         string gateO = "w"+to_string(outputWires[0]);
-        F->addEQW(gateI, gateO);
+        circuit->addEQW(gateI, gateO);
       } else {
         cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
         inputEncs.clear();
@@ -134,7 +134,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
         outputGates.push_back(gateName);
       }
     }
-    outputEncs = F->setOutputGates(outputGates);
+    outputEncs = circuit->setOutputGates(outputGates);
   }
   reader.close();
 

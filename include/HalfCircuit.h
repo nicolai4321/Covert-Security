@@ -19,7 +19,6 @@ class HalfCircuit: public CircuitInterface {
     virtual void addINV(string inputGate, string outputGate);
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
-    virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
     virtual string toString();
     virtual CircuitInterface* createInstance(int kappa, int seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();

@@ -65,33 +65,6 @@ CryptoPP::byte* NormalCircuit::encodeGate(CryptoPP::byte* encL, CryptoPP::byte* 
 }
 
 /*
-  Decodes a gate if the last characters are zeros
-*/
-pair<bool, CryptoPP::byte*> NormalCircuit::decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc) {
-  pair<bool, CryptoPP::byte*> output;
-  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
-  CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*kappa);
-
-  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
-  memset(zero, 0x00, kappa);
-
-  CryptoPP::byte *left = new CryptoPP::byte[kappa];
-  CryptoPP::byte *right = new CryptoPP::byte[kappa];
-  left = decoded;
-  right = (decoded+kappa);
-
-  if(memcmp(right, zero, kappa) == 0) {
-    output.first = true;
-    output.second = left;
-    return output;
-  } else {
-    output.first = false;
-    output.second = zero;
-    return output;
-  }
-}
-
-/*
   EQ
 */
 void NormalCircuit::addEQ(bool b, string outputGate) {
@@ -186,87 +159,6 @@ void NormalCircuit::addAND(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encTL, encTR, encTO));
   asrp.Shuffle(garbledTable.begin(), garbledTable.end());
   garbledTables[outputGate] = garbledTable;
-}
-
-/*
-  Evaluate normal gate
-*/
-void NormalCircuit::evaluateGate(string gateL, string gateR, string gateName) {
-  vector<CryptoPP::byte*> garbledTable = garbledTables[gateName];
-  CryptoPP::byte *encL = gatesEvaluated[gateL];
-  CryptoPP::byte *encR = gatesEvaluated[gateR];
-  CryptoPP::byte *output0 = gates[gateName].at(0);
-  CryptoPP::byte *output1 = gates[gateName].at(1);
-
-  vector<CryptoPP::byte*> validEncodings;
-  for(CryptoPP::byte *b : garbledTable) {
-    pair<bool, CryptoPP::byte*> result = decodeGate(encL, encR, b);
-    if(result.first) {
-      validEncodings.push_back(result.second);
-    }
-  }
-
-  //check that only one encoding was valid
-  if(validEncodings.size() == 1) {
-    gatesEvaluated[gateName] = validEncodings.at(0);
-  } else if (validEncodings.size() > 1) {
-    string msg = "Error! Multiple valid encodings";
-    Util::printl(msg);
-    throw msg;
-  } else {
-    string msg = "Error! No valid encodings";
-    Util::printl(msg);
-    throw msg;
-  }
-}
-
-/*
-  Evaluates the circuit and returns a pair
-  the boolean is true if the evaluation was successful
-  the vector is the output encodings if the evaluation was succesful
-*/
-pair<bool, vector<CryptoPP::byte*>> NormalCircuit::evaluate(vector<CryptoPP::byte*> inputs) {
-  pair<bool, vector<CryptoPP::byte*>> output;
-  vector<CryptoPP::byte*> bytes;
-  try {
-    int i=0;
-    for(string gateName : gateOrder) {
-      vector<string> info = gateInfo[gateName];
-      string gateType = info.at(0);
-      string gateL = info.at(1);
-      string gateR = info.at(2);
-
-      if(gateType.compare("INPUT") == 0) {
-        if(nrInputGates == i) {
-          Util::printl("Error! Wrong number of input gates");
-          bytes.clear();
-          output.first = false;
-          output.second = bytes;
-          return output;
-        }
-        gatesEvaluated[gateName] = inputs.at(i);
-        i++;
-      } else if(gateType.compare("CONST") == 0) {
-      } else {
-        evaluateGate(gateL, gateR, gateName);
-      }
-    }
-
-    //output gates
-    for(string gateName : outputGates) {
-      CryptoPP::byte *encoded = gatesEvaluated[gateName];
-      bytes.push_back(encoded);
-    }
-    output.first = true;
-    output.second = bytes;
-  } catch (...) {
-    Util::printl("Error! Could not evaluate circuit");
-    bytes.clear();
-    output.first = false;
-    output.second = bytes;
-  }
-
-  return output;
 }
 
 pair<CryptoPP::byte*, CryptoPP::byte*> NormalCircuit::getConstEnc() {

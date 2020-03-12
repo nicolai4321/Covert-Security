@@ -23,10 +23,10 @@ using namespace std;
   the encoding can be decoded. The time for the evaluation
   is returned
 */
-double runCircuit(CircuitInterface* F, int kappa, string filename, string input) {
+double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int kappa, string filename, string input) {
   try {
     CircuitReader cr = CircuitReader();
-    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(F, filename);
+    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, filename);
     int inputGatesNr = cr.getInputGates();
 
     if(!import.first) {
@@ -34,6 +34,7 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
       cout << msg << endl;
       throw msg;
     }
+
     clock_t start = clock();
 
     vector<vector<CryptoPP::byte*>> encodings = import.second;
@@ -56,32 +57,32 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
         throw msg;
     }
 
-    pair<bool, vector<CryptoPP::byte*>> evaluation = F->evaluate(inputs);
-    if(!evaluation.first) {
+    GarbledCircuit *F = circuit->exportCircuit();
+    evaluator->giveCircuit(F);
+    pair<bool, vector<CryptoPP::byte*>> evaluation = evaluator->evaluate(inputs);
+    if(evaluation.first) {
+      vector<CryptoPP::byte*> Z = evaluation.second;
+      pair<bool, vector<bool>> decoded = evaluator->decode(Z);
+
+      if(decoded.first) {
+        cout << "output: ";
+        for(bool b : decoded.second) {
+          cout << b;
+        }
+        cout << endl;
+
+        double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
+        return duration;
+      } else {
+        string msg = "Error! Could not decode the encoding";
+        cout << msg << endl;
+        throw msg;
+      }
+    } else {
       string msg = "Error! Could not evaluate circuit";
       cout << msg << endl;
       throw msg;
     }
-
-    vector<CryptoPP::byte*> Z = evaluation.second;
-    pair<bool, vector<bool>> decoded = F->decode(Z);
-
-    if(!decoded.first) {
-      string msg = "Error! Could not decode the encoding";
-      cout << msg << endl;
-      throw msg;
-    }
-
-    vector<bool> z = decoded.second;
-
-    cout << "output: ";
-    for(bool b : z) {
-      cout << b;
-    }
-    cout << endl;
-
-    double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
-    return duration;
   } catch (...) {
     return 0;
   }
@@ -91,7 +92,7 @@ double runCircuit(CircuitInterface* F, int kappa, string filename, string input)
   Runs the circuit files
 */
 void runCircuitFiles(int kappa) {
-  unsigned int seed = 3329;
+  unsigned int seed = Util::randomInt(0, 10000);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -110,15 +111,18 @@ void runCircuitFiles(int kappa) {
       cout << " | " << i1;
     }
     cout << endl;
-    CircuitInterface *F = new NormalCircuit(kappa, seed);
-    CircuitInterface *G = new HalfCircuit(kappa, seed);
 
-    double time0 = runCircuit(F, kappa, filename, input);
-    double time1 = runCircuit(G, kappa, filename, input);
+    CircuitInterface *circuitN = new NormalCircuit(kappa, seed);
+    CircuitInterface *circuitH = new HalfCircuit(kappa, seed);
+    EvaluatorInterface *evalN = new EvaluatorNormal();
+    EvaluatorInterface *evalH = new EvaluatorHalf();
+
+    double time0 = runCircuit(circuitN, evalN, kappa, filename, input);
+    double time1 = runCircuit(circuitH, evalH, kappa, filename, input);
     timeTotal0 += time0;
     timeTotal1 += time1;
 
-    cout << "Time: " << time0 << " ("+F->toString()+"), " << time1 << " ("+G->toString()+")" << endl;
+    cout << "Time: " << time0 << " ("+circuitN->toString()+"), " << time1 << " ("+circuitH->toString()+")" << endl;
     cout << endl;
   }
 
@@ -136,12 +140,12 @@ void startProtocol(int kappa, int lambda) {
   clientChl.waitForConnection();
 
   //Etc.
-  CircuitInterface *F = new NormalCircuit(kappa, 0);
+  CircuitInterface *circuit = new NormalCircuit(kappa, 0);
   int x = 5;
   int y = 2;
 
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, F);
+    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, circuit);
     partyA.startProtocol();
   });
   auto threadB = thread([&]() {
@@ -272,16 +276,18 @@ int main() {
   int lambda = 8;
 
   //otExample();
-  //runCircuitFiles(kappa);
+  runCircuitFiles(kappa);
   //startProtocol(kappa, lambda);
 
-  CircuitInterface *circuitH = new HalfCircuit(kappa, 2);
+  /*
   CircuitInterface *circuitN = new NormalCircuit(kappa, 2);
-  EvaluatorInterface *evalH = new EvaluatorHalf();
-  EvaluatorInterface *evalN = new EvaluatorNormal();
+  CircuitInterface *circuitH = new HalfCircuit(kappa, 2);
 
-  tmp(circuitH, evalH);
+  EvaluatorInterface *evalN = new EvaluatorNormal();
+  EvaluatorInterface *evalH = new EvaluatorHalf();
   tmp(circuitN, evalN);
+  tmp(circuitH, evalH);
+  */
 
   cout << "covert end" << endl;
   return 0;

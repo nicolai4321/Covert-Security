@@ -21,7 +21,8 @@ pair<bool, vector<bool>> EvaluatorInterface::decode(vector<CryptoPP::byte*> encs
   int kappa = F->getKappa();
 
   int i=0;
-  for(vector<CryptoPP::byte*> v : F->getDecodings()) {
+  vector<vector<CryptoPP::byte*>> decodings = F->getDecodings();
+  for(vector<CryptoPP::byte*> v : decodings) {
     CryptoPP::byte *encF = v.at(0);
     CryptoPP::byte *encT = v.at(1);
     CryptoPP::byte *enc = encs.at(i);

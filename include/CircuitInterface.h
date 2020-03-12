@@ -15,14 +15,12 @@ class CircuitInterface {
     virtual void addINV(string inputGate, string outputGate) = 0;
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate) = 0;
     virtual void addAND(string inputGateL, string inputGateR, string outputGate) = 0;
-    virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs) = 0;
     virtual string toString() = 0;
     virtual CircuitInterface* createInstance(int kappa, int seed) = 0;
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc() = 0;
     virtual GarbledCircuit* exportCircuit() = 0;
 
     vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
-    pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
     vector<vector<CryptoPP::byte*>> getDecodings();
 
     inline static const string CONST_ZERO = "constZero";

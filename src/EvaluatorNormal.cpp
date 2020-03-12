@@ -13,8 +13,11 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
   pair<bool, vector<CryptoPP::byte*>> output;
   try {
     int inputIndex = 0;
-    for(string gateName : F->getGateOrder()) {
-      vector<string> info = F->getGateInfo()[gateName];
+    vector<string> gateOrder = F->getGateOrder();
+    map<string, vector<string>> gateInfo = F->getGateInfo();
+    map<string, vector<CryptoPP::byte*>> garbledTables = F->getGarbledTables();
+    for(string gateName : gateOrder) {
+      vector<string> info = gateInfo[gateName];
       string gateType = info.at(0);
       string gateL = info.at(1);
       string gateR = info.at(2);
@@ -22,9 +25,8 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
       if(gateType.compare("INPUT") == 0) {
         gatesEvaluated[gateName] = inputs.at(inputIndex);
         inputIndex++;
-      } else if(gateType.compare("CONST") == 0) {
-      } else {
-        vector<CryptoPP::byte*> garbledTable = F->getGarbledTables()[gateName];
+      } else if(gateType.compare("CONST") != 0) {
+        vector<CryptoPP::byte*> garbledTable = garbledTables[gateName];
         CryptoPP::byte *encL = gatesEvaluated[gateL];
         CryptoPP::byte *encR = gatesEvaluated[gateR];
 
@@ -55,7 +57,8 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 
     //output gates
     vector<CryptoPP::byte*> bytes;
-    for(string gateName : F->getOutputGates()) {
+    vector<string> outputGates = F->getOutputGates();
+    for(string gateName : outputGates) {
       CryptoPP::byte *b = gatesEvaluated[gateName];
       bytes.push_back(b);
     }
