@@ -5,9 +5,11 @@
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
 #include "EvaluatorHalf.h"
+#include "EvaluatorInterface.h"
 #include "EvaluatorNormal.h"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
+#include "NormalCircuit.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "PartyA.h"
@@ -108,7 +110,7 @@ void runCircuitFiles(int kappa) {
       cout << " | " << i1;
     }
     cout << endl;
-    CircuitInterface *F = new GarbledCircuit(kappa, seed);
+    CircuitInterface *F = new NormalCircuit(kappa, seed);
     CircuitInterface *G = new HalfCircuit(kappa, seed);
 
     double time0 = runCircuit(F, kappa, filename, input);
@@ -134,7 +136,7 @@ void startProtocol(int kappa, int lambda) {
   clientChl.waitForConnection();
 
   //Etc.
-  CircuitInterface *F = new GarbledCircuit(kappa, 0);
+  CircuitInterface *F = new NormalCircuit(kappa, 0);
   int x = 5;
   int y = 2;
 
@@ -215,20 +217,20 @@ void otExample() {
   ios.stop();
 }
 
-void tmp(CircuitInterface* F) {
-  vector<CryptoPP::byte*> enc0 = F->addGate("i0");
-  vector<CryptoPP::byte*> enc1 = F->addGate("i1");
-  vector<CryptoPP::byte*> enc2 = F->addGate("i2");
-  vector<CryptoPP::byte*> enc3 = F->addGate("i3");
-  F->addEQ(true, "n0");
-  F->addEQ(true, "n1");
+void tmp(CircuitInterface* c, EvaluatorInterface *e) {
+  vector<CryptoPP::byte*> enc0 = c->addGate("i0");
+  vector<CryptoPP::byte*> enc1 = c->addGate("i1");
+  vector<CryptoPP::byte*> enc2 = c->addGate("i2");
+  vector<CryptoPP::byte*> enc3 = c->addGate("i3");
+  c->addEQ(true, "n0");
+  c->addEQ(false, "n1");
 
-  F->addAND("i0", "i1", "and0");
-  F->addAND("i2", "i3", "and1");
-  F->addAND("n0", "n1", "and2");
-  F->addINV("and0", "inv0");
-  F->addEQW("i0", "eqw0");
-  F->addXOR("i0", "i1", "xor0");
+  c->addAND("i0", "i1", "and0");
+  c->addAND("i2", "i3", "and1");
+  c->addAND("n0", "n1", "and2");
+  c->addINV("and0", "inv0");
+  c->addEQW("i0", "eqw0");
+  c->addXOR("i0", "i1", "xor0");
 
   vector<string> outputs;
   outputs.push_back("and0");
@@ -238,58 +240,29 @@ void tmp(CircuitInterface* F) {
   outputs.push_back("eqw0");
   outputs.push_back("xor0");
 
-  F->setOutputGates(outputs);
+  c->setOutputGates(outputs);
 
   vector<CryptoPP::byte*> inputs;
-  inputs.push_back(enc0.at(0));
-  inputs.push_back(enc1.at(0));
+  inputs.push_back(enc0.at(1));
+  inputs.push_back(enc1.at(1));
   inputs.push_back(enc2.at(1));
   inputs.push_back(enc3.at(1));
 
-  //Evaluating
-  vector<string> outputGates = F->getOutputGates();
-  vector<string> gateOrder = F->getGateOrder();
-  map<string, vector<string>> gateInfo = F->getGateInfo();
-  pair<CryptoPP::byte*, CryptoPP::byte*> constEncs = F->getConstEnc();
-
-  if(F->toString().compare("Half garbled circuit") == 0) { //TODO: tmp
-    HalfCircuit *G = (HalfCircuit*) F;
-    map<string, vector<CryptoPP::byte*>> andEncodings = G->getAndEncodings();
-
-    EvaluatorHalf evaluator = EvaluatorHalf(outputGates, gateOrder, gateInfo, constEncs, andEncodings);
-    pair<bool, vector<CryptoPP::byte*>> evaluated = evaluator.evaluate(inputs);
-    if(evaluated.first) {
-      pair<bool, vector<bool>> decoded = evaluator.decode(F->getDecodings(), evaluated.second);
-      if(decoded.first) {
+  GarbledCircuit *F = c->exportCircuit();
+  e->giveCircuit(F);
+  pair<bool, vector<CryptoPP::byte*>> evaluated = e->evaluate(inputs);
+  if(evaluated.first) {
+    pair<bool, vector<bool>> decoded = e->decode(evaluated.second);
+    if(decoded.first) {
         for(bool b : decoded.second) {
           cout << b;
         }
         cout << endl;
-      } else {
-        cout << "Error! Could not decode" << endl;
-      }
     } else {
-      cout << "Error! Could not evaluate" << endl;
+      cout << "Error! Could not decode" << endl;
     }
   } else {
-    GarbledCircuit *G = (GarbledCircuit*) F;
-    map<string, vector<CryptoPP::byte*>> garbledTables = G->getGarbledTables();
-
-    EvaluatorNormal evaluator = EvaluatorNormal(outputGates, gateOrder, gateInfo, constEncs, garbledTables);
-    pair<bool, vector<CryptoPP::byte*>> evaluated = evaluator.evaluate(inputs);
-    if(evaluated.first) {
-      pair<bool, vector<bool>> decoded = evaluator.decode(F->getDecodings(), evaluated.second);
-      if(decoded.first) {
-        for(bool b : decoded.second) {
-          cout << b;
-        }
-        cout << endl;
-      } else {
-        cout << "Error! Could not decode" << endl;
-      }
-    } else {
-      cout << "Error! Could not evaluate" << endl;
-    }
+    cout << "Error! Could not evaluate" << endl;
   }
 }
 
@@ -302,10 +275,13 @@ int main() {
   //runCircuitFiles(kappa);
   //startProtocol(kappa, lambda);
 
-  CircuitInterface *F = new HalfCircuit(kappa, 2);
-  CircuitInterface *G = new GarbledCircuit(kappa, 2);
-  tmp(F);
-  tmp(G);
+  CircuitInterface *circuitH = new HalfCircuit(kappa, 2);
+  CircuitInterface *circuitN = new NormalCircuit(kappa, 2);
+  EvaluatorInterface *evalH = new EvaluatorHalf();
+  EvaluatorInterface *evalN = new EvaluatorNormal();
+
+  tmp(circuitH, evalH);
+  tmp(circuitN, evalN);
 
   cout << "covert end" << endl;
   return 0;

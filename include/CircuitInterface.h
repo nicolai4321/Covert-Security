@@ -2,6 +2,7 @@
 #define CIRCUITINTERFACE_H
 #include <vector>
 #include "cryptlib.h"
+#include "GarbledCircuit.h"
 #include "Util.h"
 using namespace std;
 
@@ -18,12 +19,10 @@ class CircuitInterface {
     virtual string toString() = 0;
     virtual CircuitInterface* createInstance(int kappa, int seed) = 0;
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc() = 0;
+    virtual GarbledCircuit* exportCircuit() = 0;
 
     vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
     pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
-    vector<string> getOutputGates();
-    vector<string> getGateOrder();
-    map<string, vector<string>> getGateInfo();
     vector<vector<CryptoPP::byte*>> getDecodings();
 
     inline static const string CONST_ZERO = "constZero";

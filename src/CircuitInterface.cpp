@@ -70,15 +70,3 @@ vector<vector<CryptoPP::byte*>> CircuitInterface::getDecodings() {
 
   return decodings;
 }
-
-vector<string> CircuitInterface::getOutputGates() {
-  return outputGates;
-}
-
-vector<string> CircuitInterface::getGateOrder() {
-  return gateOrder;
-}
-
-map<string, vector<string>> CircuitInterface::getGateInfo() {
-  return gateInfo;
-}

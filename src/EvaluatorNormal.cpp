@@ -1,18 +1,7 @@
 #include "EvaluatorNormal.h"
 using namespace std;
 
-EvaluatorNormal::EvaluatorNormal(vector<string> oG, vector<string> gOrd, map<string, vector<string>> gI, pair<CryptoPP::byte*,CryptoPP::byte*> cEncs, map<string, vector<CryptoPP::byte*>> gT) {
-  outputGates = oG;
-  gateOrder = gOrd;
-  gateInfo = gI;
-  constZero = cEncs.first;
-  constOne = cEncs.second;
-  garbledTables = gT;
-
-  gatesEvaluated[CircuitInterface::CONST_ZERO] = constZero;
-  gatesEvaluated[CircuitInterface::CONST_ONE] = constOne;
-}
-
+EvaluatorNormal::EvaluatorNormal() {}
 EvaluatorNormal::~EvaluatorNormal() {}
 
 /*
@@ -24,8 +13,8 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
   pair<bool, vector<CryptoPP::byte*>> output;
   try {
     int inputIndex = 0;
-    for(string gateName : gateOrder) {
-      vector<string> info = gateInfo[gateName];
+    for(string gateName : F->getGateOrder()) {
+      vector<string> info = F->getGateInfo()[gateName];
       string gateType = info.at(0);
       string gateL = info.at(1);
       string gateR = info.at(2);
@@ -35,7 +24,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
         inputIndex++;
       } else if(gateType.compare("CONST") == 0) {
       } else {
-        vector<CryptoPP::byte*> garbledTable = garbledTables[gateName];
+        vector<CryptoPP::byte*> garbledTable = F->getGarbledTables()[gateName];
         CryptoPP::byte *encL = gatesEvaluated[gateL];
         CryptoPP::byte *encR = gatesEvaluated[gateR];
 
@@ -66,7 +55,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 
     //output gates
     vector<CryptoPP::byte*> bytes;
-    for(string gateName : outputGates) {
+    for(string gateName : F->getOutputGates()) {
       CryptoPP::byte *b = gatesEvaluated[gateName];
       bytes.push_back(b);
     }
@@ -86,18 +75,20 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 */
 pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc) {
   pair<bool, CryptoPP::byte*> output;
-  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, GV::kappa), 2*GV::kappa);
-  CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*GV::kappa);
+  int kappa = F->getKappa();
 
-  CryptoPP::byte *zero = new CryptoPP::byte[GV::kappa];
-  memset(zero, 0x00, GV::kappa);
+  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*kappa);
 
-  CryptoPP::byte *left = new CryptoPP::byte[GV::kappa];
-  CryptoPP::byte *right = new CryptoPP::byte[GV::kappa];
+  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
+  memset(zero, 0x00, kappa);
+
+  CryptoPP::byte *left = new CryptoPP::byte[kappa];
+  CryptoPP::byte *right = new CryptoPP::byte[kappa];
   left = decoded;
-  right = (decoded+GV::kappa);
+  right = (decoded+kappa);
 
-  if(memcmp(right, zero, GV::kappa) == 0) {
+  if(memcmp(right, zero, kappa) == 0) {
     output.first = true;
     output.second = left;
     return output;
@@ -106,38 +97,5 @@ pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte* encL, Cr
     output.second = zero;
     return output;
   }
-}
-
-/*
-  Returns the decoding of the output.
-  The bool determines if the decoding was successful
-  The vector contains the output value
-*/
-pair<bool, vector<bool>> EvaluatorNormal::decode(vector<vector<CryptoPP::byte*>> decodings, vector<CryptoPP::byte*> encs) {
-  pair<bool, vector<bool>> output;
-  vector<bool> outputBools;
-
-  int i=0;
-  for(vector<CryptoPP::byte*> v : decodings) {
-    CryptoPP::byte *encF = v.at(0);
-    CryptoPP::byte *encT = v.at(1);
-    CryptoPP::byte *enc = encs.at(i);
-
-    if(memcmp(enc, encF, GV::kappa) == 0) {
-      outputBools.push_back(false);
-    } else if(memcmp(enc, encT, GV::kappa) == 0) {
-      outputBools.push_back(true);
-    } else {
-      Util::printl("Error! Invalid decoding");
-      output.first = false;
-      output.second = vector<bool>();
-      return output;
-    }
-    i++;
-  }
-
-  output.first = true;
-  output.second = outputBools;
-  return output;
 }
 

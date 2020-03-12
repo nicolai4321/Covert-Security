@@ -219,12 +219,24 @@ pair<CryptoPP::byte*, CryptoPP::byte*> HalfCircuit::getConstEnc() {
   return output;
 }
 
+GarbledCircuit* HalfCircuit::exportCircuit() {
+  GarbledCircuit *F = new GarbledCircuit();
+  F->setKappa(kappa);
+  F->setOutputGates(outputGates);
+  F->setGateOrder(gateOrder);
+  F->setGateInfo(gateInfo);
+  F->setConstants(getConstEnc());
+  F->setDecodings(getDecodings());
+  F->setAndEncodings(andEncodings);
+  return F;
+}
+
 map<string, vector<CryptoPP::byte*>> HalfCircuit::getAndEncodings() {
   return andEncodings;
 }
 
 string HalfCircuit::toString() {
-  return "Half garbled circuit";
+  return "Half circuit";
 }
 
 

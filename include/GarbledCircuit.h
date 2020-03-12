@@ -1,40 +1,44 @@
-#ifndef GARBLEDCIRCUIT_H
-#define GARBLEDCIRCUIT_H
-#include <iostream>
+#ifndef CIRCUITINFO_H
+#define CIRCUITINFO_H
 #include <map>
 #include <string>
 #include <vector>
-#include "CircuitInterface.h"
 #include "cryptlib.h"
-#include "Util.h"
 using namespace std;
 
-class GarbledCircuit: public CircuitInterface {
+class GarbledCircuit {
   public:
-    GarbledCircuit(int kappa, unsigned int seed);
+    GarbledCircuit();
     virtual ~GarbledCircuit();
-    virtual vector<CryptoPP::byte*> addGate(string gateName);
-    virtual void addEQ(bool b, string outputGate);
-    virtual void addEQW(string inputGate, string outputGate);
-    virtual void addINV(string inputGate, string outputGate);
-    virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
-    virtual void addAND(string inputGateL, string inputGateR, string outputGate);
-    virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
-    virtual string toString();
-    virtual CircuitInterface* createInstance(int kappa, int seed);
-    virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
+    void setKappa(int kappa);
+    void setOutputGates(vector<string> outputGates);
+    void setGateOrder(vector<string> gateOrder);
+    void setGateInfo(map<string, vector<string>> gateInfo);
+    void setConstants(pair<CryptoPP::byte*, CryptoPP::byte*> constEncs);
+    void setAndEncodings(map<string, vector<CryptoPP::byte*>> andEncodings);
+    void setGarbledTables(map<string, vector<CryptoPP::byte*>> garbledTables);
+    void setDecodings(vector<vector<CryptoPP::byte*>> decodings);
 
+    int getKappa();
+    vector<string> getOutputGates();
+    vector<string> getGateOrder();
+    map<string, vector<string>> getGateInfo();
+    pair<CryptoPP::byte*, CryptoPP::byte*> getConstants();
+    map<string, vector<CryptoPP::byte*>> getAndEncodings();
     map<string, vector<CryptoPP::byte*>> getGarbledTables();
+    vector<vector<CryptoPP::byte*>> getDecodings();
 
   protected:
 
   private:
-    CryptoPP::byte* encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO);
-    pair<bool, CryptoPP::byte*> decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc);
-    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR);
-    void evaluateGate(string gateL, string gateR, string gateName);
-
+    int kappa;
+    vector<string> outputGates;
+    vector<string> gateOrder;
+    map<string, vector<string>> gateInfo;
+    pair<CryptoPP::byte*, CryptoPP::byte*> constEncs;
+    map<string, vector<CryptoPP::byte*>> andEncodings;
     map<string, vector<CryptoPP::byte*>> garbledTables;
+    vector<vector<CryptoPP::byte*>> decodings;
 };
 
-#endif // GARBLEDCIRCUIT_H
+#endif // CIRCUITINFO_H
