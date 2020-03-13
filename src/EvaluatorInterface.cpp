@@ -32,7 +32,7 @@ pair<bool, vector<bool>> EvaluatorInterface::decode(vector<CryptoPP::byte*> encs
     } else if(memcmp(enc, encT, kappa) == 0) {
       outputBools.push_back(true);
     } else {
-      Util::printl("Error! Invalid decoding");
+      cout << "Error! Invalid decoding" << endl;
       output.first = false;
       output.second = vector<bool>();
       return output;

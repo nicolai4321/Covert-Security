@@ -16,7 +16,7 @@ class CircuitInterface {
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate) = 0;
     virtual void addAND(string inputGateL, string inputGateR, string outputGate) = 0;
     virtual string toString() = 0;
-    virtual CircuitInterface* createInstance(int kappa, int seed) = 0;
+    virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed) = 0;
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc() = 0;
     virtual GarbledCircuit* exportCircuit() = 0;
 
@@ -35,7 +35,8 @@ class CircuitInterface {
     CryptoPP::AutoSeededRandomPool asrp;
     int nrInputGates;
     int kappa;
-    unsigned int seed;
+    CryptoPP::byte* seed;
+    unsigned int iv = 0;
 
   private:
 };

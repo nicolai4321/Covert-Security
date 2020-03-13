@@ -12,7 +12,7 @@ using namespace std;
 
 class NormalCircuit: public CircuitInterface {
   public:
-    NormalCircuit(int kappa, unsigned int seed);
+    NormalCircuit(int kappa, CryptoPP::byte* seed);
     virtual ~NormalCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
@@ -21,7 +21,7 @@ class NormalCircuit: public CircuitInterface {
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
     virtual string toString();
-    virtual CircuitInterface* createInstance(int kappa, int seed);
+    virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual GarbledCircuit* exportCircuit();
 

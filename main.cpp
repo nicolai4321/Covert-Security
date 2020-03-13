@@ -4,6 +4,7 @@
 #include "CircuitReader.h"
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
+#include "cryptlib.h"
 #include "EvaluatorHalf.h"
 #include "EvaluatorInterface.h"
 #include "EvaluatorNormal.h"
@@ -92,7 +93,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
   Runs the circuit files
 */
 void runCircuitFiles(int kappa) {
-  unsigned int seed = Util::randomInt(0, 10000);
+  CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -140,7 +141,8 @@ void startProtocol(int kappa, int lambda) {
   clientChl.waitForConnection();
 
   //Etc.
-  CircuitInterface *circuit = new HalfCircuit(kappa, 0);
+  CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
+  CircuitInterface *circuit = new HalfCircuit(kappa, seed);
   EvaluatorInterface *evaluator = new EvaluatorHalf();
   int x = 5;
   int y = 2;
@@ -281,8 +283,9 @@ int main() {
   startProtocol(kappa, lambda);
 
   /*
-  CircuitInterface *circuitN = new NormalCircuit(kappa, 2);
-  CircuitInterface *circuitH = new HalfCircuit(kappa, 2);
+  CryptoPP::byte *seed = Util::randomByte(kappa);
+  CircuitInterface *circuitN = new NormalCircuit(kappa, seed);
+  CircuitInterface *circuitH = new HalfCircuit(kappa, seed);
 
   EvaluatorInterface *evalN = new EvaluatorNormal();
   EvaluatorInterface *evalH = new EvaluatorHalf();

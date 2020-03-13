@@ -17,9 +17,9 @@ class PartyA {
     virtual ~PartyA();
 
     void startProtocol();
-    void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
-    pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* circuit, vector<unsigned int> seedsA);
-    bool checkSeedsWitness(vector<unsigned int> block, vector<unsigned int> seedsA, vector<unsigned int> witnesses);
+    void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, vector<CryptoPP::byte*> seedsA, vector<CryptoPP::byte*> witnesses, int length);
+    pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garbling(CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);
+    bool checkSeedsWitness(vector<CryptoPP::byte*> gammaSeedsWitnessBlock, vector<CryptoPP::byte*> seedsA, vector<CryptoPP::byte*> witnesses);
 
   protected:
 

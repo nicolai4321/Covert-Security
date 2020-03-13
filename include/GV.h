@@ -3,6 +3,13 @@
 #include <string>
 using namespace std;
 
+/*
+  Global Variables
+
+  This class contains static constant variables
+  such that they are easy to obtain from other
+  classes
+*/
 class GV {
   public:
     static const int n1 = 3;

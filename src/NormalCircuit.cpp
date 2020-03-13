@@ -1,7 +1,7 @@
 #include "NormalCircuit.h"
 using namespace std;
 
-NormalCircuit::NormalCircuit(int k, unsigned int s) {
+NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s) {
   kappa = k;
   seed = s;
 
@@ -16,8 +16,8 @@ NormalCircuit::NormalCircuit(int k, unsigned int s) {
 
 NormalCircuit::~NormalCircuit() {}
 
-CircuitInterface* NormalCircuit::createInstance(int kappa, int seed) {
-  return new NormalCircuit(kappa, seed);
+CircuitInterface* NormalCircuit::createInstance(int k, CryptoPP::byte* s) {
+  return new NormalCircuit(k, s);
 }
 
 /*
@@ -33,8 +33,8 @@ vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName) {
   for false and true
 */
 vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed); seed++;
-  CryptoPP::byte *encT = Util::randomByte(kappa, seed); seed++;
+  CryptoPP::byte *encF = Util::randomByte(kappa, seed, iv); iv++;
+  CryptoPP::byte *encT = Util::randomByte(kappa, seed, iv); iv++;
 
   vector<CryptoPP::byte*> encodings;
   encodings.push_back(encF);
@@ -179,7 +179,6 @@ GarbledCircuit* NormalCircuit::exportCircuit() {
   F->setGarbledTables(garbledTables);
   return F;
 }
-
 
 map<string, vector<CryptoPP::byte*>> NormalCircuit::getGarbledTables() {
   return garbledTables;

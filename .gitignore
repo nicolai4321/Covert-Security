@@ -33,5 +33,7 @@
 
 /covert.depend
 /covert.layout
-bin/Release/*
+bin/*
 covert.cbp
+CovertSecurity.depend
+CovertSecurity.layout

@@ -1,23 +1,23 @@
 #include "HalfCircuit.h"
 using namespace std;
 
-HalfCircuit::HalfCircuit(int k, unsigned int s) {
+HalfCircuit::HalfCircuit(int k, CryptoPP::byte* s) {
   kappa = k;
   seed = s;
-  r = Util::randomByte(kappa, seed); seed++;
+  r = Util::randomByte(kappa, seed, iv); iv++;
 
   //Ensuring that the last bit in r is 1
   unsigned char b = (unsigned char) 1;
   r[kappa-1] = r[kappa-1] | b;
 
   //Constant 0
-  CryptoPP::byte *encFZ = Util::randomByte(kappa, seed); seed++;
+  CryptoPP::byte *encFZ = Util::randomByte(kappa, seed, iv); iv++;
   CryptoPP::byte *encTZ = Util::byteOp(encFZ, r, "XOR", kappa);
   vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "", encFZ, encTZ);
   gatesEvaluated[CONST_ZERO] = encsZ.at(0);
 
   //Constant 1
-  CryptoPP::byte *encFO = Util::randomByte(kappa, seed); seed++;
+  CryptoPP::byte *encFO = Util::randomByte(kappa, seed, iv); iv++;
   CryptoPP::byte *encTO = Util::byteOp(encFO, r, "XOR", kappa);
   vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "", encFO, encTO);
   gatesEvaluated[CONST_ONE] = encsO.at(1);
@@ -25,8 +25,8 @@ HalfCircuit::HalfCircuit(int k, unsigned int s) {
 
 HalfCircuit::~HalfCircuit() {}
 
-CircuitInterface* HalfCircuit::createInstance(int kappa, int seed) {
-  return new HalfCircuit(kappa, seed);
+CircuitInterface* HalfCircuit::createInstance(int k, CryptoPP::byte* s) {
+  return new HalfCircuit(k, s);
 }
 
 /*
@@ -34,7 +34,7 @@ CircuitInterface* HalfCircuit::createInstance(int kappa, int seed) {
   for false and true
 */
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed); seed++;
+  CryptoPP::byte *encF = Util::randomByte(kappa, seed, iv); iv++;
   CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
   return addGate(gateName, "INPUT", "", "", encF, encT);
 }

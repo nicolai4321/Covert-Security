@@ -7,7 +7,7 @@ Util::Util() {}
   Returns the least significant bit
 */
 int Util::lsb(CryptoPP::byte* b, int length) {
-  string s = toBitString(b[length-1], 1);
+  string s = intToBitString(b[length-1], 1);
   return stoi(s);
 }
 
@@ -115,10 +115,12 @@ CryptoPP::byte* Util::randomByte(int length) {
 /*
   Returns a random byte with a seed
 */
-CryptoPP::byte* Util::randomByte(int length, unsigned int seed) {
+CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, unsigned int iv) {
+  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+  prng.SetKeyWithIV(seed, SEED_LENGTH_BITS, intToByte(iv), IV_LENGTH_BITS);
+
   CryptoPP::byte *b = new CryptoPP::byte[length];
-  CryptoPP::LC_RNG lc(seed);
-  lc.GenerateBlock(b, length);
+  prng.GenerateBlock(b, length);
   return b;
 }
 
@@ -142,16 +144,16 @@ long Util::randomInt(int minInt, int maxInt) {
 /*
   Returns random number between minInt and maxInt with seed
 */
-long Util::randomInt(int minInt, int maxInt, unsigned int seed) {
-  CryptoPP::LC_RNG lc(seed);
+long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv) {
+  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+  prng.SetKeyWithIV(seed, SEED_LENGTH_BITS, intToByte(iv), IV_LENGTH_BITS);
+
   CryptoPP::Integer r;
-
   if(minInt == 0) {
-    r = CryptoPP::Integer(lc, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(prng, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
   } else {
-    r = CryptoPP::Integer(lc, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(prng, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
   }
-
   long l = r.ConvertToLong();
   return l;
 }
@@ -178,7 +180,7 @@ string Util::randomString(int length) {
 /*
   Transform integer to a bit-string
 */
-string Util::toBitString(int i, int length) {
+string Util::intToBitString(int i, int length) {
   string s = bitset<256>(i).to_string();
   s = s.substr(256-length, length);
   return s;
@@ -279,19 +281,7 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 void Util::printByteInBits(CryptoPP::byte* b, int length) {
   cout << "bits: ";
   for(int i=(length-1); i>=0; i--) {
-    cout << toBitString((int) b[i],8) << " ";
+    cout << intToBitString((int) b[i],8) << " ";
   }
   cout << endl;
-}
-
-void Util::printl(string m) {
-  cout << m << endl;
-}
-
-void Util::printl(int i) {
-  cout << i << endl;
-}
-
-void Util::printl(char c) {
-  cout << c << endl;
 }
