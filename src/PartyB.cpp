@@ -21,15 +21,16 @@ void PartyB::startProtocol() {
   //Generating random seeds
   vector<CryptoPP::byte*> seedsB;
   for(int i=0; i<lambda; i++) {
-    seedsB.push_back(Util::randomByte(Util::SEED_LENGTH));
+    seedsB.push_back(Util::randomByte(kappa));
   }
 
   //Commitments of the seeds for party B
-  vector<CryptoPP::byte*> commitmentsB;
+  vector<osuCrypto::block> commitmentsB;
   for(int i=0; i<lambda; i++) {
-    int r = Util::randomInt(0, numeric_limits<int>::max(), seedsB.at(i), i);
+    int r = Util::randomInt(0, numeric_limits<int>::max(), seedsB.at(i), iv); iv++;
     CryptoPP::byte *c = Util::commit(seedsB.at(i), r);
-    commitmentsB.push_back(c);
+    osuCrypto::block b = Util::byteToBlock(c, 24);
+    commitmentsB.push_back(b);
   }
 
   clientChl.asyncSend(move(commitmentsB));
@@ -37,21 +38,21 @@ void PartyB::startProtocol() {
 
   //First OT
   osuCrypto::KosOtExtReceiver recver;
-  vector<CryptoPP::byte*> seedsWitnessA = otSeedsWitnessA(&recver, clientChl);
+  vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, clientChl);
   cout << "B: has done first OT" << endl;
 
   //Second OT
-  vector<CryptoPP::byte*> encsInputsGammaB = otEncodingsB(&recver, clientChl);
+  vector<osuCrypto::block> encsInputsGammaB = otEncodingsB(&recver, clientChl);
   cout << "B: has done second OT" << endl;
 
   //TODO: check party A
-  vector<CryptoPP::byte*> commitmentsEncsInputsA;
+  vector<osuCrypto::block> commitmentsEncsInputsA;
   serverChl.recv(commitmentsEncsInputsA);
   cout << "B: has received commitments from other party" << endl;
 
   //Sends gamma, witness and seeds to other party
-  vector<CryptoPP::byte*> gammaSeedsWitnessBlock;
-  gammaSeedsWitnessBlock.push_back(Util::intToByte(gamma));
+  vector<osuCrypto::block> gammaSeedsWitnessBlock;
+  gammaSeedsWitnessBlock.push_back(Util::byteToBlock(Util::intToByte(gamma), 4));
   for(int j=0; j<lambda; j++) {
     gammaSeedsWitnessBlock.push_back(seedsWitnessA.at(j));
   }
@@ -60,7 +61,7 @@ void PartyB::startProtocol() {
 
   //Receive garbled circuit and input encodings from the other party
   GarbledCircuit *F;
-  vector<CryptoPP::byte*> encsInputsA;
+  vector<osuCrypto::block> encsInputsA;
 
   serverChl.recv(F);
   cout << "B: has received F" << endl;
@@ -69,10 +70,10 @@ void PartyB::startProtocol() {
 
   vector<CryptoPP::byte*> encsInputs;
   for(int j=0; j<GV::n1; j++) {
-    encsInputs.push_back(encsInputsA.at(j));
+    encsInputs.push_back(Util::blockToByte(encsInputsA.at(j), kappa));
   }
   for(int j=0; j<GV::n2; j++) {
-    encsInputs.push_back(encsInputsGammaB.at(j+(GV::n2*gamma)));
+    encsInputs.push_back(Util::blockToByte(encsInputsGammaB.at(j+(GV::n2*gamma)), kappa));
   }
 
   evaluator->giveCircuit(F);
@@ -101,7 +102,7 @@ void PartyB::startProtocol() {
 /*
   First OT-interaction. Receives seeds and witnesses for A
 */
-vector<CryptoPP::byte*> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
+vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
   //Choice bit
   osuCrypto::BitVector b(lambda);
   for(int j=0; j<lambda; j++) {
@@ -113,20 +114,13 @@ vector<CryptoPP::byte*> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver *rec
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
   recver->receiveChosen(b, seedsWitnessA, prng, clientChl);
 
-  /*
-  vector<CryptoPP::byte*> seedsWitnessBytes;
-  for(int j=0; j<lambda; j++) {
-    seedsWitnessBytes.push_back(Util::longToByte(seedsWitnessA.at(j)[0]));
-  }
-
-  return seedsWitnessBytes;*/
-  return mergeBlocks(seedsWitnessA, kappa);
+  return seedsWitnessA;
 }
 
 /*
   Second OT-interaction. Receives encodings for own input
 */
-vector<CryptoPP::byte*> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
+vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
   //Choice bit
   osuCrypto::BitVector b(lambda*GV::n2);
   string yString = Util::intToBitString(y, GV::n2);
@@ -146,25 +140,5 @@ vector<CryptoPP::byte*> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver
   vector<osuCrypto::block> encB(lambda*GV::n2);
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
   recver->receiveChosen(b, encB, prng, clientChl);
-  return mergeBlocks(encB, kappa);
-}
-
-/*
-  Merges multiple bytes into one byte
-*/
-vector<CryptoPP::byte*> PartyB::mergeBlocks(vector<osuCrypto::block> blocks, int length) {
-  int blockIndexesRequired = ceil(((float) length)/((float) sizeof(long)));
-  vector<CryptoPP::byte*> mergedBytes;
-  for(osuCrypto::block b : blocks) {
-    CryptoPP::byte *mergedByte = new CryptoPP::byte[length];
-
-    for(int i=0; i<blockIndexesRequired; i++) {
-      CryptoPP::byte *bytePart = Util::longToByte(b[i]);
-      for(int j=0; j<sizeof(long); j++) {
-        mergedByte[(i*sizeof(long))+j] = bytePart[j];
-      }
-    }
-    mergedBytes.push_back(mergedByte);
-  }
-  return mergedBytes;
+  return encB;
 }

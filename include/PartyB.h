@@ -18,9 +18,8 @@ class PartyB
     virtual ~PartyB();
 
     void startProtocol();
-    vector<CryptoPP::byte*> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel clientChl);
-    vector<CryptoPP::byte*> otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl);
-    vector<CryptoPP::byte*> mergeBlocks(vector<osuCrypto::block> bytes, int length);
+    vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel clientChl);
+    vector<osuCrypto::block> otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl);
 
   protected:
 
@@ -29,6 +28,7 @@ class PartyB
     int kappa;
     int lambda;
     int gamma;
+    int iv = 0;
     osuCrypto::Channel serverChl;
     osuCrypto::Channel clientChl;
     EvaluatorInterface* evaluator;

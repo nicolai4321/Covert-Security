@@ -130,7 +130,7 @@ void runCircuitFiles(int kappa) {
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
 }
 
-void startProtocol(int kappa, int lambda) {
+void startProtocol(int kappa, int lambda, int x, int y) {
   //Network
   int port = 1212;
   string ip = "localhost";
@@ -144,8 +144,6 @@ void startProtocol(int kappa, int lambda) {
   CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
   CircuitInterface *circuit = new HalfCircuit(kappa, seed);
   EvaluatorInterface *evaluator = new EvaluatorHalf();
-  int x = 5;
-  int y = 2;
 
   auto threadA = thread([&]() {
     PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, circuit);
@@ -277,10 +275,12 @@ int main() {
   cout << "covert start" << endl;
   int kappa = 16;
   int lambda = 8;
+  int x = 5;
+  int y = 5;
 
   //otExample();
   //runCircuitFiles(kappa);
-  startProtocol(kappa, lambda);
+  startProtocol(kappa, lambda, x, y);
 
   /*
   CryptoPP::byte *seed = Util::randomByte(kappa);

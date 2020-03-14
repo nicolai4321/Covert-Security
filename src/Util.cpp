@@ -53,7 +53,7 @@ CryptoPP::byte* Util::h(string m) {
 }
 
 /*
-  Commit
+  Commit (24 bytes)
 */
 CryptoPP::byte* Util::commit(CryptoPP::byte* b, int r) {
   osuCrypto::Commit *c = new osuCrypto::Commit(b, r % 55104); //TODO: longer commit, length?
@@ -175,6 +175,37 @@ string Util::randomString(int length) {
   }
 
   return s;
+}
+
+/*
+  Transform byte to block
+*/
+osuCrypto::block Util::byteToBlock(CryptoPP::byte* b, int length) {
+  int blockLength = 8;
+  osuCrypto::block output;
+  int blockIndexesRequired = ceil(((float) length)/((float) blockLength));
+  for(int i=0; i<blockIndexesRequired; i++) {
+    output [i] = Util::byteToLong(b+(i*blockLength));
+  }
+  return output;
+}
+
+/*
+  Transform block to byte
+*/
+CryptoPP::byte* Util::blockToByte(osuCrypto::block b, int length) {
+  int blockLength = 8;
+  int blockIndexesRequired = ceil(((float) length)/((float) blockLength));
+
+  CryptoPP::byte *output = new CryptoPP::byte[length];
+
+  for(int i=0; i<blockIndexesRequired; i++) {
+    CryptoPP::byte *bytePart = Util::longToByte(b[i]);
+    for(int j=0; j<blockLength; j++) {
+      output[j+(i*blockLength)] = bytePart[j];
+    }
+  }
+  return output;
 }
 
 /*

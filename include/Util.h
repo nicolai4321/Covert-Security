@@ -34,6 +34,8 @@ class Util {
     static long randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv);
     static string randomString(int length);
 
+    static osuCrypto::block byteToBlock(CryptoPP::byte* b, int length);
+    static CryptoPP::byte* blockToByte(osuCrypto::block b, int length);
     static string intToBitString(int i, int length);
     static string byteToString(CryptoPP::byte* b, int byteSize);
     static int byteToInt(CryptoPP::byte* b);

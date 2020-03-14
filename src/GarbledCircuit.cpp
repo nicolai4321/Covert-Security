@@ -67,3 +67,12 @@ map<string, vector<CryptoPP::byte*>> GarbledCircuit::getGarbledTables() {
 vector<vector<CryptoPP::byte*>> GarbledCircuit::getDecodings() {
   return decodings;
 }
+
+pair<int, CryptoPP::byte*> GarbledCircuit::toByte() {
+  CryptoPP::byte* b = new CryptoPP::byte[8];
+
+  pair<int, CryptoPP::byte*> output;
+  output.first = 8;
+  output.second = b;
+  return output;
+}
