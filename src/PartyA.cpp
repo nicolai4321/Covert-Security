@@ -44,27 +44,35 @@ void PartyA::startProtocol() {
   sender.sendChosen(otData, prng, serverChl);
   cout << "A: has done second OT" << endl;
 
+  //*************************************
+  //TODO: send commitments and auth.
+  //*************************************
   //Commitments
+  vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA;
   vector<osuCrypto::block> commitmentsEncsInputsA;
   for(int j=0; j<lambda; j++) {
     for(int i=0; i<GV::n1; i++) {
-      int r0 = Util::randomInt(0, numeric_limits<int>::max(), seedsA.at(j), iv); iv++;
-      int r1 = Util::randomInt(0, numeric_limits<int>::max(), seedsA.at(j), iv); iv++;
-      CryptoPP::byte *c0 = Util::commit(encs[j].at(i).at(0), r0);
-      CryptoPP::byte *c1 = Util::commit(encs[j].at(i).at(1), r1);
+      osuCrypto::block r0 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
+      osuCrypto::block r1 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
+      CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs[j].at(i).at(0), kappa), r0);
+      CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs[j].at(i).at(1), kappa), r1);
+      pair<osuCrypto::block, osuCrypto::block> p;
+      p.first = r0;
+      p.second = r1;
+      decommitmentsEncsA.push_back(p);
 
       //Random order so that party B cannot extract my input when I give him decommitments
       if(Util::randomInt(0, 1) == 0) {
-        commitmentsEncsInputsA.push_back(Util::byteToBlock(c0, 24));
-        commitmentsEncsInputsA.push_back(Util::byteToBlock(c1, 24));
+        commitmentsEncsInputsA.push_back(Util::byteToBlock(c0, Util::COMMIT_LENGTH));
+        commitmentsEncsInputsA.push_back(Util::byteToBlock(c1, Util::COMMIT_LENGTH));
       } else {
-        commitmentsEncsInputsA.push_back(Util::byteToBlock(c1, 24));
-        commitmentsEncsInputsA.push_back(Util::byteToBlock(c0, 24));
+        commitmentsEncsInputsA.push_back(Util::byteToBlock(c1, Util::COMMIT_LENGTH));
+        commitmentsEncsInputsA.push_back(Util::byteToBlock(c0, Util::COMMIT_LENGTH));
       }
     }
   }
 
-  vector<CryptoPP::block> commitmentsA;
+  vector<osuCrypto::block> commitmentsA;
   for(int j=0; j<lambda; j++) {
     int r = Util::randomInt(0, numeric_limits<int>::max(), seedsA.at(j), iv); iv++;
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
@@ -74,6 +82,9 @@ void PartyA::startProtocol() {
 
   clientChl.asyncSend(move(commitmentsEncsInputsA));
   cout << "A: has send commitments" << endl;
+  //*************************************0
+  //TODO: end
+  //*************************************
 
   //Receive gamma, seeds and witness
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
@@ -85,7 +96,6 @@ void PartyA::startProtocol() {
   if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {throw "Error!";}
 
   //Send garbled circuit, encoding inputs, commitments and decommitments to other party
-  //TODO: commitments and decommitments
   CircuitInterface *circuit = circuits.at(gamma);
   GarbledCircuit *F = circuit->exportCircuit();
 
@@ -97,10 +107,27 @@ void PartyA::startProtocol() {
     encsInputsA.push_back(Util::byteToBlock(circuitEncs.at(j).at(b), kappa));
   }
 
-  clientChl.asyncSend(move(F));
+  clientChl.asyncSendCopy(F);
   cout << "A: has send F" << endl;
   clientChl.asyncSend(move(encsInputsA));
   cout << "A: has send my encoded inputs" << endl;
+
+  //*************************************
+  //TODO: commitments and decommitments
+  //*************************************
+  vector<osuCrypto::block> decommitmentsEncsInputsA;
+  for(int j=0; j<GV::n1; j++) {
+    pair<osuCrypto::block, osuCrypto::block> p = decommitmentsEncsA.at(j+(GV::n1*gamma));
+    int b = (int) xBitString[j] - 48;
+    osuCrypto::block decommit = (b) ? p.second : p.first;
+    decommitmentsEncsInputsA.push_back(decommit);
+  }
+
+  clientChl.asyncSend(move(decommitmentsEncsInputsA));
+  cout << "A: has send decommits for my input encodings" << endl;
+  //*************************************
+  //TODO: end
+  //*************************************
 }
 
 /*

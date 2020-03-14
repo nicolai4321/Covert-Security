@@ -53,10 +53,10 @@ CryptoPP::byte* Util::h(string m) {
 }
 
 /*
-  Commit (24 bytes)
+  Commit (16 bytes)
 */
-CryptoPP::byte* Util::commit(CryptoPP::byte* b, int r) {
-  osuCrypto::Commit *c = new osuCrypto::Commit(b, r % 55104); //TODO: longer commit, length?
+CryptoPP::byte* Util::commit(osuCrypto::block b, osuCrypto::block r) {
+  osuCrypto::Commit *c = new osuCrypto::Commit(b, r);
   CryptoPP::byte *ptr = c->data();
   return ptr;
 }

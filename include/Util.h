@@ -26,7 +26,7 @@ class Util {
     static string decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv);
     static CryptoPP::byte* h(string m);
     static CryptoPP::byte* h(CryptoPP::byte* b, int length);
-    static CryptoPP::byte* commit(CryptoPP::byte* b, int r);
+    static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);
 
     static CryptoPP::byte* randomByte(int length);
     static CryptoPP::byte* randomByte(int length, CryptoPP::byte* seed, unsigned int iv);
@@ -52,6 +52,7 @@ class Util {
 
     //Variables
     static const int SEED_LENGTH = 32/8;
+    static const int COMMIT_LENGTH = 16;
 
   protected:
 

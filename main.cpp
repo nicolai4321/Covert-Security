@@ -276,7 +276,7 @@ int main() {
   int kappa = 16;
   int lambda = 8;
   int x = 5;
-  int y = 5;
+  int y = 2;
 
   //otExample();
   //runCircuitFiles(kappa);

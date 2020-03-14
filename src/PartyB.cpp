@@ -27,9 +27,9 @@ void PartyB::startProtocol() {
   //Commitments of the seeds for party B
   vector<osuCrypto::block> commitmentsB;
   for(int i=0; i<lambda; i++) {
-    int r = Util::randomInt(0, numeric_limits<int>::max(), seedsB.at(i), iv); iv++;
-    CryptoPP::byte *c = Util::commit(seedsB.at(i), r);
-    osuCrypto::block b = Util::byteToBlock(c, 24);
+    osuCrypto::block r = Util::byteToBlock(Util::randomByte(kappa, seedsB.at(i), iv), kappa); iv++;
+    CryptoPP::byte *c = Util::commit(Util::byteToBlock(seedsB.at(i), kappa), r);
+    osuCrypto::block b = Util::byteToBlock(c, Util::COMMIT_LENGTH);
     commitmentsB.push_back(b);
   }
 
@@ -45,10 +45,15 @@ void PartyB::startProtocol() {
   vector<osuCrypto::block> encsInputsGammaB = otEncodingsB(&recver, clientChl);
   cout << "B: has done second OT" << endl;
 
-  //TODO: check party A
+  //*************************************
+  //TODO: check ot-communication and auth.
+  //*************************************
   vector<osuCrypto::block> commitmentsEncsInputsA;
   serverChl.recv(commitmentsEncsInputsA);
   cout << "B: has received commitments from other party" << endl;
+  //*************************************
+  //TODO: end
+  //*************************************
 
   //Sends gamma, witness and seeds to other party
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
@@ -67,6 +72,27 @@ void PartyB::startProtocol() {
   cout << "B: has received F" << endl;
   serverChl.recv(encsInputsA);
   cout << "B: has received encodings from other party" << endl;
+
+  //*************************************
+  //TODO: check commits of circuit gamma
+  //*************************************
+  vector<osuCrypto::block> decommitmentsEncsInputsA;
+  serverChl.recv(decommitmentsEncsInputsA);
+
+  for(int j=0; j<GV::n1; j++) {
+    osuCrypto::block decommit = decommitmentsEncsInputsA.at(j);
+    CryptoPP::byte* c = Util::commit(encsInputsA.at(j), decommit);
+    CryptoPP::byte* c0 = Util::blockToByte(commitmentsEncsInputsA.at(2*j+(2*GV::n1*gamma)), Util::COMMIT_LENGTH);
+    CryptoPP::byte* c1 = Util::blockToByte(commitmentsEncsInputsA.at(2*j+1+(2*GV::n1*gamma)), Util::COMMIT_LENGTH);
+
+    if(memcmp(c, c0, Util::COMMIT_LENGTH) != 0 && memcmp(c, c1, Util::COMMIT_LENGTH) != 0) {
+      cout << "Error! None equal!" << endl;
+      throw;
+    }
+  }
+  //*************************************
+  //TODO: end
+  //*************************************
 
   vector<CryptoPP::byte*> encsInputs;
   for(int j=0; j<GV::n1; j++) {
