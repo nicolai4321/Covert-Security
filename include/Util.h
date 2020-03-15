@@ -27,6 +27,7 @@ class Util {
     static CryptoPP::byte* h(string m);
     static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);
+    static CryptoPP::byte* commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length);
 
     static CryptoPP::byte* randomByte(int length);
     static CryptoPP::byte* randomByte(int length, CryptoPP::byte* seed, unsigned int iv);
@@ -46,6 +47,7 @@ class Util {
 
     static CryptoPP::byte* byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length);
     static CryptoPP::byte* mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length);
+    static CryptoPP::byte* mergeBytes(vector<CryptoPP::byte*> bytes, int length);
     static int lsb(CryptoPP::byte* b, int length);
     static void printByte(CryptoPP::byte* b, int length);
     static void printByteInBits(CryptoPP::byte* b, int length);

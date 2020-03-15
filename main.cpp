@@ -273,7 +273,7 @@ void tmp(CircuitInterface* c, EvaluatorInterface *e) {
 
 int main() {
   cout << "covert start" << endl;
-  int kappa = 16;
+  int kappa = 16; //they use 16 bytes, 16*8=128 bits
   int lambda = 8;
   int x = 5;
   int y = 2;

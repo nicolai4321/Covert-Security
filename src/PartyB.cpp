@@ -78,7 +78,22 @@ void PartyB::startProtocol() {
   //*************************************
   vector<osuCrypto::block> decommitmentsEncsInputsA;
   serverChl.recv(decommitmentsEncsInputsA);
+  cout << "B: has received decommits for input encodings" << endl;
 
+  vector<osuCrypto::block> decommitmentsA;
+  serverChl.recv(decommitmentsA);
+  cout << "B: has received decommits" << endl;
+
+  //Checking output encodings
+  vector<CryptoPP::byte*> commitQueue;
+  osuCrypto::block decommit = decommitmentsA.at(gamma);
+  for(vector<CryptoPP::byte*> v : F->getDecodings()) {
+    commitQueue.push_back(v.at(0));
+    commitQueue.push_back(v.at(1));
+  }
+  CryptoPP::byte *commit = Util::commit(commitQueue, decommit, kappa);
+
+  //Checking input encodings
   for(int j=0; j<GV::n1; j++) {
     osuCrypto::block decommit = decommitmentsEncsInputsA.at(j);
     CryptoPP::byte* c = Util::commit(encsInputsA.at(j), decommit);

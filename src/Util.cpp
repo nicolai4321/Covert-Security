@@ -62,6 +62,24 @@ CryptoPP::byte* Util::commit(osuCrypto::block b, osuCrypto::block r) {
 }
 
 /*
+  Commit (16 bytes)
+*/
+CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length) {
+  int nrBytes = bytes.size();
+  osuCrypto::u8 arr[nrBytes*length];
+
+  for(int i=0; i<nrBytes; i++) {
+    for(int j=0; j<length; j++) {
+      arr[j+(i*nrBytes)] = bytes.at(i)[j];
+    }
+  }
+  osuCrypto::span<osuCrypto::u8> s = {arr, nrBytes*length};
+  osuCrypto::Commit *c = new osuCrypto::Commit(s, r);
+  CryptoPP::byte *ptr = c->data();
+  return ptr;
+}
+
+/*
   Constructs the initialization vector
 */
 CryptoPP::byte* Util::generateIV() {
@@ -184,8 +202,12 @@ osuCrypto::block Util::byteToBlock(CryptoPP::byte* b, int length) {
   int blockLength = 8;
   osuCrypto::block output;
   int blockIndexesRequired = ceil(((float) length)/((float) blockLength));
+  if(blockIndexesRequired>2) {
+    cout << "Error! Block cannot be of length " << blockIndexesRequired << endl;
+    throw;
+  }
   for(int i=0; i<blockIndexesRequired; i++) {
-    output [i] = Util::byteToLong(b+(i*blockLength));
+    output[i] = byteToLong(b+(i*blockLength));
   }
   return output;
 }
@@ -236,7 +258,7 @@ int Util::byteToInt(CryptoPP::byte* b) {
 }
 
 /*
-  Transform integer to byte (64 bits)
+  Transform long to byte (64 bits)
 */
 CryptoPP::byte* Util::longToByte(long i) {
   CryptoPP::byte *b = new CryptoPP::byte[sizeof(long)];
@@ -245,7 +267,7 @@ CryptoPP::byte* Util::longToByte(long i) {
 }
 
 /*
-  Transform byte to integer (64 bits)
+  Transform byte to long (64 bits)
 */
 long Util::byteToLong(CryptoPP::byte* b) {
   long i;
@@ -260,6 +282,19 @@ CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int len
   CryptoPP::byte* b = new CryptoPP::byte[2*length];
   memcpy(b, b0, length);
   memcpy(b+length, b1, length);
+  return b;
+}
+
+/*
+  Merges multiple bytes to one
+*/
+CryptoPP::byte* Util::mergeBytes(vector<CryptoPP::byte*> bytes, int length) {
+  int vectorLength = bytes.size();
+
+  CryptoPP::byte* b = new CryptoPP::byte[vectorLength*length];
+  for(int i=0; i<vectorLength; i++) {
+    memcpy((b+(i*length)), bytes.at(i), length);
+  }
   return b;
 }
 
@@ -311,7 +346,7 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 
 void Util::printByteInBits(CryptoPP::byte* b, int length) {
   cout << "bits: ";
-  for(int i=(length-1); i>=0; i--) {
+  for(int i=0; i<length; i++) {
     cout << intToBitString((int) b[i],8) << " ";
   }
   cout << endl;

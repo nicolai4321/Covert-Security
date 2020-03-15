@@ -48,17 +48,21 @@ void PartyA::startProtocol() {
   //TODO: send commitments and auth.
   //*************************************
   //Commitments
+
+  //Input encodings
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA;
+  vector<osuCrypto::block> decommitmentsA;
+
   vector<osuCrypto::block> commitmentsEncsInputsA;
   for(int j=0; j<lambda; j++) {
     for(int i=0; i<GV::n1; i++) {
-      osuCrypto::block r0 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
-      osuCrypto::block r1 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
-      CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs[j].at(i).at(0), kappa), r0);
-      CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs[j].at(i).at(1), kappa), r1);
+      osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
+      osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
+      CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs[j].at(i).at(0), kappa), decommit0);
+      CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs[j].at(i).at(1), kappa), decommit1);
       pair<osuCrypto::block, osuCrypto::block> p;
-      p.first = r0;
-      p.second = r1;
+      p.first = decommit0;
+      p.second = decommit1;
       decommitmentsEncsA.push_back(p);
 
       //Random order so that party B cannot extract my input when I give him decommitments
@@ -72,12 +76,21 @@ void PartyA::startProtocol() {
     }
   }
 
+  //Main commitment
   vector<osuCrypto::block> commitmentsA;
   for(int j=0; j<lambda; j++) {
-    int r = Util::randomInt(0, numeric_limits<int>::max(), seedsA.at(j), iv); iv++;
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
-    //pair<int, >CryptoPP::byte *b = F->toByte();
-    //CryptoPP::byte *c = Util::commit(b , r);
+
+    vector<CryptoPP::byte*> commitQueue;
+    vector<vector<CryptoPP::byte*>> Z = F->getDecodings();
+    for(vector<CryptoPP::byte*> v : Z) {
+      commitQueue.push_back(v.at(0));
+      commitQueue.push_back(v.at(1));
+    }
+    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
+    decommitmentsA.push_back(decommit);
+    CryptoPP::byte *c = Util::commit(commitQueue, decommit, kappa);
+    commitmentsA.push_back(Util::byteToBlock(c, Util::COMMIT_LENGTH));
   }
 
   clientChl.asyncSend(move(commitmentsEncsInputsA));
@@ -125,6 +138,9 @@ void PartyA::startProtocol() {
 
   clientChl.asyncSend(move(decommitmentsEncsInputsA));
   cout << "A: has send decommits for my input encodings" << endl;
+
+  clientChl.asyncSend(move(decommitmentsA));
+  cout << "A: has send decommits for commits" << endl;
   //*************************************
   //TODO: end
   //*************************************
