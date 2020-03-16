@@ -23,8 +23,10 @@ class HalfCircuit: public CircuitInterface {
     virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual GarbledCircuit* exportCircuit();
+    virtual string getType();
 
     map<string, vector<CryptoPP::byte*>> getAndEncodings();
+    inline static const string TYPE = "HALF";
 
   protected:
 

@@ -28,8 +28,6 @@ class GarbledCircuit {
     map<string, vector<CryptoPP::byte*>> getGarbledTables();
     vector<vector<CryptoPP::byte*>> getDecodings();
 
-    pair<int, CryptoPP::byte*> toByte();
-
   protected:
 
   private:

@@ -165,4 +165,6 @@ string HalfCircuit::toString() {
   return "Half circuit";
 }
 
-
+string HalfCircuit::getType() {
+  return HalfCircuit::TYPE;
+}

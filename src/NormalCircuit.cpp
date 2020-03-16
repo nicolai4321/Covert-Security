@@ -187,3 +187,7 @@ map<string, vector<CryptoPP::byte*>> NormalCircuit::getGarbledTables() {
 string NormalCircuit::toString() {
   return "Normal circuit";
 }
+
+string NormalCircuit::getType() {
+  return NormalCircuit::TYPE;
+}

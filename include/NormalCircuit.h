@@ -24,8 +24,10 @@ class NormalCircuit: public CircuitInterface {
     virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual GarbledCircuit* exportCircuit();
+    virtual string getType();
 
     map<string, vector<CryptoPP::byte*>> getGarbledTables();
+    inline static const string TYPE = "NORMAL";
 
   protected:
 

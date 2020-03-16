@@ -19,6 +19,7 @@ class CircuitInterface {
     virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed) = 0;
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc() = 0;
     virtual GarbledCircuit* exportCircuit() = 0;
+    virtual string getType() = 0;
 
     vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
     vector<vector<CryptoPP::byte*>> getDecodings();
