@@ -1,12 +1,11 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, int k, int l, osuCrypto::Channel sChl, osuCrypto::Channel cChl, CircuitInterface* cI) {
+PartyA::PartyA(int input, int k, int l, osuCrypto::Channel c, CircuitInterface* cI) {
   x = input;
   kappa = k;
   lambda = l;
-  serverChl = sChl;
-  clientChl = cChl;
+  chl = c;
   circuit = cI;
 }
 
@@ -15,7 +14,7 @@ PartyA::~PartyA() {}
 /*
   Starts the protocol
 */
-void PartyA::startProtocol() {
+bool PartyA::startProtocol() {
   //Generating random seeds and witnesses
   vector<CryptoPP::byte*> seedsA;
   vector<CryptoPP::byte*> witnesses;
@@ -26,12 +25,12 @@ void PartyA::startProtocol() {
 
   //Get the commitments of the seeds from party B
   vector<osuCrypto::block> commitmentsB;
-  serverChl.recv(commitmentsB);
+  chl.recv(commitmentsB);
   cout << "A: has received commitments from other party" << endl;
 
   //First OT
   osuCrypto::KosOtExtSender sender;
-  otSeedsWitnesses(&sender, serverChl, seedsA, witnesses, kappa);
+  otSeedsWitnesses(&sender, chl, seedsA, witnesses, kappa);
   cout << "A: has done first OT" << endl;
 
   //Garbling
@@ -41,7 +40,7 @@ void PartyA::startProtocol() {
 
   //Second OT
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
-  sender.sendChosen(otData, prng, serverChl);
+  sender.sendChosen(otData, prng, chl);
   cout << "A: has done second OT" << endl;
 
   //*************************************
@@ -82,31 +81,35 @@ void PartyA::startProtocol() {
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
 
     vector<CryptoPP::byte*> commitQueue;
-    vector<vector<CryptoPP::byte*>> Z = F->getDecodings();
-    for(vector<CryptoPP::byte*> v : Z) {
+    pair<CryptoPP::byte*, CryptoPP::byte*> p = F->getConstants();
+    commitQueue.push_back(p.first);
+    commitQueue.push_back(p.second);
+    for(vector<CryptoPP::byte*> v : F->getDecodings()) {
       commitQueue.push_back(v.at(0));
       commitQueue.push_back(v.at(1));
     }
     osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv), kappa); iv++;
     decommitmentsA.push_back(decommit);
     CryptoPP::byte *c = Util::commit(commitQueue, decommit, kappa);
+
     commitmentsA.push_back(Util::byteToBlock(c, Util::COMMIT_LENGTH));
   }
-
-  clientChl.asyncSend(move(commitmentsEncsInputsA));
-  cout << "A: has send commitments" << endl;
+  cout << "A: sending commitments" << endl;
+  chl.asyncSend(move(commitmentsEncsInputsA));
+  cout << "A: sending commitments" << endl;
+  chl.asyncSend(move(commitmentsA));
   //*************************************0
   //TODO: end
   //*************************************
 
   //Receive gamma, seeds and witness
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
-  serverChl.recv(gammaSeedsWitnessBlock);
+  chl.recv(gammaSeedsWitnessBlock);
   cout << "A: has received gamma, seeds and witness" << endl;
   int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
 
   //Checks the seeds and witness
-  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {throw "Error!";}
+  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {return false;}
 
   //Send garbled circuit, encoding inputs, commitments and decommitments to other party
   CircuitInterface *circuit = circuits.at(gamma);
@@ -120,10 +123,10 @@ void PartyA::startProtocol() {
     encsInputsA.push_back(Util::byteToBlock(circuitEncs.at(j).at(b), kappa));
   }
 
-  clientChl.asyncSendCopy(F);
-  cout << "A: has send F" << endl;
-  clientChl.asyncSend(move(encsInputsA));
-  cout << "A: has send my encoded inputs" << endl;
+  cout << "A: sending F" << endl;
+  chl.asyncSendCopy(F);
+  cout << "A: sending my encoded input" << endl;
+  chl.asyncSend(move(encsInputsA));
 
   //*************************************
   //TODO: commitments and decommitments
@@ -136,14 +139,15 @@ void PartyA::startProtocol() {
     decommitmentsEncsInputsA.push_back(decommit);
   }
 
-  clientChl.asyncSend(move(decommitmentsEncsInputsA));
-  cout << "A: has send decommits for my input encodings" << endl;
+  cout << "A: sending decommits for my input encodings" << endl;
+  chl.asyncSend(move(decommitmentsEncsInputsA));
 
-  clientChl.asyncSend(move(decommitmentsA));
-  cout << "A: has send decommits for commits" << endl;
+  cout << "A: sending decommits for commits" << endl;
+  chl.asyncSend(move(decommitmentsA));
   //*************************************
   //TODO: end
   //*************************************
+  return true;
 }
 
 /*
@@ -207,11 +211,11 @@ bool PartyA::checkSeedsWitness(vector<osuCrypto::block> gammaSeedsWitnessBlock, 
     CryptoPP::byte *b = Util::blockToByte(gammaSeedsWitnessBlock.at(j+1), kappa);
     if(lambda == j) {
       if(memcmp(witnesses.at(j), b, kappa) != 0) {
-        cout << "Error! Witness is not correct" << endl;
+        cout << "A: Error! Witness is not correct" << endl;
         return false;
       }
     } else if(memcmp(seedsA.at(j), b, kappa) != 0 && j!=gamma) {
-      cout << "Error! Seed is not correct" << endl;
+      cout << "A: Error! Seed is not correct" << endl;
       return false;
     }
   }

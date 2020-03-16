@@ -70,12 +70,13 @@ CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, 
 
   for(int i=0; i<nrBytes; i++) {
     for(int j=0; j<length; j++) {
-      arr[j+(i*nrBytes)] = bytes.at(i)[j];
+      arr[j+(i*length)] = bytes.at(i)[j];
     }
   }
   osuCrypto::span<osuCrypto::u8> s = {arr, nrBytes*length};
   osuCrypto::Commit *c = new osuCrypto::Commit(s, r);
   CryptoPP::byte *ptr = c->data();
+
   return ptr;
 }
 

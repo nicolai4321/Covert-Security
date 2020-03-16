@@ -2,10 +2,12 @@
 #define PARTYB_H
 #include <iostream>
 #include "CircuitInterface.h"
+#include "CircuitReader.h"
 #include "cryptlib.h"
 #include "cryptoTools/Common/BitVector.h"
 #include "cryptoTools/Network/IOService.h"
 #include "EvaluatorInterface.h"
+#include "GarbledCircuit.h"
 #include "GV.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "Util.h"
@@ -14,10 +16,10 @@ using namespace std;
 class PartyB
 {
   public:
-    PartyB(int y, int kappa, int lambda, osuCrypto::Channel serverChl, osuCrypto::Channel clientChl, EvaluatorInterface* evaluator);
+    PartyB(int y, int kappa, int lambda, osuCrypto::Channel channel, CircuitInterface* circuit, EvaluatorInterface* evaluator);
     virtual ~PartyB();
 
-    void startProtocol();
+    bool startProtocol();
     vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel clientChl);
     vector<osuCrypto::block> otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl);
 
@@ -29,9 +31,11 @@ class PartyB
     int lambda;
     int gamma;
     int iv = 0;
-    osuCrypto::Channel serverChl;
-    osuCrypto::Channel clientChl;
+    osuCrypto::Channel chl;
     EvaluatorInterface* evaluator;
+    vector<string> gateOrderB;
+    vector<string> outputGatesB;
+    map<string, vector<string>> gateInfoB;
 };
 
 #endif // PARTYB_H

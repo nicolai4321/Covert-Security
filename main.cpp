@@ -142,16 +142,28 @@ void startProtocol(int kappa, int lambda, int x, int y) {
 
   //Etc.
   CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
-  CircuitInterface *circuit = new HalfCircuit(kappa, seed);
-  EvaluatorInterface *evaluator = new EvaluatorHalf();
+  CircuitInterface *circuit;
+  EvaluatorInterface *evaluator;
 
+  if(Util::randomInt(0, 1)) {
+    cout << "Half" << endl;
+    circuit = new HalfCircuit(kappa, seed);
+    evaluator = new EvaluatorHalf();
+  } else {
+    cout << "Normal" << endl;
+    circuit = new NormalCircuit(kappa, seed);
+    evaluator = new EvaluatorNormal();
+  }
+
+  bool b0;
+  bool b1;
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, kappa, lambda, serverChl, clientChl, circuit);
-    partyA.startProtocol();
+    PartyA partyA = PartyA(x, kappa, lambda, serverChl, circuit);
+    b0 = partyA.startProtocol();
   });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, kappa, lambda, serverChl, clientChl, evaluator);
-    partyB.startProtocol();
+    PartyB partyB = PartyB(y, kappa, lambda, clientChl, circuit, evaluator);
+    b1 = partyB.startProtocol();
   });
 
   threadA.join();
@@ -159,6 +171,12 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   serverChl.close();
   clientChl.close();
   ios.stop();
+
+  if(b0 && b1) {
+    cout << "Success" << endl;
+  } else {
+    cout << "Fail" << endl;
+  }
 }
 
 void otExample() {
