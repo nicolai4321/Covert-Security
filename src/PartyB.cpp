@@ -9,10 +9,6 @@ PartyB::PartyB(int input, int k, int l, osuCrypto::Channel c, CircuitInterface* 
   circuit = cir;
   evaluator = eI;
 
-  for(int j=0; j<lambda; j++) {
-    iv[j] = 0;
-  }
-
   CircuitReader cr = CircuitReader();
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, GV::filename);
   if(import.first) {
@@ -36,14 +32,16 @@ bool PartyB::startProtocol() {
 
   //Generating random seeds
   vector<CryptoPP::byte*> seedsB;
-  for(int i=0; i<lambda; i++) {
+  map<unsigned int, unsigned int> ivB;
+  for(int j=0; j<lambda; j++) {
     seedsB.push_back(Util::randomByte(kappa));
+    ivB[j] = 0;
   }
 
   //Commitments of the seeds for party B
   vector<osuCrypto::block> commitmentsB;
   for(int j=0; j<lambda; j++) {
-    osuCrypto::block r = Util::byteToBlock(Util::randomByte(kappa, seedsB.at(j), iv[j]), kappa); iv[j] = iv[j]+1;
+    osuCrypto::block r = Util::byteToBlock(Util::randomByte(kappa, seedsB.at(j), ivB[j]), kappa); ivB[j] = ivB[j]+1;
     CryptoPP::byte *c = Util::commit(Util::byteToBlock(seedsB.at(j), kappa), r);
     osuCrypto::block b = Util::byteToBlock(c, Util::COMMIT_LENGTH);
     commitmentsB.push_back(b);
@@ -70,6 +68,9 @@ bool PartyB::startProtocol() {
     vector<osuCrypto::block> commitmentsCircuitsA;
     chl.recv(commitmentsCircuitsA);
     cout << "B: has received commitments for circuits from other party" << endl;
+
+    if(!simulatePartyA(seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA)) {return false;}
+
   //*************************************
   //TODO: end
   //*************************************
@@ -265,4 +266,53 @@ bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, v
     cout << "B: Error! Could not evaluate circuit" << endl;
     return false;
   }
+}
+
+/*
+  Checks that the input encodings is computed from the seed
+*/
+bool PartyB::simulatePartyA(vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA) {
+  map<unsigned int, unsigned int> ivA;
+  vector<CryptoPP::byte*> seedsA;
+  for(int j=0; j<lambda; j++) {
+    seedsA.push_back(Util::blockToByte(seedsWitnessA.at(j), kappa));
+    ivA[j] = 0;
+  }
+
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
+  vector<CircuitInterface*> circuits = garblingInfo.first;
+  map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
+
+  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated = PartyA::commitEncsA(lambda, kappa, seedsA, ivA, encsSimulated);
+  vector<osuCrypto::block> commitmentsEncsASimulated = commitPairSimulated.first;
+
+  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, ivA, circuits);
+  vector<osuCrypto::block> commitmentsA = commitPair.first;
+  vector<osuCrypto::block> decommitmentsA = commitPair.second;
+
+  for(int j=0; j<lambda; j++) {
+    if(j!=gamma) {
+      for(int i=0; i<2*GV::n1; i++) {
+        int index = i+(j*2*GV::n1);
+        CryptoPP::byte *commitSimulated0 = Util::blockToByte(commitmentsEncsASimulated.at(index), Util::COMMIT_LENGTH);
+        CryptoPP::byte *commitReceived0 = Util::blockToByte(commitmentsEncsA.at(index), Util::COMMIT_LENGTH);
+        if(memcmp(commitSimulated0, commitReceived0, Util::COMMIT_LENGTH) != 0) {
+          cout << "Corrupt! Simulation of commitments for input encodings does not match" << endl;
+          //TODO: send to judge
+          return false;
+        }
+      }
+
+      CryptoPP::byte *commitSimulated1 = Util::blockToByte(commitmentsA.at(j), Util::COMMIT_LENGTH);
+      CryptoPP::byte *commitReceived1 = Util::blockToByte(commitmentsCircuitsA.at(j), Util::COMMIT_LENGTH);
+
+      if(memcmp(commitSimulated1, commitReceived1, Util::COMMIT_LENGTH) != 0) {
+          cout << "Corrupt! Simulation of commitments for circuits does not match" << endl;
+          //TODO: send to judge
+          return false;
+      }
+    }
+  }
+
+  return true;
 }

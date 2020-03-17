@@ -18,12 +18,10 @@ bool PartyA::startProtocol() {
   //Generating random seeds and witnesses
   vector<CryptoPP::byte*> seedsA;
   vector<CryptoPP::byte*> witnesses;
+  map<unsigned int, unsigned int> iv;
   for(int j=0; j<lambda; j++) {
     seedsA.push_back(Util::randomByte(kappa));
     witnesses.push_back(Util::randomByte(kappa));
-  }
-  map<int, int> iv;
-  for(int j=0; j<lambda; j++) {
     iv[j] = 0;
   }
 
@@ -38,27 +36,29 @@ bool PartyA::startProtocol() {
   cout << "A: has done first OT" << endl;
 
   //Garbling
-  pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> garblingInfo = garbling(circuit, seedsA);
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
-  vector<array<osuCrypto::block, 2>> otData = garblingInfo.second;
+
+  map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
+  vector<array<osuCrypto::block, 2>> encsInputB = getEncsInputB(encs);
 
   //Second OT
   osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
-  sender.sendChosen(otData, prng, chl);
+  sender.sendChosen(encsInputB, prng, chl);
   cout << "A: has done second OT" << endl;
 
   //*************************************
   //TODO: send commitments and auth.
   //*************************************
     //Commiting input encodings
-    pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(seedsA, iv, encs);
+    pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, iv, encs);
     vector<osuCrypto::block> commitmentsEncsInputsA = commitPair0.first;
     vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
     cout << "A: sending commitments for encoded inputs" << endl;
     chl.asyncSend(move(commitmentsEncsInputsA));
 
     //Commiting circuits
-    pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(seedsA, iv, circuits);
+    pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, iv, circuits);
     vector<osuCrypto::block> commitmentsA = commitPair1.first;
     vector<osuCrypto::block> decommitmentsA = commitPair1.second;
 
@@ -85,7 +85,7 @@ bool PartyA::startProtocol() {
 
   //Sending A's encoding inputs
   cout << "A: sending my encoded input" << endl;
-  chl.asyncSend(move(getEncsInputA(gamma)));
+  chl.asyncSend(move(getEncsInputA(gamma, encs)));
 
   //Sending A's decommitments for the encoding inputs
   cout << "A: sending decommits for my input encodings" << endl;
@@ -101,15 +101,14 @@ bool PartyA::startProtocol() {
 /*
   Garbling the circuits and prepare the ot data
 */
-pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garbling(CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA) {
+pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb, int kapp, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA) {
   vector<CircuitInterface*> circuits;
-  vector<array<osuCrypto::block, 2>> otData(lambda*GV::n2);
+  map<int, vector<vector<CryptoPP::byte*>>> encs;
 
-  for(int j=0; j<lambda; j++) {
-    CircuitInterface *G = circuit->createInstance(kappa, seedsA.at(j));
+  for(int j=0; j<lamb; j++) {
+    CircuitInterface *G = circuit->createInstance(kapp, seedsA.at(j));
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
-    outputEncs[j] = cr.getOutputEnc();
 
     if(!import.first) {
       string msg = "Error! Could not import circuit";
@@ -119,19 +118,11 @@ pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> PartyA::garb
 
     circuits.push_back(G);
     encs[j] = import.second;
-
-    for(int i=0; i<GV::n2; i++) {
-      int index = i+(j*GV::n2);
-      vector<CryptoPP::byte*> encsB = encs[j].at(GV::n1+i);
-      osuCrypto::block block0 = Util::byteToBlock(encsB.at(0), kappa);
-      osuCrypto::block block1 = Util::byteToBlock(encsB.at(1), kappa);
-      otData[index] = {block0, block1};
-    }
   }
 
-  pair<vector<CircuitInterface*>, vector<array<osuCrypto::block, 2>>> output;
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> output;
   output.first = circuits;
-  output.second = otData;
+  output.second = encs;
   return output;
 }
 
@@ -173,7 +164,7 @@ bool PartyA::checkSeedsWitness(vector<osuCrypto::block> gammaSeedsWitnessBlock, 
 /*
   This function returns the input encodings for party A
 */
-vector<osuCrypto::block> PartyA::getEncsInputA(int gamma) {
+vector<osuCrypto::block> PartyA::getEncsInputA(int gamma, map<int, vector<vector<CryptoPP::byte*>>> encs) {
   vector<osuCrypto::block> encsInputsA;
   vector<vector<CryptoPP::byte*>> circuitEncs = encs[gamma];
   string xBitString = Util::intToBitString(x, GV::n1);
@@ -182,6 +173,23 @@ vector<osuCrypto::block> PartyA::getEncsInputA(int gamma) {
     encsInputsA.push_back(Util::byteToBlock(circuitEncs.at(j).at(b), kappa));
   }
   return encsInputsA;
+}
+
+/*
+  This function returns the input encodings for party B
+*/
+vector<array<osuCrypto::block, 2>> PartyA::getEncsInputB(map<int, vector<vector<CryptoPP::byte*>>> encs) {
+ vector<array<osuCrypto::block, 2>> encsInputsB(lambda*GV::n2);
+  for(int j=0; j<lambda; j++) {
+    for(int i=0; i<GV::n2; i++) {
+        int index = i+(j*GV::n2);
+        vector<CryptoPP::byte*> encsB = encs[j].at(GV::n1+i);
+        osuCrypto::block block0 = Util::byteToBlock(encsB.at(0), kappa);
+        osuCrypto::block block1 = Util::byteToBlock(encsB.at(1), kappa);
+        encsInputsB[index] = {block0, block1};
+      }
+  }
+  return encsInputsB;
 }
 
 /*
@@ -204,16 +212,16 @@ vector<osuCrypto::block> PartyA::getDecommitmentsInputA(int gamma, vector<pair<o
   a list of commitments for the encoding inputs and the
   second entry is the decommitments
 */
-pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> PartyA::commitEncsA(vector<CryptoPP::byte*> seedsA, map<int, int> iv, map<int, vector<vector<CryptoPP::byte*>>> encodings) {
-  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> output;
+pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> PartyA::commitEncsA(int lamb, int kapp, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int> iv, map<int, vector<vector<CryptoPP::byte*>>> encs) {
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA;
   vector<osuCrypto::block> commitmentsEncsInputsA;
-  for(int j=0; j<lambda; j++) {
+  for(int j=0; j<lamb; j++) {
     for(int i=0; i<GV::n1; i++) {
-      osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv[j]), kappa); iv[j] = iv[j]+1;
-      osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv[j]), kappa); iv[j] = iv[j]+1;
-      CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encodings[j].at(i).at(0), kappa), decommit0);
-      CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encodings[j].at(i).at(1), kappa), decommit1);
+      osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), iv[j]), kapp); iv[j] = iv[j]+1;
+      osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), iv[j]), kapp); iv[j] = iv[j]+1;
+
+      CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs[j].at(i).at(0), kapp), decommit0);
+      CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs[j].at(i).at(1), kapp), decommit1);
       pair<osuCrypto::block, osuCrypto::block> p;
       p.first = decommit0;
       p.second = decommit1;
@@ -231,6 +239,7 @@ pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>>
     }
   }
 
+  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> output;
   output.first = commitmentsEncsInputsA;
   output.second = decommitmentsEncsA;
   return output;
@@ -241,15 +250,15 @@ pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>>
   a list of commitments for the circuits and the second
   entry is the decommitments
 */
-pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(vector<CryptoPP::byte*> seedsA, map<int, int> iv, vector<CircuitInterface*> circuits) {
+pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int> iv, vector<CircuitInterface*> circuits) {
   pair<vector<osuCrypto::block>, vector<osuCrypto::block>> output;
   vector<osuCrypto::block> commitmentsA;
   vector<osuCrypto::block> decommitmentsA;
 
-  for(int j=0; j<lambda; j++) {
+  for(int j=0; j<lamb; j++) {
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
-    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedsA.at(j), iv[j]), kappa); iv[j] = iv[j]+1;
-    CryptoPP::byte *c = commitCircuit(kappa, circuit->getType(), F, decommit);
+    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), iv[j]), kapp); iv[j] = iv[j]+1;
+    CryptoPP::byte *c = commitCircuit(kapp, cir->getType(), F, decommit);
 
     decommitmentsA.push_back(decommit);
     commitmentsA.push_back(Util::byteToBlock(c, Util::COMMIT_LENGTH));
@@ -296,5 +305,17 @@ CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, 
     it++;
   }
 
-  return Util::commit(commitQueue, decommit, kapp);
+  CryptoPP::byte *c = Util::commit(commitQueue, decommit, kapp);
+
+  /*
+  cout << "............." << endl;
+  Util::printByteInBits(Util::blockToByte(decommit, kapp), kapp);
+  for(CryptoPP::byte* b : commitQueue) {
+    Util::printByteInBits(b, kapp);
+  }
+  cout << endl;
+  Util::printByteInBits(c, kapp);
+  cout << "............." << endl << endl;
+*/
+  return c;
 }

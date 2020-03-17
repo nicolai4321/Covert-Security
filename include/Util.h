@@ -53,14 +53,13 @@ class Util {
     static void printByteInBits(CryptoPP::byte* b, int length);
 
     //Variables
-    static const int SEED_LENGTH = 32/8;
+    static const int SEED_LENGTH = 16;
+    static const int IV_LENGTH = 16;
     static const int COMMIT_LENGTH = 16;
 
   protected:
 
   private:
-    static const int SEED_LENGTH_BITS = 32;
-    static const int IV_LENGTH_BITS = 16;
 };
 
 #endif // UTIL_H

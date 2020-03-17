@@ -26,6 +26,7 @@ class PartyB
     vector<osuCrypto::block> otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl);
     bool checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA);
     bool evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsGammaB);
+    bool simulatePartyA(vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA);
 
   protected:
 
@@ -34,7 +35,6 @@ class PartyB
     int kappa;
     int lambda;
     int gamma;
-    map<int, int> iv;
     osuCrypto::Channel chl;
     CircuitInterface* circuit;
     EvaluatorInterface* evaluator;

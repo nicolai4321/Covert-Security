@@ -135,11 +135,15 @@ CryptoPP::byte* Util::randomByte(int length) {
   Returns a random byte with a seed
 */
 CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, unsigned int iv) {
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH_BITS, intToByte(iv), IV_LENGTH_BITS);
+  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  memset(ivByte, 0x00, IV_LENGTH);
+  memcpy(ivByte, longToByte(iv), 8);
 
+  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
   CryptoPP::byte *b = new CryptoPP::byte[length];
   prng.GenerateBlock(b, length);
+
   return b;
 }
 
@@ -164,8 +168,12 @@ long Util::randomInt(int minInt, int maxInt) {
   Returns random number between minInt and maxInt with seed
 */
 long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv) {
+  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  memset(ivByte, 0x00, IV_LENGTH);
+  memcpy(ivByte, longToByte(iv), 8);
+
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH_BITS, intToByte(iv), IV_LENGTH_BITS);
+  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
 
   CryptoPP::Integer r;
   if(minInt == 0) {
@@ -347,8 +355,8 @@ void Util::printByte(CryptoPP::byte* b, int length) {
 
 void Util::printByteInBits(CryptoPP::byte* b, int length) {
   cout << "bits: ";
-  for(int i=0; i<length; i++) {
-    cout << intToBitString((int) b[i],8) << " ";
+  for(int i=length-1; i>=0; i--) {
+    cout << intToBitString((long) b[i],8) << " ";
   }
   cout << endl;
 }
