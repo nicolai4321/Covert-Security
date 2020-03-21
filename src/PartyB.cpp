@@ -151,10 +151,9 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recve
 }
 
 /*
-
+  This function checks the commitments for the lambda circuit
 */
 bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA) {
-  //Checking output encodings
   CryptoPP::byte *commit0 = PartyA::commitCircuit(kappa, circuit->getType(), F, decommitmentsCircuitA.at(gamma)); //correct commit
   CryptoPP::byte *commit1 = Util::blockToByte(commitmentsCircuitsA.at(gamma), Util::COMMIT_LENGTH); //commit from A
 

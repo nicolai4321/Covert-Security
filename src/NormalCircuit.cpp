@@ -88,15 +88,7 @@ void NormalCircuit::addEQW(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encF, encF, encFO));
   garbledTable.push_back(encodeGate(encT, encT, encTO));
 
-  //TODO: refactor
-  CryptoPP::byte *ivByte = new CryptoPP::byte[Util::IV_LENGTH];
-  memset(ivByte, 0x00, Util::IV_LENGTH);
-  memcpy(ivByte, Util::longToByte(iv), 8);
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, Util::SEED_LENGTH, ivByte, Util::IV_LENGTH);
-  iv++;
-
-  prng.Shuffle(garbledTable.begin(), garbledTable.end());
+  Util::shuffle(garbledTable, seed, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -119,15 +111,7 @@ void NormalCircuit::addINV(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
 
-  //TODO: refactor
-  CryptoPP::byte *ivByte = new CryptoPP::byte[Util::IV_LENGTH];
-  memset(ivByte, 0x00, Util::IV_LENGTH);
-  memcpy(ivByte, Util::longToByte(iv), 8);
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, Util::SEED_LENGTH, ivByte, Util::IV_LENGTH);
-  iv++;
-
-  prng.Shuffle(garbledTable.begin(), garbledTable.end());
+  Util::shuffle(garbledTable, seed, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -151,16 +135,7 @@ void NormalCircuit::addXOR(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encFR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
-
-  //TODO: refactor
-  CryptoPP::byte *ivByte = new CryptoPP::byte[Util::IV_LENGTH];
-  memset(ivByte, 0x00, Util::IV_LENGTH);
-  memcpy(ivByte, Util::longToByte(iv), 8);
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, Util::SEED_LENGTH, ivByte, Util::IV_LENGTH);
-  iv++;
-
-  prng.Shuffle(garbledTable.begin(), garbledTable.end());
+  Util::shuffle(garbledTable, seed, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -184,16 +159,7 @@ void NormalCircuit::addAND(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encFO));
   garbledTable.push_back(encodeGate(encTL, encFR, encFO));
   garbledTable.push_back(encodeGate(encTL, encTR, encTO));
-
-  //TODO: refactor
-  CryptoPP::byte *ivByte = new CryptoPP::byte[Util::IV_LENGTH];
-  memset(ivByte, 0x00, Util::IV_LENGTH);
-  memcpy(ivByte, Util::longToByte(iv), 8);
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, Util::SEED_LENGTH, ivByte, Util::IV_LENGTH);
-  iv++;
-
-  prng.Shuffle(garbledTable.begin(), garbledTable.end());
+  Util::shuffle(garbledTable, seed, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 

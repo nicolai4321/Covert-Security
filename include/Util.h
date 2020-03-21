@@ -29,6 +29,7 @@ class Util {
     static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);
     static CryptoPP::byte* commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length);
 
+    static void shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, unsigned int iv);
     static CryptoPP::byte* randomByte(int length);
     static CryptoPP::byte* randomByte(int length, CryptoPP::byte* seed, unsigned int iv);
     static long randomInt(int minInt, int maxInt);

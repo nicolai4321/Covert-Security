@@ -74,6 +74,7 @@
 		<Unit filename="include/NormalCircuit.h" />
 		<Unit filename="include/PartyA.h" />
 		<Unit filename="include/PartyB.h" />
+		<Unit filename="include/RecordNetw.h" />
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />
 		<Unit filename="src/CircuitInterface.cpp" />
@@ -86,6 +87,7 @@
 		<Unit filename="src/NormalCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />
 		<Unit filename="src/PartyB.cpp" />
+		<Unit filename="src/RecordNetw.cpp" />
 		<Unit filename="src/Util.cpp" />
 		<Extensions>
 			<code_completion />

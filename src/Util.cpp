@@ -122,6 +122,19 @@ string Util::decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv) {
 }
 
 /*
+  Randomly shuffles a vector
+*/
+void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, unsigned int iv) {
+  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  memset(ivByte, 0x00, IV_LENGTH);
+  memcpy(ivByte, longToByte(iv), 8);
+  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
+
+  prng.Shuffle(v.begin(), v.end());
+}
+
+/*
   Returns a random byte
 */
 CryptoPP::byte* Util::randomByte(int length) {
