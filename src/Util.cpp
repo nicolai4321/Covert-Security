@@ -373,3 +373,9 @@ void Util::printByteInBits(CryptoPP::byte* b, int length) {
   }
   cout << endl;
 }
+
+void Util::printBlockInBits(osuCrypto::block b, int length) {
+  CryptoPP::byte *byt = blockToByte(b, length);
+  printByteInBits(byt, length);
+}
+

@@ -134,46 +134,51 @@ void runCircuitFiles(int kappa) {
 
 void startProtocol(int kappa, int lambda, int x, int y) {
   //Network
-  int port = 1212;
-  string ip = "localhost";
-  string ipAddress = ip+":"+to_string(port);
-  osuCrypto::IOService ios;
-  osuCrypto::Channel serverChl = osuCrypto::Session(ios, ipAddress, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel clientChl = osuCrypto::Session(ios, ipAddress, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::IOService ios(16);
+  osuCrypto::Channel serverChl = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel clientChl = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::SocketInterface *serverSI = new SocketRecorder(serverChl);
+  osuCrypto::SocketInterface *clientSI = new SocketRecorder(clientChl);
+  SocketRecorder *socketRecorderServer = (SocketRecorder*) serverSI;
+  SocketRecorder *socketRecorderClient = (SocketRecorder*) clientSI;
+  osuCrypto::Channel serverChlRec(ios, serverSI);
+  osuCrypto::Channel clientChlRec(ios, clientSI);
   clientChl.waitForConnection();
+  clientChlRec.waitForConnection();
 
   //Etc.
-  CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
+  CryptoPP::byte *unimportantSeed = Util::randomByte(Util::SEED_LENGTH);
   CircuitInterface *circuit;
   EvaluatorInterface *evaluator;
 
   if(Util::randomInt(0, 1)) {
     cout << "Half - x: " << x << ", y: " << y << endl;
-    circuit = new HalfCircuit(kappa, seed);
+    circuit = new HalfCircuit(kappa, unimportantSeed);
     evaluator = new EvaluatorHalf();
   } else {
     cout << "Normal - x: " << x << ", y: " << y << endl;
-    circuit = new NormalCircuit(kappa, seed);
+    circuit = new NormalCircuit(kappa, unimportantSeed);
     evaluator = new EvaluatorNormal();
   }
 
   bool b0;
   bool b1;
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, kappa, lambda, serverChl, circuit);
+    PartyA partyA = PartyA(x, kappa, lambda, serverChlRec, socketRecorderServer, circuit);
     b0 = partyA.startProtocol();
   });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, kappa, lambda, clientChl, circuit, evaluator);
+    PartyB partyB = PartyB(y, kappa, lambda, clientChlRec, socketRecorderClient, circuit, evaluator);
     b1 = partyB.startProtocol();
   });
 
   threadA.join();
   threadB.join();
+  serverChlRec.close();
+  clientChlRec.close();
   serverChl.close();
   clientChl.close();
   ios.stop();
-
 
   if(b0 && b1) {
     cout << "Success" << endl;
@@ -207,6 +212,7 @@ void nextOT(osuCrypto::Channel chl0, osuCrypto::Channel chl1, CryptoPP::byte* se
     for(osuCrypto::block b : dest0) {
       cout << b[0] << ",";
     }
+    cout << endl;
   });
 
   //SENDER
@@ -229,7 +235,6 @@ bool checkTransscripts(vector<pair<int, CryptoPP::byte*>> dataRecv0,
                        vector<pair<int, CryptoPP::byte*>> dataSent0,
                        vector<pair<int, CryptoPP::byte*>> dataRecv1,
                        vector<pair<int, CryptoPP::byte*>> dataSent1) {
-
   //Checking the length of the messages
   if(dataRecv0.size() != dataRecv1.size()) return false;
   if(dataSent0.size() != dataSent1.size()) return false;
@@ -260,16 +265,11 @@ bool checkTransscripts(vector<pair<int, CryptoPP::byte*>> dataRecv0,
 }
 
 void runEqualTest() {
-  int port = 1212;
-  string server = "localhost";
-  string ipadd = server + ":" + to_string(port);
-
-  typedef Channel YourSocketType2;
   osuCrypto::IOService ios;
-  osuCrypto::Channel chlSer0 = osuCrypto::Session(ios, ipadd, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli0 = osuCrypto::Session(ios, ipadd, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::Channel chlSer1 = osuCrypto::Session(ios, ipadd, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli1 = osuCrypto::Session(ios, ipadd, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::Channel chlSer0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCli0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::Channel chlSer1 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCli1 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
   osuCrypto::SocketInterface *siSerRec0 = new SocketRecorder(chlSer0);
   osuCrypto::SocketInterface *siCliRec0 = new SocketRecorder(chlCli0);
   osuCrypto::SocketInterface *siSerRec1 = new SocketRecorder(chlSer1);
@@ -326,8 +326,8 @@ int main() {
   int y = 2;
 
   //runCircuitFiles(kappa);
-  //startProtocol(kappa, lambda, x, y);
-  runEqualTest();
+  startProtocol(kappa, lambda, x, y);
+  //runEqualTest();
 
   cout << "covert end" << endl;
   return 0;

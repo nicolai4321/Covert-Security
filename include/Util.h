@@ -52,6 +52,7 @@ class Util {
     static int lsb(CryptoPP::byte* b, int length);
     static void printByte(CryptoPP::byte* b, int length);
     static void printByteInBits(CryptoPP::byte* b, int length);
+    static void printBlockInBits(osuCrypto::block b, int length);
 
     //Variables
     static const int SEED_LENGTH = 16;

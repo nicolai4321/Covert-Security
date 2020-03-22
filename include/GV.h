@@ -16,6 +16,11 @@ class GV {
     static const int n2 = 3;
     inline static const string filename = "simple.txt";
 
+    //network
+    static const int PORT = 1212;
+    inline static const string SERVER = "localhost";
+    inline static const string ADDRESS = SERVER + ":" + to_string(PORT);
+
   protected:
 
   private:

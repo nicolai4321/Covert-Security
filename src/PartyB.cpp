@@ -1,11 +1,13 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, int k, int l, osuCrypto::Channel c, CircuitInterface* cir, EvaluatorInterface* eI) {
+PartyB::PartyB(int input, int k, int l, osuCrypto::Channel c, SocketRecorder *sr, CircuitInterface* cir, EvaluatorInterface* eI) {
   y = input;
   kappa = k;
   lambda = l;
-  chl = c;
+  chlOT = c;
+  chl = sr->getMChl();
+  socketRecorder = sr;
   circuit = cir;
   evaluator = eI;
 
@@ -17,8 +19,7 @@ PartyB::PartyB(int input, int k, int l, osuCrypto::Channel c, CircuitInterface* 
     outputGatesB = F->getOutputGates();
     gateInfoB = F->getGateInfo();
   } else {
-    cout << "B: Error! Invalid circuit file" << endl;
-    throw;
+    throw runtime_error("B: Error! Invalid circuit file");
   }
 }
 
@@ -52,11 +53,11 @@ bool PartyB::startProtocol() {
 
   //First OT
   osuCrypto::KosOtExtReceiver recver;
-  vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, chl);
+  vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, chlOT, seedsB, &ivB);
   cout << "B: has done first OT" << endl;
 
   //Second OT
-  vector<osuCrypto::block> encsInputsGammaB = otEncodingsB(&recver, chl);
+  vector<osuCrypto::block> encsInputsB = otEncodingsB(&recver, chlOT, seedsB, &ivB);
   cout << "B: has done second OT" << endl;
 
   //*************************************
@@ -103,51 +104,66 @@ bool PartyB::startProtocol() {
 
   if(!checkCommitments(F, decommitmentsEncA, decommitmentsCircuitA, commitmentsEncsA, commitmentsCircuitsA, encsInputsA)) {return false;}
 
-  return evaluate(F, encsInputsA, encsInputsGammaB);
+  return evaluate(F, encsInputsA, encsInputsB);
 }
 
 /*
   First OT-interaction. Receives seeds and witnesses for A
 */
-vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
-  //Choice bit
-  osuCrypto::BitVector b(lambda);
+vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB) {
+  vector<osuCrypto::block> seedsWitnessA;
   for(int j=0; j<lambda; j++) {
-    b[j] = (j==gamma) ? 1 : 0;
+    socketRecorder->clearDataRecv();
+    socketRecorder->clearDataSent();
+
+    osuCrypto::BitVector b(1);
+    b[0] = (j==gamma) ? 1 : 0;
+
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsB.at(j), (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, 16), 16);
+    vector<osuCrypto::block> dest(1);
+    recver->receiveChosen(b, dest, prng, chlOT);
+    seedsWitnessA.push_back(dest[0]);
+
+    transcriptsRecv0.push_back(socketRecorder->getDataRecv());
+    transcriptsSent0.push_back(socketRecorder->getDataSent());
   }
-
-  //Ot
-  vector<osuCrypto::block> seedsWitnessA(lambda);
-  osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
-  recver->receiveChosen(b, seedsWitnessA, prng, clientChl);
-
   return seedsWitnessA;
 }
 
 /*
   Second OT-interaction. Receives encodings for own input
 */
-vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel clientChl) {
-  //Choice bit
-  osuCrypto::BitVector b(lambda*GV::n2);
+vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel chlOT, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB) {
   string yString = Util::intToBitString(y, GV::n2);
+  vector<osuCrypto::block> encsB;
   for(int j=0; j<lambda; j++) {
+    socketRecorder->clearDataSent();
+    socketRecorder->clearDataRecv();
+    osuCrypto::BitVector b(GV::n2);
+
     for(int i=0; i<GV::n2; i++) {
-      int index = i+(j*GV::n2);
-      if(j==gamma) {
-        int yIndex = (int) yString[i] - 48;
-        b[index] = yIndex;
+      if(j == gamma) {
+        b[i] = (int) yString[i] - 48;
       } else {
-        b[index] = 0;
+        b[i] = 0;
       }
     }
-  }
 
-  //Ot
-  vector<osuCrypto::block> encB(lambda*GV::n2);
-  osuCrypto::PRNG prng(osuCrypto::sysRandomSeed()); //TODO: use own seed
-  recver->receiveChosen(b, encB, prng, clientChl);
-  return encB;
+    vector<osuCrypto::block> encs(GV::n2);
+    CryptoPP::byte* seedInput = Util::randomByte(kappa, seedsB.at(j), (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa), kappa);
+    recver->receiveChosen(b, encs, prng, chlOT);
+    if(j==gamma) {
+      for(int i=0; i<GV::n1; i++) {
+        encsB.push_back(encs[i]);
+      }
+    }
+
+    transcriptsSent1.push_back(socketRecorder->getDataSent());
+    transcriptsRecv1.push_back(socketRecorder->getDataRecv());
+  }
+  return encsB;
 }
 
 /*
@@ -236,13 +252,13 @@ bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decomm
 /*
   Evaluates the circuit with the given input
 */
-bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsGammaB) {
+bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsB) {
   vector<CryptoPP::byte*> encsInputs;
   for(int j=0; j<GV::n1; j++) {
     encsInputs.push_back(Util::blockToByte(encsInputsA.at(j), kappa));
   }
   for(int j=0; j<GV::n2; j++) {
-    encsInputs.push_back(Util::blockToByte(encsInputsGammaB.at(j+(GV::n2*gamma)), kappa));
+    encsInputs.push_back(Util::blockToByte(encsInputsB.at(j), kappa));
   }
 
   evaluator->giveCircuit(F);
@@ -278,14 +294,24 @@ bool PartyB::simulatePartyA(vector<osuCrypto::block> seedsWitnessA, vector<osuCr
     ivA[j] = 0;
   }
 
+  //OT 1st
+  for(int j=0; j<lambda; j++) {
+    ivA[j] = ivA[j]+1;
+  }
+
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
 
-  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated = PartyA::commitEncsA(lambda, kappa, seedsA, ivA, encsSimulated);
+  //OT 2nd
+  for(int j=0; j<lambda; j++) {
+    ivA[j] = ivA[j]+1;
+  }
+
+  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated = PartyA::commitEncsA(lambda, kappa, seedsA, &ivA, encsSimulated);
   vector<osuCrypto::block> commitmentsEncsASimulated = commitPairSimulated.first;
 
-  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, ivA, circuits);
+  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, &ivA, circuits);
   vector<osuCrypto::block> commitmentsA = commitPair.first;
   vector<osuCrypto::block> decommitmentsA = commitPair.second;
 
