@@ -18,8 +18,10 @@ class GV {
 
     //network
     static const int PORT = 1212;
+    static const int PORT_SIM = 1414;
     inline static const string SERVER = "localhost";
     inline static const string ADDRESS = SERVER + ":" + to_string(PORT);
+    inline static const string ADDRESS_SIM = SERVER + ":" + to_string(PORT_SIM);
 
   protected:
 

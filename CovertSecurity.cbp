@@ -74,6 +74,7 @@
 		<Unit filename="include/NormalCircuit.h" />
 		<Unit filename="include/PartyA.h" />
 		<Unit filename="include/PartyB.h" />
+		<Unit filename="include/Signature.h" />
 		<Unit filename="include/SocketRecorder.h" />
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />

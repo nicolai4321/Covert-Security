@@ -16,6 +16,7 @@
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "PartyA.h"
 #include "PartyB.h"
+#include "Signature.h"
 #include "SocketRecorder.h"
 #include "Util.h"
 using namespace std;
@@ -146,7 +147,11 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   clientChl.waitForConnection();
   clientChlRec.waitForConnection();
 
-  //Etc.
+  //Digital Signature
+  CryptoPP::DSA::PrivateKey sk = Signature::generateRandomPrivateKey(1024);
+  CryptoPP::DSA::PublicKey pk = Signature::generatePublicKey(sk);
+
+  //Circuit
   CryptoPP::byte *unimportantSeed = Util::randomByte(Util::SEED_LENGTH);
   CircuitInterface *circuit;
   EvaluatorInterface *evaluator;
@@ -164,11 +169,11 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   bool b0;
   bool b1;
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, kappa, lambda, serverChlRec, socketRecorderServer, circuit);
+    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, serverChlRec, socketRecorderServer, circuit);
     b0 = partyA.startProtocol();
   });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, kappa, lambda, clientChlRec, socketRecorderClient, circuit, evaluator);
+    PartyB partyB = PartyB(y, pk, kappa, lambda, clientChlRec, socketRecorderClient, circuit, evaluator);
     b1 = partyB.startProtocol();
   });
 
@@ -266,10 +271,11 @@ bool checkTransscripts(vector<pair<int, CryptoPP::byte*>> dataRecv0,
 
 void runEqualTest() {
   osuCrypto::IOService ios;
+  osuCrypto::IOService iosSim;
   osuCrypto::Channel chlSer0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
   osuCrypto::Channel chlCli0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::Channel chlSer1 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli1 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::Channel chlSer1 = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCli1 = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
   osuCrypto::SocketInterface *siSerRec0 = new SocketRecorder(chlSer0);
   osuCrypto::SocketInterface *siCliRec0 = new SocketRecorder(chlCli0);
   osuCrypto::SocketInterface *siSerRec1 = new SocketRecorder(chlSer1);
@@ -326,8 +332,8 @@ int main() {
   int y = 2;
 
   //runCircuitFiles(kappa);
-  startProtocol(kappa, lambda, x, y);
-  //runEqualTest();
+  //startProtocol(kappa, lambda, x, y);
+  runEqualTest();
 
   cout << "covert end" << endl;
   return 0;

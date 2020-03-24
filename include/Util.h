@@ -40,11 +40,13 @@ class Util {
     static CryptoPP::byte* blockToByte(osuCrypto::block b, int length);
     static string intToBitString(int i, int length);
     static string byteToString(CryptoPP::byte* b, int byteSize);
+    static string blockToString(osuCrypto::block b, int length);
     static int byteToInt(CryptoPP::byte* b);
     static long byteToLong(CryptoPP::byte* b);
     static CryptoPP::byte* intToByte(int i);
     static CryptoPP::byte* longToByte(long i);
     static CryptoPP::byte* stringToByte(string s, int byteSize);
+    static osuCrypto::block stringToBlock(string s, int length);
 
     static CryptoPP::byte* byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length);
     static CryptoPP::byte* mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length);

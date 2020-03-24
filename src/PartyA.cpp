@@ -1,8 +1,10 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, int k, int l, osuCrypto::Channel c, SocketRecorder *sr, CircuitInterface* cI) {
+PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, osuCrypto::Channel c, SocketRecorder *sr, CircuitInterface* cI) {
   x = input;
+  sk = secretKey;
+  pk = publicKey;
   kappa = k;
   lambda = l;
   chlOT = c;
@@ -44,29 +46,30 @@ bool PartyA::startProtocol() {
   cout << "A: has done garbling" << endl;
 
   //Second OT
-  otEncs(&sender, encs, seedsA, &iv);
+  otEncs(lambda, kappa, &sender, chlOT, socketRecorder, encs, seedsA, &iv, &transcriptsSent1, &transcriptsRecv1);
   cout << "A: has done second OT" << endl;
 
-  //*************************************
-  //TODO: send commitments and auth.
-  //*************************************
-    //Commiting input encodings
-    pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
-    vector<osuCrypto::block> commitmentsEncsInputsA = commitPair0.first;
-    vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
-    cout << "A: sending commitments for encoded inputs" << endl;
-    chl.asyncSend(move(commitmentsEncsInputsA));
+  //Commiting input encodings
+  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
+  vector<osuCrypto::block> commitmentsEncsInputsA = commitPair0.first;
+  vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
 
-    //Commiting circuits
-    pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
-    vector<osuCrypto::block> commitmentsA = commitPair1.first;
-    vector<osuCrypto::block> decommitmentsA = commitPair1.second;
+  //Commiting circuits
+  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
+  vector<osuCrypto::block> commitmentsA = commitPair1.first;
+  vector<osuCrypto::block> decommitmentsA = commitPair1.second;
 
-    cout << "A: sending commitments for circuits" << endl;
-    chl.asyncSend(move(commitmentsA));
-  //*************************************0
-  //TODO: end
-  //*************************************
+  //Construct signatures
+  vector<SignatureHolder*> signatureHolders = constructSignatures(commitmentsA, commitmentsB, commitmentsEncsInputsA);
+
+  cout << "A: sending commitments for encoded inputs" << endl;
+  chl.asyncSend(move(commitmentsEncsInputsA));
+
+  cout << "A: sending commitments for circuits" << endl;
+  chl.asyncSend(move(commitmentsA));
+
+  cout << "A: sending signatures" << endl;
+  chl.asyncSendCopy(signatureHolders);
 
   //Receive gamma, seeds and witness
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
@@ -151,23 +154,31 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Chan
 /*
   Second OT-interaction. Sends input encodings for party B
 */
-void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
-  for(int j=0; j<lambda; j++) {
-    socketRecorder->clearDataSent();
-    socketRecorder->clearDataRecv();
+void PartyA::otEncs(int lambd, int kapp, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel c, SocketRecorder *sRecorder, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<vector<pair<int, unsigned char*>>>* tSent, vector<vector<pair<int, unsigned char*>>>* tRecv) {
+  for(int j=0; j<lambd; j++) {
+    sRecorder->clearDataSent();
+    sRecorder->clearDataRecv();
 
     vector<array<osuCrypto::block, 2>> data(GV::n2);
     for(int i=0; i<GV::n2; i++) {
-      osuCrypto::block block0 = Util::byteToBlock(encs[j].at(GV::n1+i).at(0), kappa);
-      osuCrypto::block block1 = Util::byteToBlock(encs[j].at(GV::n1+i).at(1), kappa);
+      osuCrypto::block block0 = Util::byteToBlock(encs[j].at(GV::n1+i).at(0), kapp);
+      osuCrypto::block block1 = Util::byteToBlock(encs[j].at(GV::n1+i).at(1), kapp);
       data[i] = {block0, block1};
     }
 
-    CryptoPP::byte* seedInput = Util::randomByte(kappa, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
-    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa), kappa);
-    sender->sendChosen(data, prng, chlOT);
-    transcriptsSent1.push_back(socketRecorder->getDataSent());
-    transcriptsRecv1.push_back(socketRecorder->getDataRecv());
+    CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp), kapp);
+    sender->sendChosen(data, prng, c);
+
+    cout << "########################" << endl;
+    cout << j << endl;
+    for(pair<int, unsigned char*> p : sRecorder->getDataSent()) {
+      Util::printByteInBits(p.second, p.first);
+    }
+    cout << "########################" << endl;
+
+    tSent->push_back(sRecorder->getDataSent());
+    tRecv->push_back(sRecorder->getDataRecv());
   }
 }
 
@@ -321,4 +332,75 @@ CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, 
 
   CryptoPP::byte *c = Util::commit(commitQueue, decommit, kapp);
   return c;
+}
+
+/*
+  This function constructs the signatures
+*/
+string PartyA::constructSignatureString(int j, int kapp, vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB,
+                                        vector<osuCrypto::block> commitmentsEncsInputsA, bool allTranscripts,
+                                        vector<vector<pair<int, unsigned char*>>> tSent0,
+                                        vector<vector<pair<int, unsigned char*>>> tRecv0,
+                                        vector<vector<pair<int, unsigned char*>>> tSent1,
+                                        vector<vector<pair<int, unsigned char*>>> tRecv1) {
+  //Circuit
+  string circuitString = "";
+  string line;
+  string filepath = "circuits/"+GV::filename;
+  ifstream reader;
+  reader.open(filepath);
+  if(reader.is_open()) {
+    while (!reader.eof()) {
+      getline(reader, line);
+      circuitString += line+"\n";
+    }
+  } else {
+    throw runtime_error("A: Could not read circuit file");
+  }
+
+  //Commitments from A
+  string comCircuitA = Util::blockToString(commitmentsA.at(j), kapp);
+  string comEncsA = Util::blockToString(commitmentsEncsInputsA.at(2*j), kapp);
+  comEncsA += Util::blockToString(commitmentsEncsInputsA.at(2*j+1), kapp);
+
+  //Commitments from B
+  string comSeedB = Util::blockToString(commitmentsB.at(j), kapp);
+
+  //Transcripts
+  string t0sent = "";
+  for(pair<int, unsigned char*> p : tSent0.at(j)) {
+    t0sent += Util::byteToString(p.second, p.first);
+  }
+
+  string t0recv = "";
+  for(pair<int, unsigned char*> p : tRecv0.at(j)) {
+    t0recv += Util::byteToString(p.second, p.first);
+  }
+
+  string t1sent = "";
+  for(pair<int, unsigned char*> p : tSent1.at(j)) {
+    t1sent += Util::byteToString(p.second, p.first);
+  }
+
+  string t1recv = "";
+  for(pair<int, unsigned char*> p : tRecv1.at(j)) {
+    t1recv += Util::byteToString(p.second, p.first);
+  }
+
+  if(allTranscripts) {
+    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + t1sent + t1recv + t0sent + t0recv;
+  } else {
+    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + t1sent;// + t1recv;
+  }
+}
+
+vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB, vector<osuCrypto::block> commitmentsEncsInputsA) {
+  vector<SignatureHolder*> output;
+  for(int j=0; j<lambda; j++) {
+    string m = constructSignatureString(j, kappa, commitmentsA, commitmentsB, commitmentsEncsInputsA, true, transcriptsSent0, transcriptsRecv0, transcriptsSent1, transcriptsRecv1);
+    string signature = Signature::sign(sk, m);
+    SignatureHolder *signatureHolder = new SignatureHolder(m, signature);
+    output.push_back(signatureHolder);
+  }
+  return output;
 }

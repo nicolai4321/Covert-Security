@@ -332,6 +332,10 @@ string Util::byteToString(CryptoPP::byte* b, int byteSize) {
   return output;
 }
 
+string Util::blockToString(osuCrypto::block b, int length) {
+  return byteToString(blockToByte(b, length), length);
+}
+
 /*
   Transform a string to a byte
 */
@@ -343,14 +347,14 @@ CryptoPP::byte* Util::stringToByte(string s, int length) {
     )
   );
   CryptoPP::byte *b = (CryptoPP::byte*) sink.data();
-
-  //TODO find a better method
   CryptoPP::byte *output = new CryptoPP::byte[length];
-  for(int i=0; i<length; i++) {
-    output[i] = b[i];
-  }
+  memcpy(output, b, length);
 
   return output;
+}
+
+osuCrypto::block Util::stringToBlock(string s, int length) {
+  return byteToBlock(stringToByte(s, length), length);
 }
 
 /*
