@@ -75,6 +75,7 @@
 		<Unit filename="include/PartyA.h" />
 		<Unit filename="include/PartyB.h" />
 		<Unit filename="include/Signature.h" />
+		<Unit filename="include/SignatureHolder.h" />
 		<Unit filename="include/SocketRecorder.h" />
 		<Unit filename="include/Util.h" />
 		<Unit filename="main.cpp" />
@@ -88,6 +89,7 @@
 		<Unit filename="src/NormalCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />
 		<Unit filename="src/PartyB.cpp" />
+		<Unit filename="src/SignatureHolder.cpp" />
 		<Unit filename="src/Util.cpp" />
 		<Extensions>
 			<code_completion />

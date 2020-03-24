@@ -1,5 +1,8 @@
 #ifndef SOCKETRECORDER_H
 #define SOCKETRECORDER_H
+#include <map>
+#include <string>
+#include <vector>
 #include "cryptoTools/Network/Channel.h"
 using namespace osuCrypto;
 
@@ -26,7 +29,10 @@ public:
               pair<int, CryptoPP::byte*> p;
               p.first = siz;
               p.second = b;
-              dataSent.push_back(p);
+
+              vector<pair<int, unsigned char*>> v = dataSentCat[sentCatIndex];
+              v.push_back(p);
+              dataSentCat[sentCatIndex] = v;
 
               mChl.send(data, siz);
               bytesTransfered += siz;
@@ -52,7 +58,10 @@ public:
               pair<int, CryptoPP::byte*> p;
               p.first = siz;
               p.second = b;
-              dataRecv.push_back(p);
+
+              vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
+              v.push_back(p);
+              dataRecvCat[recvCatIndex] = v;
 
               mChl.recv(data, siz);
               bytesTransfered += siz;
@@ -68,39 +77,70 @@ public:
         mChl.asyncCancel([](){});
     }
 
-    void clearDataSent() {
-      sentIndex = dataSent.size();
-    }
-
-    void clearDataRecv() {
-      recvIndex = dataRecv.size();
-    }
-
-    vector<pair<int, unsigned char*>> getDataSent() {
-      vector<pair<int, unsigned char*>> output;
-      for(int i=sentIndex; i<dataSent.size(); i++) {
-        output.push_back(dataSent.at(i));
-      }
-      return output;
-    }
-
-    vector<pair<int, unsigned char*>> getDataRecv() {
-      vector<pair<int, unsigned char*>> output;
-      for(int i=recvIndex; i<dataRecv.size(); i++) {
-        output.push_back(dataRecv.at(i));
-      }
-      return output;
-    }
-
     osuCrypto::Channel getMChl() {
       return mChl;
     }
 
+    void check(string s) {
+      if(s.empty()) throw runtime_error("Socket recorder cannot find record for empty string");
+      bool b = false;
+      for(string z : debugger) {
+        if(z.compare(s) == 0) {
+          b = true;
+          break;
+        }
+      }
+      if(!b) throw runtime_error("Socket recorder has no record for '"+s+"'");
+    }
+
+    vector<pair<int, unsigned char*>> getSentCat(string cat) {
+      check(cat);
+      vector<pair<int, unsigned char*>> output;
+      for(pair<int, unsigned char*> p0 : dataSentCat[cat]) {
+        pair<int, unsigned char*> p1;
+        p1.first = p0.first;
+        p1.second = p0.second;
+        if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
+        output.push_back(p1);
+      }
+
+      return output;
+    }
+
+    vector<pair<int, unsigned char*>> getRecvCat(string cat) {
+      check(cat);
+      vector<pair<int, unsigned char*>> output;
+      for(pair<int, unsigned char*> p0 : dataRecvCat[cat]) {
+        pair<int, unsigned char*> p1;
+        p1.first = p0.first;
+        p1.second = p0.second;
+        if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
+        output.push_back(p1);
+      }
+
+      return output;
+    }
+
+    void setSentIndex(string s) {
+      debugger.push_back(s);
+      sentCatIndex = s;
+      vector<pair<int, unsigned char*>> v;
+      dataSentCat[s] = v;
+    }
+
+    void setRecvIndex(string s) {
+      debugger.push_back(s);
+      recvCatIndex = s;
+      vector<pair<int, unsigned char*>> v;
+      dataRecvCat[s] = v;
+    }
+
   private:
     osuCrypto::Channel mChl;
-    vector<pair<int, unsigned char*>> dataSent;
-    vector<pair<int, unsigned char*>> dataRecv;
-    int sentIndex = 0;
-    int recvIndex = 0;
+    map<string, vector<pair<int, unsigned char*>>> dataSentCat;
+    map<string, vector<pair<int, unsigned char*>>> dataRecvCat;
+    string sentCatIndex = "def";
+    string recvCatIndex = "def";
+    vector<string> debugger = {"def"};
 };
 #endif // SOCKETRECORDER_H

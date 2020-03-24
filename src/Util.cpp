@@ -383,3 +383,11 @@ void Util::printBlockInBits(osuCrypto::block b, int length) {
   printByteInBits(byt, length);
 }
 
+string Util::byteToBitString(CryptoPP::byte* b, int length) {
+  string out;
+  for(int i=0; i<length; i++) {
+    out += intToBitString((long) b[i],8)+" ";
+  }
+  return out;
+}
+

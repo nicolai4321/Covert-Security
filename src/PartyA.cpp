@@ -36,7 +36,7 @@ bool PartyA::startProtocol() {
 
   //First OT
   osuCrypto::KosOtExtSender sender;
-  otSeedsWitnesses(&sender, chlOT, seedsA, &iv, witnesses, kappa);
+  otSeedsWitnesses(lambda, kappa, &sender, chlOT, socketRecorder, seedsA, &iv, witnesses);
   cout << "A: has done first OT" << endl;
 
   //Garbling
@@ -46,7 +46,7 @@ bool PartyA::startProtocol() {
   cout << "A: has done garbling" << endl;
 
   //Second OT
-  otEncs(lambda, kappa, &sender, chlOT, socketRecorder, encs, seedsA, &iv, &transcriptsSent1, &transcriptsRecv1);
+  otEncs(lambda, kappa, &sender, chlOT, socketRecorder, encs, seedsA, &iv);
   cout << "A: has done second OT" << endl;
 
   //Commiting input encodings
@@ -132,32 +132,32 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
 /*
   First OT-interaction. Sends seedsA and witnesses
 */
-void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlOT, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses, int length) {
-  for(int j=0; j<lambda; j++) {
-    socketRecorder->clearDataRecv();
-    socketRecorder->clearDataSent();
+void PartyA::otSeedsWitnesses(int lambd, int kapp, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel channel, SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses) {
+  for(int j=0; j<lambd; j++) {
+    string cat = "ot1"+to_string(j);
+    sRecorder->setRecvIndex(cat);
+    sRecorder->setSentIndex(cat);
 
     vector<array<osuCrypto::block, 2>> data(1);
-    osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kappa);
-    osuCrypto::block block1 = Util::byteToBlock(witnesses.at(j), kappa);
+    osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kapp);
+    osuCrypto::block block1 = Util::byteToBlock(witnesses.at(j), kapp);
     data[0] = {block0, block1};
 
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
+    CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, 16), 16);
-    sender->sendChosen(data, prng, chlOT);
-
-    transcriptsRecv0.push_back(socketRecorder->getDataRecv());
-    transcriptsSent0.push_back(socketRecorder->getDataSent());
+    sender->sendChosen(data, prng, channel);
   }
 }
 
 /*
   Second OT-interaction. Sends input encodings for party B
 */
-void PartyA::otEncs(int lambd, int kapp, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel c, SocketRecorder *sRecorder, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<vector<pair<int, unsigned char*>>>* tSent, vector<vector<pair<int, unsigned char*>>>* tRecv) {
+void PartyA::otEncs(int lambd, int kapp, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel c, SocketRecorder *sRecorder,
+                    map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
   for(int j=0; j<lambd; j++) {
-    sRecorder->clearDataSent();
-    sRecorder->clearDataRecv();
+    string cat = "ot2"+to_string(j);
+    sRecorder->setRecvIndex(cat);
+    sRecorder->setSentIndex(cat);
 
     vector<array<osuCrypto::block, 2>> data(GV::n2);
     for(int i=0; i<GV::n2; i++) {
@@ -169,16 +169,6 @@ void PartyA::otEncs(int lambd, int kapp, osuCrypto::KosOtExtSender* sender, osuC
     CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp), kapp);
     sender->sendChosen(data, prng, c);
-
-    cout << "########################" << endl;
-    cout << j << endl;
-    for(pair<int, unsigned char*> p : sRecorder->getDataSent()) {
-      Util::printByteInBits(p.second, p.first);
-    }
-    cout << "########################" << endl;
-
-    tSent->push_back(sRecorder->getDataSent());
-    tRecv->push_back(sRecorder->getDataRecv());
   }
 }
 
@@ -335,14 +325,10 @@ CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, 
 }
 
 /*
-  This function constructs the signatures
+  This function constructs a signature string
 */
 string PartyA::constructSignatureString(int j, int kapp, vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB,
-                                        vector<osuCrypto::block> commitmentsEncsInputsA, bool allTranscripts,
-                                        vector<vector<pair<int, unsigned char*>>> tSent0,
-                                        vector<vector<pair<int, unsigned char*>>> tRecv0,
-                                        vector<vector<pair<int, unsigned char*>>> tSent1,
-                                        vector<vector<pair<int, unsigned char*>>> tRecv1) {
+                                        vector<osuCrypto::block> commitmentsEncsInputsA, bool allTranscripts, SocketRecorder* sRecorder) {
   //Circuit
   string circuitString = "";
   string line;
@@ -367,37 +353,49 @@ string PartyA::constructSignatureString(int j, int kapp, vector<osuCrypto::block
   string comSeedB = Util::blockToString(commitmentsB.at(j), kapp);
 
   //Transcripts
-  string t0sent = "";
-  for(pair<int, unsigned char*> p : tSent0.at(j)) {
-    t0sent += Util::byteToString(p.second, p.first);
-  }
+  string cat = "ot2"+to_string(j);
+  string ot2Sent = "";
 
-  string t0recv = "";
-  for(pair<int, unsigned char*> p : tRecv0.at(j)) {
-    t0recv += Util::byteToString(p.second, p.first);
+  //cout << "#################" << endl;
+  //cout << "j: " << j << endl;
+  for(pair<int, unsigned char*> p : sRecorder->getSentCat(cat)) {
+    //Util::printByteInBits(p.second, p.first);
+    ot2Sent += Util::byteToString(p.second, p.first);
   }
+  //cout << "#################" << endl;
 
-  string t1sent = "";
-  for(pair<int, unsigned char*> p : tSent1.at(j)) {
-    t1sent += Util::byteToString(p.second, p.first);
-  }
 
-  string t1recv = "";
-  for(pair<int, unsigned char*> p : tRecv1.at(j)) {
-    t1recv += Util::byteToString(p.second, p.first);
+  string ot2Recv = "";
+  for(pair<int, unsigned char*> p : sRecorder->getRecvCat(cat)) {
+    ot2Recv += Util::byteToString(p.second, p.first);
   }
 
   if(allTranscripts) {
-    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + t1sent + t1recv + t0sent + t0recv;
+    cat = "ot1"+to_string(j);
+
+    string ot1Sent = "";
+    for(pair<int, unsigned char*> p : sRecorder->getSentCat(cat)) {
+      ot1Sent += Util::byteToString(p.second, p.first);
+    }
+
+    string ot1Recv = "";
+    for(pair<int, unsigned char*> p : sRecorder->getRecvCat(cat)) {
+      ot1Recv += Util::byteToString(p.second, p.first);
+    }
+    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot2Sent + ot2Recv + ot1Sent + ot1Recv;
   } else {
-    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + t1sent;// + t1recv;
+    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot2Sent;// TODO add
   }
 }
 
+/*
+  This function constructs the signatures
+*/
 vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB, vector<osuCrypto::block> commitmentsEncsInputsA) {
   vector<SignatureHolder*> output;
+
   for(int j=0; j<lambda; j++) {
-    string m = constructSignatureString(j, kappa, commitmentsA, commitmentsB, commitmentsEncsInputsA, true, transcriptsSent0, transcriptsRecv0, transcriptsSent1, transcriptsRecv1);
+    string m = constructSignatureString(j, kappa, commitmentsA, commitmentsB, commitmentsEncsInputsA, true, socketRecorder);
     string signature = Signature::sign(sk, m);
     SignatureHolder *signatureHolder = new SignatureHolder(m, signature);
     output.push_back(signatureHolder);

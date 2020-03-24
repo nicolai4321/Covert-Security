@@ -47,6 +47,7 @@ class Util {
     static CryptoPP::byte* longToByte(long i);
     static CryptoPP::byte* stringToByte(string s, int byteSize);
     static osuCrypto::block stringToBlock(string s, int length);
+    static string byteToBitString(CryptoPP::byte* b, int length);
 
     static CryptoPP::byte* byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length);
     static CryptoPP::byte* mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length);

@@ -26,12 +26,12 @@ class PartyB {
     virtual ~PartyB();
 
     bool startProtocol();
-    vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
     bool checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA);
     bool evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsGammaB);
     bool simulatePartyA(vector<CryptoPP::byte*> seedsB, vector<SignatureHolder*> signatureHolders, vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB);
+    vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
 
-    static vector<osuCrypto::block> otEncodingsB(int y, int lamb, int kappa, int gamm, osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB, vector<vector<pair<int, unsigned char*>>>* transcriptsSent, vector<vector<pair<int, unsigned char*>>>* transcriptsRecv);
+    static vector<osuCrypto::block> otEncodingsB(int y, int lambda, int kappa, int gamm, osuCrypto::KosOtExtReceiver *recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
 
   protected:
 
@@ -49,10 +49,6 @@ class PartyB {
     vector<string> gateOrderB;
     vector<string> outputGatesB;
     map<string, vector<string>> gateInfoB;
-    vector<vector<pair<int, unsigned char*>>> transcriptsRecv0;
-    vector<vector<pair<int, unsigned char*>>> transcriptsSent0;
-    vector<vector<pair<int, unsigned char*>>> transcriptsRecv1;
-    vector<vector<pair<int, unsigned char*>>> transcriptsSent1;
 };
 
 #endif // PARTYB_H

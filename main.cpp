@@ -241,6 +241,10 @@ bool checkTransscripts(vector<pair<int, CryptoPP::byte*>> dataRecv0,
                        vector<pair<int, CryptoPP::byte*>> dataRecv1,
                        vector<pair<int, CryptoPP::byte*>> dataSent1) {
   //Checking the length of the messages
+  if(dataRecv0.size() == 0) return false;
+  if(dataRecv1.size() == 0) return false;
+  if(dataSent0.size() == 0) return false;
+  if(dataSent1.size() == 0) return false;
   if(dataRecv0.size() != dataRecv1.size()) return false;
   if(dataSent0.size() != dataSent1.size()) return false;
 
@@ -320,8 +324,8 @@ void runEqualTest() {
   SocketRecorder *socCliRec1 = (SocketRecorder*) siCliRec1;
 
   //CHECK DATA!
-  cout << "Servers: " << checkTransscripts(socSerRec0->getDataRecv(), socSerRec0->getDataSent(), socSerRec1->getDataRecv(), socSerRec1->getDataSent()) <<  endl;
-  cout << "Clients: " << checkTransscripts(socCliRec0->getDataRecv(), socCliRec0->getDataSent(), socCliRec1->getDataRecv(), socCliRec1->getDataSent()) <<  endl;
+  cout << "Servers: " << checkTransscripts(socSerRec0->getRecvCat("def"), socSerRec0->getSentCat("def"), socSerRec1->getRecvCat("def"), socSerRec1->getSentCat("def")) <<  endl;
+  cout << "Clients: " << checkTransscripts(socCliRec0->getRecvCat("def"), socCliRec0->getSentCat("def"), socCliRec1->getRecvCat("def"), socCliRec1->getSentCat("def")) <<  endl;
 }
 
 int main() {
@@ -332,8 +336,8 @@ int main() {
   int y = 2;
 
   //runCircuitFiles(kappa);
-  //startProtocol(kappa, lambda, x, y);
-  runEqualTest();
+  startProtocol(kappa, lambda, x, y);
+  //runEqualTest();
 
   cout << "covert end" << endl;
   return 0;
