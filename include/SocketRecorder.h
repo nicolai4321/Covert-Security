@@ -81,6 +81,7 @@ public:
       return mChl;
     }
 
+    //TODO remove debug function
     void check(string s) {
       if(s.empty()) throw runtime_error("Socket recorder cannot find record for empty string");
       bool b = false;
@@ -121,18 +122,14 @@ public:
       return output;
     }
 
-    void setSentIndex(string s) {
+    void storeIn(string s) {
       debugger.push_back(s);
       sentCatIndex = s;
-      vector<pair<int, unsigned char*>> v;
-      dataSentCat[s] = v;
-    }
-
-    void setRecvIndex(string s) {
-      debugger.push_back(s);
       recvCatIndex = s;
-      vector<pair<int, unsigned char*>> v;
-      dataRecvCat[s] = v;
+      vector<pair<int, unsigned char*>> v0;
+      vector<pair<int, unsigned char*>> v1;
+      dataSentCat[s] = v0;
+      dataRecvCat[s] = v1;
     }
 
   private:

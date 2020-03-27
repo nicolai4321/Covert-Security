@@ -17,7 +17,8 @@ using namespace std;
 
 class PartyA {
   public:
-    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, osuCrypto::Channel channel, SocketRecorder* socketRecorder, CircuitInterface* circuit);
+    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, osuCrypto::Channel chlOT,
+           SocketRecorder* socketRecorder, CircuitInterface* circuit);
     virtual ~PartyA();
 
     bool startProtocol();
@@ -26,8 +27,8 @@ class PartyA {
     vector<osuCrypto::block> getDecommitmentsInputA(int gamma, vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA);
     vector<SignatureHolder*> constructSignatures(vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB, vector<osuCrypto::block> commitmentsEncsInputsA);
 
-    static void otSeedsWitnesses(int lambda, int kappa, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel serverChl, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses);
-    static void otEncs(int lambda, int kappa, osuCrypto::KosOtExtSender* sender, osuCrypto::Channel c, SocketRecorder *socketRecorder, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv);
+    static void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambda, int kappa, osuCrypto::Channel serverChl, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses);
+    static void otEncs(osuCrypto::KosOtExtSender* sender, int lambda, int kappa, osuCrypto::Channel c, SocketRecorder *socketRecorder, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv);
     static pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitCircuits(int lambda, int kappa, CircuitInterface *circuit, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CircuitInterface*> circuits);
     static pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitEncsA(int lambda, int kappa, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, map<int, vector<vector<CryptoPP::byte*>>> encs);
     static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda, int kappa, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);

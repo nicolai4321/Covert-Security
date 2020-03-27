@@ -136,16 +136,16 @@ void runCircuitFiles(int kappa) {
 void startProtocol(int kappa, int lambda, int x, int y) {
   //Network
   osuCrypto::IOService ios(16);
-  osuCrypto::Channel serverChl = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel clientChl = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::SocketInterface *serverSI = new SocketRecorder(serverChl);
-  osuCrypto::SocketInterface *clientSI = new SocketRecorder(clientChl);
-  SocketRecorder *socketRecorderServer = (SocketRecorder*) serverSI;
-  SocketRecorder *socketRecorderClient = (SocketRecorder*) clientSI;
-  osuCrypto::Channel serverChlRec(ios, serverSI);
-  osuCrypto::Channel clientChlRec(ios, clientSI);
-  clientChl.waitForConnection();
-  clientChlRec.waitForConnection();
+  osuCrypto::Channel chlSer = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCli = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::SocketInterface *siSer = new SocketRecorder(chlSer);
+  osuCrypto::SocketInterface *siCli= new SocketRecorder(chlCli);
+  SocketRecorder *socketRecorderServer = (SocketRecorder*) siSer;
+  SocketRecorder *socketRecorderClient = (SocketRecorder*) siCli;
+  osuCrypto::Channel chlSerOT(ios, siSer);
+  osuCrypto::Channel chlCliOT(ios, siCli);
+  chlCli.waitForConnection();
+  chlCliOT.waitForConnection();
 
   //Digital Signature
   CryptoPP::DSA::PrivateKey sk = Signature::generateRandomPrivateKey(1024);
@@ -169,20 +169,20 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   bool b0;
   bool b1;
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, serverChlRec, socketRecorderServer, circuit);
+    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, chlSerOT, socketRecorderServer, circuit);
     b0 = partyA.startProtocol();
   });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, pk, kappa, lambda, clientChlRec, socketRecorderClient, circuit, evaluator);
+    PartyB partyB = PartyB(y, pk, kappa, lambda, chlCliOT, socketRecorderClient, circuit, evaluator);
     b1 = partyB.startProtocol();
   });
 
   threadA.join();
   threadB.join();
-  serverChlRec.close();
-  clientChlRec.close();
-  serverChl.close();
-  clientChl.close();
+  chlCliOT.close();
+  chlSerOT.close();
+  chlCli.close();
+  chlSer.close();
   ios.stop();
 
   if(b0 && b1) {
@@ -192,7 +192,7 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   }
 }
 
-void nextOT(osuCrypto::Channel chl0, osuCrypto::Channel chl1, CryptoPP::byte* seed, int n, osuCrypto::BitVector choices, vector<array<osuCrypto::block, 2>> data) {
+void nextOT(osuCrypto::KosOtExtSender* sender, osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlSer, osuCrypto::Channel chlCli, CryptoPP::byte* seedSer, CryptoPP::byte* seedCli, int n, osuCrypto::BitVector choices, vector<array<osuCrypto::block, 2>> data) {
   cout << "OT START" << endl;
   //Base OTs
   vector<osuCrypto::block> baseRecv(128);
@@ -207,11 +207,10 @@ void nextOT(osuCrypto::Channel chl0, osuCrypto::Channel chl1, CryptoPP::byte* se
 
   //RECEIVER
   auto recverThread = thread([&]() {
-    osuCrypto::PRNG prng0(Util::byteToBlock(seed, 16), 16);
+    osuCrypto::PRNG prng0(Util::byteToBlock(seedCli, 16), 16);
     vector<osuCrypto::block> dest0(n);
-    osuCrypto::KosOtExtReceiver recver;
-    recver.setBaseOts(baseSend, prng0, chl0);
-    recver.receiveChosen(choices, dest0, prng0, chl0);
+    recver->setBaseOts(baseSend, prng0, chlCli);
+    recver->receiveChosen(choices, dest0, prng0, chlCli);
 
     cout << "OUTPUT: ";
     for(osuCrypto::block b : dest0) {
@@ -222,10 +221,9 @@ void nextOT(osuCrypto::Channel chl0, osuCrypto::Channel chl1, CryptoPP::byte* se
 
   //SENDER
   auto senderThread = thread([&]() {
-    osuCrypto::PRNG prng1(Util::byteToBlock(seed, 16), 16);
-    osuCrypto::KosOtExtSender sender;
-    sender.setBaseOts(baseRecv, baseChoice, chl1);
-    sender.sendChosen(data, prng1, chl1);
+    osuCrypto::PRNG prng1(Util::byteToBlock(seedSer, 16), 16);
+    sender->setBaseOts(baseRecv, baseChoice, chlSer);
+    sender->sendChosen(data, prng1, chlSer);
   });
 
   recverThread.join();
@@ -273,59 +271,179 @@ bool checkTransscripts(vector<pair<int, CryptoPP::byte*>> dataRecv0,
   return true;
 }
 
-void runEqualTest() {
+void nextSer(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlSer, SocketRecorder* socRec, vector<CryptoPP::byte*> seedsA, int lambda, vector<vector<osuCrypto::block>> data) {
+  for(int j=0; j<lambda; j++) {
+    Util::setBaseSer(sender, chlSer);
+    socRec->storeIn("ot2"+to_string(j));
+    vector<array<osuCrypto::block, 2>> dataOT(1);
+    dataOT[0] = {data.at(j).at(0), data.at(j).at(1)};
+    osuCrypto::PRNG prng(Util::byteToBlock(seedsA.at(j), 16), 16);
+    sender->sendChosen(dataOT, prng, chlSer);
+  }
+}
+
+void nextCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, SocketRecorder* socRec, vector<CryptoPP::byte*> seedsB, int lambda, int siz, vector<int> choices) {
+  for(int j=0; j<lambda; j++) {
+    socRec->storeIn("ot2"+to_string(j));
+    Util::setBaseCli(recver, chlCli, seedsB.at(j));
+    osuCrypto::BitVector choice(1);
+    choice[0] = choices.at(j);
+    osuCrypto::PRNG prng(Util::byteToBlock(seedsB.at(j), 16), 16);
+    vector<osuCrypto::block> dest(1);
+    recver->receiveChosen(choice, dest, prng, chlCli);
+
+    cout << "OUTPUT: ";
+    for(osuCrypto::block b : dest) {
+      cout << b[0] << ",";
+    }
+    cout << endl;
+  }
+}
+
+void runEqualTest(int kappa) {
   osuCrypto::IOService ios;
   osuCrypto::IOService iosSim;
-  osuCrypto::Channel chlSer0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli0 = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::Channel chlSer1 = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli1 = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::SocketInterface *siSerRec0 = new SocketRecorder(chlSer0);
-  osuCrypto::SocketInterface *siCliRec0 = new SocketRecorder(chlCli0);
-  osuCrypto::SocketInterface *siSerRec1 = new SocketRecorder(chlSer1);
-  osuCrypto::SocketInterface *siCliRec1 = new SocketRecorder(chlCli1);
-  Channel chlSerRec0(ios, siSerRec0);
-  Channel chlCliRec0(ios, siCliRec0);
-  Channel chlSerRec1(ios, siSerRec1);
-  Channel chlCliRec1(ios, siCliRec1);
+  osuCrypto::Channel chlSer = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCli = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::Channel chlSerSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCliSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::SocketInterface *siSer = new SocketRecorder(chlSer);
+  osuCrypto::SocketInterface *siCli = new SocketRecorder(chlCli);
+  osuCrypto::SocketInterface *siSerSim = new SocketRecorder(chlSerSim);
+  osuCrypto::SocketInterface *siCliSim = new SocketRecorder(chlCliSim);
+  Channel recSer(ios, siSer);
+  Channel recCli(ios, siCli);
+  Channel recSerSim(ios, siSerSim);
+  Channel recCliSim(ios, siCliSim);
+  SocketRecorder *socSer = (SocketRecorder*) siSer;
+  SocketRecorder *socCli = (SocketRecorder*) siCli;
+  SocketRecorder *socSerSim = (SocketRecorder*) siSerSim;
+  SocketRecorder *socCliSim = (SocketRecorder*) siCliSim;
 
-  //OT
-  int n = 2;
+  int lambda = 8;
+  int siz = 8;
+  int y = 2;
+  int gamma = 2;
 
-  CryptoPP::byte *seed0 = new CryptoPP::byte[16];
-  memset(seed0, 0x50, 16);
+  vector<CryptoPP::byte*> seedsA;
+  vector<CryptoPP::byte*> seedsB;
+  vector<CryptoPP::byte*> seedsAsim;
+  vector<CryptoPP::byte*> seedsBsim;
+  map<unsigned int, unsigned int> ivA;
+  map<unsigned int, unsigned int> ivB;
+  map<unsigned int, unsigned int> ivAsim;
+  map<unsigned int, unsigned int> ivBsim;
+  for(int j=0; j<lambda; j++) {
+    CryptoPP::byte *seedSer = new CryptoPP::byte[kappa];
+    memset(seedSer, 0x40, kappa);
+    seedsA.push_back(seedSer);
 
-  CryptoPP::byte *seed1 = new CryptoPP::byte[16];
-  memset(seed1, 0x50, 16);
+    CryptoPP::byte *seedCli = new CryptoPP::byte[kappa];
+    memset(seedCli, 0x50, kappa);
+    seedsB.push_back(seedCli);
 
-  osuCrypto::BitVector choices0(2);
-  choices0[0] = 1;
-  choices0[1] = 0;
+    CryptoPP::byte *seedSerSim = new CryptoPP::byte[kappa];
+    memset(seedSerSim, 0x40, kappa);
+    seedsAsim.push_back(seedSerSim);
+
+    CryptoPP::byte *seedCliSim = new CryptoPP::byte[kappa];
+    memset(seedCliSim, 0x50, kappa);
+    seedsBsim.push_back(seedCliSim);
+
+    ivA[j] = 0;
+    ivB[j] = 0;
+    ivAsim[j] = 0;
+    ivBsim[j] = 0;
+  }
+
+  osuCrypto::KosOtExtSender sender;
+  osuCrypto::KosOtExtReceiver recver;
+
+  vector<int> choices;
+  choices.push_back(0);
+  choices.push_back(0);
+  choices.push_back(0);
+  choices.push_back(0);
+  choices.push_back(1);
+  choices.push_back(1);
+  choices.push_back(1);
+  choices.push_back(1);
+
+  vector<vector<osuCrypto::block>> data;
+  data.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  data.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  data.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  data.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  data.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  data.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  data.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  data.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+
+  //first ot
+  vector<array<osuCrypto::block, 2>> data1(2);
+  data1[0] = {osuCrypto::toBlock(23), osuCrypto::toBlock(5)};
+  data1[1] = {osuCrypto::toBlock(23), osuCrypto::toBlock(5)};
 
   osuCrypto::BitVector choices1(2);
   choices1[0] = 1;
-  choices1[1] = 0;
+  choices1[1] = 1;
 
-  vector<array<osuCrypto::block, 2>> data0(n);
-  data0[0] = {osuCrypto::toBlock(432), osuCrypto::toBlock(5)};
-  data0[1] = {osuCrypto::toBlock(5), osuCrypto::toBlock(4394)};
+  nextOT(&sender, &recver, recSer, recCli, seedsA.at(0), seedsB.at(0), 2, choices1, data1);
 
-  vector<array<osuCrypto::block, 2>> data1(n);
-  data1[0] = {osuCrypto::toBlock(432), osuCrypto::toBlock(5)};
-  data1[1] = {osuCrypto::toBlock(5), osuCrypto::toBlock(4394)};
+  auto threadSer = thread([&]() {
+    nextSer(&sender, recSer, socSer, seedsA, lambda, data);
 
-  nextOT(chlSerRec0, chlCliRec0, seed0, n, choices0, data0);
-  nextOT(chlSerRec1, chlCliRec1, seed1, n, choices1, data1);
+    //map<int, vector<vector<CryptoPP::byte*>>> encs;
+    //PartyA::otEncs(&sender, lambda, kappa, recSer, socSer, encs, seedsA, &ivA);
+  });
+  auto threadCli = thread([&]() {
+    nextCli(&recver, recCli, socCli, seedsB, lambda, siz, choices);
 
-  //CHECKING
-  SocketRecorder *socSerRec0 = (SocketRecorder*) siSerRec0;
-  SocketRecorder *socCliRec0 = (SocketRecorder*) siCliRec0;
-  SocketRecorder *socSerRec1 = (SocketRecorder*) siSerRec1;
-  SocketRecorder *socCliRec1 = (SocketRecorder*) siCliRec1;
+    //PartyB::otEncodingsB(&recver, y, lambda, kappa, gamma, recCli, socCli, seedsB, &ivB);
+  });
+  threadSer.join();
+  threadCli.join();
 
-  //CHECK DATA!
-  cout << "Servers: " << checkTransscripts(socSerRec0->getRecvCat("def"), socSerRec0->getSentCat("def"), socSerRec1->getRecvCat("def"), socSerRec1->getSentCat("def")) <<  endl;
-  cout << "Clients: " << checkTransscripts(socCliRec0->getRecvCat("def"), socCliRec0->getSentCat("def"), socCliRec1->getRecvCat("def"), socCliRec1->getSentCat("def")) <<  endl;
+  vector<int> choicesSim;
+  choicesSim.push_back(0);
+  choicesSim.push_back(0);
+  choicesSim.push_back(0);
+  choicesSim.push_back(0);
+  choicesSim.push_back(1);
+  choicesSim.push_back(1);
+  choicesSim.push_back(1);
+  choicesSim.push_back(1);
+
+  vector<vector<osuCrypto::block>> dataSim;
+  dataSim.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  dataSim.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  dataSim.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(321)}); //unknown
+  dataSim.push_back({osuCrypto::toBlock(5) ,osuCrypto::toBlock(53)});
+  dataSim.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  dataSim.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  dataSim.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+  dataSim.push_back({osuCrypto::toBlock(53) ,osuCrypto::toBlock(5)});
+
+  auto threadSerSim = thread([&]() {
+    nextSer(&sender, recSerSim, socSerSim, seedsAsim, lambda, dataSim);
+
+    //map<int, vector<vector<CryptoPP::byte*>>> encs;
+    //PartyA::otEncs(&sender, lambda, kappa, recSerSim, socSerSim, encs, seedsA, &ivAsim);
+  });
+  auto threadCliSim = thread([&]() {
+    nextCli(&recver, recCliSim, socCliSim, seedsBsim, lambda, siz, choicesSim);
+
+    //PartyB::otEncodingsB(&recver, y, lambda, kappa, gamma, recCliSim, socCliSim, seedsB, &ivBsim);
+  });
+  threadSerSim.join();
+  threadCliSim.join();
+
+  //Check
+  for(int j=0; j<lambda; j++) {
+    string index = "ot2"+to_string(j);
+    cout << "Servers(" << j << "): " << checkTransscripts(socSer->getRecvCat(index), socSer->getSentCat(index), socSerSim->getRecvCat(index), socSerSim->getSentCat(index)) <<  endl;
+    cout << "Clients(" << j << "): " << checkTransscripts(socCli->getRecvCat(index), socCli->getSentCat(index), socCliSim->getRecvCat(index), socCliSim->getSentCat(index)) <<  endl << endl;
+  }
 }
 
 int main() {
@@ -337,7 +455,7 @@ int main() {
 
   //runCircuitFiles(kappa);
   startProtocol(kappa, lambda, x, y);
-  //runEqualTest();
+  //runEqualTest(kappa);
 
   cout << "covert end" << endl;
   return 0;

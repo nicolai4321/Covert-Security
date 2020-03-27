@@ -326,9 +326,13 @@ CryptoPP::byte* Util::mergeBytes(vector<CryptoPP::byte*> bytes, int length) {
 string Util::byteToString(CryptoPP::byte* b, int byteSize) {
   string output;
   CryptoPP::HexEncoder encoder;
-  encoder.Attach(new CryptoPP::StringSink(output));
   encoder.Put(b, byteSize);
   encoder.MessageEnd();
+  CryptoPP::word64 s = encoder.MaxRetrievable();
+  if(s) {
+      output.resize(s);
+      encoder.Get((CryptoPP::byte*)&output[0], output.size());
+  }
   return output;
 }
 
@@ -391,3 +395,40 @@ string Util::byteToBitString(CryptoPP::byte* b, int length) {
   return out;
 }
 
+void Util::setBaseOTs(osuCrypto::KosOtExtSender* sender, osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlSer, osuCrypto::Channel chlCli, CryptoPP::byte* seed) {
+  //receiver
+  vector<array<osuCrypto::block, 2>> baseSend(128);
+  for(osuCrypto::u64 i=0; i<128; ++i) {
+    baseSend[i][0] = osuCrypto::toBlock(i);
+    baseSend[i][1] = osuCrypto::toBlock(i);
+  }
+  osuCrypto::PRNG prng(Util::byteToBlock(seed, 16), 16);
+  recver->setBaseOts(baseSend, prng, chlCli);
+
+  //sender
+  vector<osuCrypto::block> baseRecv(128);
+  osuCrypto::BitVector baseChoice(128);
+  for(osuCrypto::u64 i=0; i<128; ++i) {
+    baseRecv[i] = osuCrypto::toBlock(i);//baseSend[i][baseChoice[i]];
+  }
+  sender->setBaseOts(baseRecv, baseChoice, chlSer);
+}
+
+void Util::setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed) {
+  vector<array<osuCrypto::block, 2>> baseSend(128);
+  for(osuCrypto::u64 i=0; i<128; ++i) {
+    baseSend[i][0] = osuCrypto::toBlock(i);
+    baseSend[i][1] = osuCrypto::toBlock(i);
+  }
+  osuCrypto::PRNG prng(Util::byteToBlock(seed, 16), 16);
+  recver->setBaseOts(baseSend, prng, chlCli);
+}
+
+void Util::setBaseSer(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlSer) {
+  vector<osuCrypto::block> baseRecv(128);
+  osuCrypto::BitVector baseChoice(128);
+  for(osuCrypto::u64 i=0; i<128; ++i) {
+    baseRecv[i] = osuCrypto::toBlock(i);//baseSend[i][baseChoice[i]];
+  }
+  sender->setBaseOts(baseRecv, baseChoice, chlSer);
+}

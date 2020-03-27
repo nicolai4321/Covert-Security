@@ -1,12 +1,13 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, CryptoPP::DSA::PublicKey publicKey, int k, int l, osuCrypto::Channel c, SocketRecorder *sr, CircuitInterface* cir, EvaluatorInterface* eI) {
+PartyB::PartyB(int input, CryptoPP::DSA::PublicKey publicKey, int k, int l, osuCrypto::Channel cOT, SocketRecorder *sr,
+               CircuitInterface* cir, EvaluatorInterface* eI) {
   y = input;
   pk = publicKey;
   kappa = k;
   lambda = l;
-  chlOT = c;
+  chlOT = cOT;
   chl = sr->getMChl();
   socketRecorder = sr;
   circuit = cir;
@@ -60,28 +61,22 @@ bool PartyB::startProtocol() {
   cout << "B: has done first OT" << endl;
 
   //Second OT
-  vector<osuCrypto::block> encsInputsB = otEncodingsB(y, lambda, kappa, gamma, &recver, chlOT, socketRecorder, seedsB, &ivB);
+  vector<osuCrypto::block> encsInputsB = otEncodingsB(&recver, y, lambda, kappa, gamma, chlOT, socketRecorder, seedsB, &ivB);
   cout << "B: has done second OT" << endl;
 
-  //*************************************
-  //TODO: check ot-communication and auth.
-  //*************************************
-    vector<osuCrypto::block> commitmentsEncsA;
-    chl.recv(commitmentsEncsA);
-    cout << "B: has received commitments for input encodings from other party" << endl;
-    vector<osuCrypto::block> commitmentsCircuitsA;
-    chl.recv(commitmentsCircuitsA);
-    cout << "B: has received commitments for circuits from other party" << endl;
+  vector<osuCrypto::block> commitmentsEncsA;
+  chl.recv(commitmentsEncsA);
+  cout << "B: has received commitments for input encodings from other party" << endl;
+  vector<osuCrypto::block> commitmentsCircuitsA;
+  chl.recv(commitmentsCircuitsA);
+  cout << "B: has received commitments for circuits from other party" << endl;
 
-    vector<SignatureHolder*> signatureHolders;
-    chl.recv(signatureHolders);
-    cout << "B: has received signatures" << endl;
+  vector<SignatureHolder*> signatureHolders;
+  chl.recv(signatureHolders);
+  cout << "B: has received signatures" << endl;
 
-    if(!simulatePartyA(seedsB, signatureHolders, seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB)) {return false;}
-
-  //*************************************
-  //TODO: end
-  //*************************************
+  //Simulate party A to check signatures and commitments
+  if(!simulatePartyA(&recver, seedsB, signatureHolders, seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB)) {return false;}
 
   //Sends gamma, witness and seeds to other party
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
@@ -117,12 +112,11 @@ bool PartyB::startProtocol() {
 /*
   First OT-interaction. Receives seeds and witnesses for A
 */
-vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel channel, SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB) {
+vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel channel, SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsB,
+                                                 map<unsigned int, unsigned int>* ivB) {
   vector<osuCrypto::block> seedsWitnessA;
   for(int j=0; j<lambda; j++) {
-    string cat = "ot1"+to_string(j);
-    sRecorder->setSentIndex(cat);
-    sRecorder->setRecvIndex(cat);
+    sRecorder->storeIn("ot1"+to_string(j));
 
     osuCrypto::BitVector b(1);
     b[0] = (j==gamma) ? 1 : 0;
@@ -131,6 +125,7 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, 16), 16);
     vector<osuCrypto::block> dest(1);
     recver->receiveChosen(b, dest, prng, channel);
+
     seedsWitnessA.push_back(dest[0]);
   }
   return seedsWitnessA;
@@ -139,15 +134,13 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
 /*
   Second OT-interaction. Receives encodings for own input
 */
-vector<osuCrypto::block> PartyB::otEncodingsB(int input, int lambd, int kapp, int gamm, osuCrypto::KosOtExtReceiver *recver,
-                                              osuCrypto::Channel chlOT, SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsB,
-                                              map<unsigned int, unsigned int>* ivB) {
+vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recver, int input, int lambd, int kapp, int gamm, osuCrypto::Channel channel,
+                                              SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB) {
   string yString = Util::intToBitString(input, GV::n2);
   vector<osuCrypto::block> encsB;
   for(int j=0; j<lambd; j++) {
-    string cat = "ot2"+to_string(j);
-    sRecorder->setSentIndex(cat);
-    sRecorder->setRecvIndex(cat);
+    sRecorder->storeIn("ot2"+to_string(j));
+    Util::setBaseCli(recver, channel, seedsB.at(j));
 
     osuCrypto::BitVector b(GV::n2);
     for(int i=0; i<GV::n2; i++) {
@@ -161,9 +154,11 @@ vector<osuCrypto::block> PartyB::otEncodingsB(int input, int lambd, int kapp, in
     vector<osuCrypto::block> encs(GV::n2);
     CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsB.at(j), (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp), kapp);
-    recver->receiveChosen(b, encs, prng, chlOT);
+
+    recver->receiveChosen(b, encs, prng, channel);
+
     if(j==gamm) {
-      for(int i=0; i<GV::n1; i++) {
+      for(int i=0; i<GV::n2; i++) {
         encsB.push_back(encs[i]);
       }
     }
@@ -176,10 +171,10 @@ vector<osuCrypto::block> PartyB::otEncodingsB(int input, int lambd, int kapp, in
   This function checks the commitments for the lambda circuit
 */
 bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA, vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA) {
-  CryptoPP::byte *commit0 = PartyA::commitCircuit(kappa, circuit->getType(), F, decommitmentsCircuitA.at(gamma)); //correct commit
-  CryptoPP::byte *commit1 = Util::blockToByte(commitmentsCircuitsA.at(gamma), Util::COMMIT_LENGTH); //commit from A
+  CryptoPP::byte *commitSim = PartyA::commitCircuit(kappa, circuit->getType(), F, decommitmentsCircuitA.at(gamma));
+  CryptoPP::byte *commit = Util::blockToByte(commitmentsCircuitsA.at(gamma), Util::COMMIT_LENGTH);
 
-  if(memcmp(commit0, commit1, Util::COMMIT_LENGTH) != 0) {
+  if(memcmp(commitSim, commit, Util::COMMIT_LENGTH) != 0) {
     cout << "B: Error! Invalid circuit commitment from other party" << endl;
     return false;
   }
@@ -292,9 +287,10 @@ bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, v
 /*
   Checks that the input encodings is computed from the seed
 */
-bool PartyB::simulatePartyA(vector<CryptoPP::byte*> seedsB, vector<SignatureHolder*> signatureHolders, vector<osuCrypto::block> seedsWitnessA,
+bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP::byte*> seedsB, vector<SignatureHolder*> signatureHolders, vector<osuCrypto::block> seedsWitnessA,
                             vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB) {
   //Checking signatures
+  cout << "B: checking signatures" << endl;
   for(int j=0; j<lambda; j++) {
     SignatureHolder* signatureHolder = signatureHolders.at(j);
     string msg = signatureHolder->getMsg();
@@ -306,6 +302,7 @@ bool PartyB::simulatePartyA(vector<CryptoPP::byte*> seedsB, vector<SignatureHold
   }
 
   //Generating seeds
+  cout << "B: generating seeds" << endl;
   map<unsigned int, unsigned int> ivA;
   map<unsigned int, unsigned int> ivBSim;
   vector<CryptoPP::byte*> seedsA;
@@ -315,103 +312,87 @@ bool PartyB::simulatePartyA(vector<CryptoPP::byte*> seedsB, vector<SignatureHold
     ivBSim[j] = 1;
   }
 
-  //Network
-  osuCrypto::IOService iosSim(16);
-  osuCrypto::Channel chlSerSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCliSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::SocketInterface *siSerRecSim = new SocketRecorder(chlSerSim);
-  osuCrypto::SocketInterface *siCliRecsim = new SocketRecorder(chlCliSim);
-  SocketRecorder *socketRecorderServer = (SocketRecorder*) siSerRecSim;
-  SocketRecorder *socketRecorderClient = (SocketRecorder*) siCliRecsim;
-  Channel serSim(iosSim, siSerRecSim);
-  Channel cliSim(iosSim, siCliRecsim);
-  osuCrypto::KosOtExtSender sender;
-  osuCrypto::KosOtExtReceiver recver;
-  chlCliSim.waitForConnection();
-  cliSim.waitForConnection();
-
-  //Base OTs
-/*  osuCrypto::PRNG prng(Util::byteToBlock(seedsA.at(0), 16), 16);
-  vector<osuCrypto::block> baseRecv(128);
-  vector<array<osuCrypto::block, 2>> baseSend(128);
-  osuCrypto::BitVector baseChoice(128);
-
-  for(osuCrypto::u64 i=0; i<128; ++i) {
-    baseSend[i][0] = osuCrypto::toBlock(i);
-    baseSend[i][1] = osuCrypto::toBlock(i);
-    baseRecv[i] = baseSend[i][baseChoice[i]];
-  }
-  recver.setBaseOts(baseSend, prng, cliSim);
-  sender.setBaseOts(baseRecv, baseChoice, serSim);*/
-
   //Simulating the 1st OT
-/*  for(int j=0; j<lambda; j++) {
+  cout << "B: simulating 1st OT" << endl;
+  for(int j=0; j<lambda; j++) {
     ivA[j] = ivA[j]+1;
-  }*/
-  auto recverThread0 = thread([&]() {
-    //RECEIVER
-    otSeedsWitnessA(&recver, cliSim, socketRecorderClient, seedsB, &ivBSim);
-  });
+    ivBSim[j] = ivBSim[j]+1;
+  }
 
-  auto senderThread0 = thread([&]() {
-    //SENDER
-    vector<CryptoPP::byte*> witnessesSim;
-    for(osuCrypto::block b : seedsWitnessA) {
-      witnessesSim.push_back(Util::blockToByte(b, kappa));
-    }
-
-    PartyA::otSeedsWitnesses(lambda, kappa, &sender, serSim, socketRecorderServer, seedsA, &ivA, witnessesSim);
-  });
-
-  recverThread0.join();
-  senderThread0.join();
-
+  //Simulated garbling
+  cout << "B: simulating garbling" << endl;
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
 
+  //Network
+  cout << "B: network setup for 2nd ot-simulation" << endl;
+  osuCrypto::IOService iosSim(16);
+  osuCrypto::Channel chlSerSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::Channel chlCliSim = osuCrypto::Session(iosSim, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::SocketInterface *siSerSim = new SocketRecorder(chlSerSim);
+  osuCrypto::SocketInterface *siCliSim = new SocketRecorder(chlCliSim);
+  SocketRecorder *socSerSim = (SocketRecorder*) siSerSim;
+  SocketRecorder *socCliSim = (SocketRecorder*) siCliSim;
+  osuCrypto::Channel recSerSim(iosSim, siSerSim);
+  osuCrypto::Channel recCliSim(iosSim, siCliSim);
+  chlCliSim.waitForConnection();
+  recCliSim.waitForConnection();
+  cout << "B network is settled" << endl;
+
   //Simulating the 2nd OT
-  auto recverThread1 = thread([&]() {
-    //RECEIVER
-    otEncodingsB(y, lambda, kappa, gamma, &recver, cliSim, socketRecorderClient, seedsB, &ivBSim);
-  });
-
   auto senderThread1 = thread([&]() {
-    //SENDER
-    PartyA::otEncs(lambda, kappa, &sender, serSim, socketRecorderServer, encsSimulated, seedsA, &ivA);
+  osuCrypto::KosOtExtSender sender;
+    PartyA::otEncs(&sender, lambda, kappa, recSerSim, socSerSim, encsSimulated, seedsA, &ivA);
   });
 
-  recverThread1.join();
-  senderThread1.join();
+  auto recverThread1 = thread([&]() {
+    otEncodingsB(recver, y, lambda, kappa, gamma, recCliSim, socCliSim, seedsB, &ivBSim);
+  });
 
-  cout << "gamma: " << gamma << endl;
+  senderThread1.join();
+  recverThread1.join();
+
+  cout << "Gamma is: " << gamma << endl;
+
+  cout << "B: checking transscripts" << endl;
   for(int j=0; j<lambda; j++) {
     if(j != gamma) {
       SignatureHolder* signatureHolder = signatureHolders.at(j);
       string msg = signatureHolder->getMsg();
-      string msgSim = PartyA::constructSignatureString(j, kappa, commitmentsCircuitsA, commitmentsB, commitmentsEncsA, false, socketRecorderServer);
+      string msgSim = PartyA::constructSignatureString(j, kappa, commitmentsCircuitsA, commitmentsB, commitmentsEncsA, false, socSerSim);
       if(msg.size() < msgSim.size()) {
-        cout << "B: signature of invalid data for round: " << j << endl;
+        cout << "B: signature of invalid data for round: " << j << " (different sizes)" << endl;
         //return false; //TODO
       } else if((msg.substr(0, msgSim.size())).compare(msgSim) != 0) {
         cout << "B: signature of invalid data for round: " << j << endl;
+
+        //write error
+        /*ofstream myfile;
+        myfile.open ("debug.txt");
+        myfile << msg;
+        myfile << "\n\n ---------------\n\n";
+        myfile << msg.substr(0, msgSim.size());
+        myfile << "\n\n ---------------\n\n";
+        myfile << msgSim;
+        myfile.close();*/
+
         //return false; //TODO
       } else {
-        cout << "transcripts for " << j << " is correct" << endl;
+        cout << "B: signature of correct data for round: " << j << endl;
       }
     }
   }
 
-  siCliRecsim->close();
-  siSerRecSim->close();
-  cliSim.close();
-  serSim.close();
-  chlCliSim.close();
+  socSerSim->close();
+  socCliSim->close();
+  recSerSim.close();
+  recCliSim.close();
   chlSerSim.close();
+  chlCliSim.close();
   iosSim.stop();
 
-  throw runtime_error("MANUAL");
-
+  //Checking commitments
   pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated = PartyA::commitEncsA(lambda, kappa, seedsA, &ivA, encsSimulated);
   vector<osuCrypto::block> commitmentsEncsASimulated = commitPairSimulated.first;
 
