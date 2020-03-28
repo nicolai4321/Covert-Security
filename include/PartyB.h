@@ -24,7 +24,7 @@ using namespace std;
 class PartyB {
   public:
     PartyB(int y, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder,
-           CircuitInterface* circuit, EvaluatorInterface* evaluator);
+           CircuitInterface* circuit, EvaluatorInterface* evaluator, osuCrypto::IOService* ios);
 
     virtual ~PartyB();
 
@@ -61,6 +61,7 @@ class PartyB {
     vector<string> gateOrderB;
     vector<string> outputGatesB;
     map<string, vector<string>> gateInfoB;
+    osuCrypto::IOService* ios;
 };
 
 #endif // PARTYB_H

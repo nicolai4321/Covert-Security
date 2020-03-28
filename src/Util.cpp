@@ -414,20 +414,20 @@ void Util::setBaseOTs(osuCrypto::KosOtExtSender* sender, osuCrypto::KosOtExtRece
   sender->setBaseOts(baseRecv, baseChoice, chlSer);
 }
 
-void Util::setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed) {
+void Util::setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed, int kappa) {
   vector<array<osuCrypto::block, 2>> baseSend(128);
-  for(osuCrypto::u64 i=0; i<128; ++i) {
+  for(osuCrypto::u64 i=0; i<128; i++) {
     baseSend[i][0] = osuCrypto::toBlock(i);
     baseSend[i][1] = osuCrypto::toBlock(i);
   }
-  osuCrypto::PRNG prng(Util::byteToBlock(seed, 16), 16);
+  osuCrypto::PRNG prng(Util::byteToBlock(seed, kappa));
   recver->setBaseOts(baseSend, prng, chlCli);
 }
 
 void Util::setBaseSer(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlSer) {
   vector<osuCrypto::block> baseRecv(128);
   osuCrypto::BitVector baseChoice(128);
-  for(osuCrypto::u64 i=0; i<128; ++i) {
+  for(osuCrypto::u64 i=0; i<128; i++) {
     baseRecv[i] = osuCrypto::toBlock(i);//baseSend[i][baseChoice[i]];
   }
   sender->setBaseOts(baseRecv, baseChoice, chlSer);

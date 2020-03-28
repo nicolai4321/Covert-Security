@@ -123,6 +123,10 @@ public:
     }
 
     void storeIn(string s) {
+      for(string z : debugger) {
+        if(z.compare(s) == 0) throw runtime_error("Error! Already using that storage");
+      }
+
       debugger.push_back(s);
       sentCatIndex = s;
       recvCatIndex = s;

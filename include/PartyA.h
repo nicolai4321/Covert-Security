@@ -5,8 +5,6 @@
 #include "CircuitReader.h"
 #include "cryptlib.h"
 #include "cryptoTools/Network/IOService.h"
-#include "EvaluatorInterface.h" //TODO: remove
-#include "EvaluatorHalf.h" //TODO: remove
 #include "GV.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "NormalCircuit.h"

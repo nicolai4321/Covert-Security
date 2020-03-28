@@ -64,7 +64,7 @@ class Util {
     static void printBlockInBits(osuCrypto::block b, int length);
 
     static void setBaseOTs(osuCrypto::KosOtExtSender* sender, osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlSer, osuCrypto::Channel chlCli, CryptoPP::byte* seed);
-    static void setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed);
+    static void setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed, int kappa);
     static void setBaseSer(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlSer);
 
     //Variables
