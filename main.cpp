@@ -202,7 +202,6 @@ int main() {
 
   //runCircuitFiles(kappa);
   startProtocol(kappa, lambda, x, y);
-  //runEqualTest(kappa);
 
   cout << "covert end" << endl;
   return 0;

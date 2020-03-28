@@ -53,6 +53,9 @@ public:
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
 
+              mChl.recv(data, siz);
+              bytesTransfered += siz;
+
               CryptoPP::byte* b = new CryptoPP::byte[siz];
               memcpy(b, data, siz);
               pair<int, CryptoPP::byte*> p;
@@ -62,15 +65,13 @@ public:
               vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
               v.push_back(p);
               dataRecvCat[recvCatIndex] = v;
-
-              mChl.recv(data, siz);
-              bytesTransfered += siz;
           } catch (...) {
               ec = boost::system::errc::make_error_code(boost::system::errc::io_error);
               break;
           }
       }
       fn(ec, bytesTransfered);
+
     }
 
     void cancel() override {

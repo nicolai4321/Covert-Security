@@ -125,8 +125,8 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
     CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsB.at(j), (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     vector<osuCrypto::block> dest(1);
-    sRecorder->storeIn("ot1"+to_string(j));
     Util::setBaseCli(recver, channel, seedsB.at(j), kappa);
+    sRecorder->storeIn("ot1"+to_string(j));
     recver->receiveChosen(b, dest, prng, channel);
     seedsWitnessA.push_back(dest[0]);
   }
@@ -162,8 +162,8 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
       CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     }
 
-    sRecorder->storeIn("ot2"+to_string(j));
     Util::setBaseCli(recver, channel, seed, kapp);
+    sRecorder->storeIn("ot2"+to_string(j));
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     recver->receiveChosen(b, encs, prng, channel);
 
@@ -353,13 +353,23 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   cout << "B: checking transscripts" << endl;
   for(int j=0; j<lambda; j++) {
     if(j != gamma) {
+      string cat = "ot1"+to_string(j);
+      string ot1Sent = "";
+      for(pair<int, unsigned char*> p : socketRecorder->getSentCat(cat)) {
+        ot1Sent += Util::byteToString(p.second, p.first);
+      }
+
+      string ot1Recv = "";
+      for(pair<int, unsigned char*> p : socketRecorder->getRecvCat(cat)) {
+        ot1Recv += Util::byteToString(p.second, p.first);
+      }
+
       SignatureHolder* signatureHolder = signatureHolders.at(j);
       string msg = signatureHolder->getMsg();
       string msgSim = PartyA::constructSignatureString(j, kappa, commitmentsCircuitsA, commitmentsB, commitmentsEncsA, false, socSerSim);
-      if(msg.size() < msgSim.size()) {
-        cout << "B: signature of invalid data for round: " << j << " (different sizes)" << endl;
-        return false;
-      } else if((msg.substr(0, msgSim.size())).compare(msgSim) != 0) {
+      msgSim = msgSim + ot1Recv + ot1Sent;
+
+      if(msg.compare(msgSim) != 0) {
         cout << "B: signature of invalid data for round: " << j << endl;
         return false;
       }

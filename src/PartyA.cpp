@@ -172,9 +172,9 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
       seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
     }
 
-    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     Util::setBaseSer(sender, channel);
     sRecorder->storeIn("ot2"+to_string(j));
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->sendChosen(data, prng, channel);
   }
 }
