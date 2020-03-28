@@ -410,7 +410,10 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     }
   }
 
-  if(callJudge) {
+  //if(callJudge) { //TODO
+  if(true) {
+    int cha = 5; //TODO
+    j = (cha==gamma) ? 6 : cha;//TODO
     vector<osuCrypto::block> commitmentsEncsAJ;
     commitmentsEncsAJ.push_back(commitmentsEncsA.at(2*j));
     commitmentsEncsAJ.push_back(commitmentsEncsA.at(2*j+1));
@@ -426,15 +429,15 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
                                   socSerSim->getRecvCat("ot2"+to_string(j)));
 
     cout << "B: the judgement is: " << judgement << endl;
-
+    /*
     socSerSim->close();
     socCliSim->close();
     recSerSim.close();
     recCliSim.close();
     chlSerSim.close();
-    chlCliSim.close();
+    chlCliSim.close();*/
 
-    return false;
+    //return false; //TODO
   }
 
   socSerSim->close();

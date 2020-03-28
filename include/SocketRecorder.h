@@ -23,6 +23,10 @@ public:
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
 
+              if(name.compare("none") != 0) {
+                cout << name << " send (" << siz << ")" << endl;
+              }
+
               CryptoPP::byte* b = new CryptoPP::byte[siz];
               memcpy(b, data, siz);
 
@@ -76,6 +80,10 @@ public:
           try {
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
+
+              if(name.compare("none") != 0) {
+                cout << name << " recv(" << siz << ")" << endl;
+              }
 
               mChl.recv(data, siz);
               bytesTransfered += siz;
@@ -196,7 +204,13 @@ public:
       forceRecv = 0;
     }
 
+    void setName(string s) {
+      name = s;
+    }
+
   private:
+    string name = "none";
+
     string forceIndex;
     int forceIterSentTotal = 0;
     int forceIterRecvTotal = 0;
