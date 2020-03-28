@@ -12,6 +12,7 @@
 #include "EvaluatorInterface.h"
 #include "GarbledCircuit.h"
 #include "GV.h"
+#include "Judge.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "NormalCircuit.h"
 #include "PartyA.h"
@@ -37,7 +38,7 @@ class PartyB {
 
     bool simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP::byte*> seedsB,
                         vector<SignatureHolder*> signatureHolders, vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA,
-                        vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB);
+                        vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB, vector<osuCrypto::block> decommitmentsB);
 
     vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder,
                                              vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);

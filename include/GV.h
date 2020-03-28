@@ -12,9 +12,9 @@ using namespace std;
 */
 class GV {
   public:
-    static const int n1 = 3;
-    static const int n2 = 3;
-    inline static const string filename = "simple.txt";
+    static const int n1 = 64;
+    static const int n2 = 64;
+    inline static const string filename = "adder64.txt";
 
     //network
     static const int PORT = 1212;

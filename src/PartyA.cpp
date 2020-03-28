@@ -143,7 +143,7 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
     CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     Util::setBaseSer(sender, channel);
-    sRecorder->storeIn("ot1"+to_string(j));
+    if(j==0) {sRecorder->forceStore("ot1", lambd, 4, 10);}
     sender->sendChosen(data, prng, channel);
   }
 }
@@ -173,7 +173,7 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
     }
 
     Util::setBaseSer(sender, channel);
-    sRecorder->storeIn("ot2"+to_string(j));
+    if(j==0) {sRecorder->forceStore("ot2", lambd, 4, 10);}
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->sendChosen(data, prng, channel);
   }
@@ -334,8 +334,12 @@ CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, 
 /*
   This function constructs a signature string
 */
-string PartyA::constructSignatureString(int j, int kapp, vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB,
-                                        vector<osuCrypto::block> commitmentsEncsInputsA, bool allTranscripts, SocketRecorder* sRecorder) {
+string PartyA::constructSignatureString(int j, int kapp, osuCrypto::block commitmentA, osuCrypto::block commitmentB,
+                                        vector<osuCrypto::block> commitmentsEncsInputsA,
+                                        vector<pair<int, unsigned char*>> transcriptSent1,
+                                        vector<pair<int, unsigned char*>> transcriptRecv1,
+                                        vector<pair<int, unsigned char*>> transcriptSent2,
+                                        vector<pair<int, unsigned char*>> transcriptRecv2) {
   //Circuit
   string circuitString = "";
   string line;
@@ -352,41 +356,35 @@ string PartyA::constructSignatureString(int j, int kapp, vector<osuCrypto::block
   }
 
   //Commitments from A
-  string comCircuitA = Util::blockToString(commitmentsA.at(j), kapp);
-  string comEncsA = Util::blockToString(commitmentsEncsInputsA.at(2*j), kapp);
-  comEncsA += Util::blockToString(commitmentsEncsInputsA.at(2*j+1), kapp);
+  string comCircuitA = Util::blockToString(commitmentA, kapp);
+  string comEncsA = Util::blockToString(commitmentsEncsInputsA.at(0), kapp);
+  comEncsA += Util::blockToString(commitmentsEncsInputsA.at(1), kapp);
 
   //Commitments from B
-  string comSeedB = Util::blockToString(commitmentsB.at(j), kapp);
+  string comSeedB = Util::blockToString(commitmentB, kapp);
 
   //Transcripts
-  string cat = "ot2"+to_string(j);
+  string ot1Sent = "";
+  for(pair<int, unsigned char*> p : transcriptSent1) {
+    ot1Sent += Util::byteToString(p.second, p.first);
+  }
+
+  string ot1Recv = "";
+  for(pair<int, unsigned char*> p : transcriptRecv1) {
+    ot1Recv += Util::byteToString(p.second, p.first);
+  }
+
   string ot2Sent = "";
-  for(pair<int, unsigned char*> p : sRecorder->getSentCat(cat)) {
+  for(pair<int, unsigned char*> p : transcriptSent2) {
     ot2Sent += Util::byteToString(p.second, p.first);
   }
 
   string ot2Recv = "";
-  for(pair<int, unsigned char*> p : sRecorder->getRecvCat(cat)) {
+  for(pair<int, unsigned char*> p : transcriptRecv2) {
     ot2Recv += Util::byteToString(p.second, p.first);
   }
 
-  if(allTranscripts) {
-    cat = "ot1"+to_string(j);
-
-    string ot1Sent = "";
-    for(pair<int, unsigned char*> p : sRecorder->getSentCat(cat)) {
-      ot1Sent += Util::byteToString(p.second, p.first);
-    }
-
-    string ot1Recv = "";
-    for(pair<int, unsigned char*> p : sRecorder->getRecvCat(cat)) {
-      ot1Recv += Util::byteToString(p.second, p.first);
-    }
-    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot2Sent + ot2Recv + ot1Sent + ot1Recv;
-  } else {
-    return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot2Sent + ot2Recv;
-  }
+  return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot1Sent + ot1Recv + ot2Sent + ot2Recv;
 }
 
 /*
@@ -396,7 +394,14 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> co
   vector<SignatureHolder*> output;
 
   for(int j=0; j<lambda; j++) {
-    string m = constructSignatureString(j, kappa, commitmentsA, commitmentsB, commitmentsEncsInputsA, true, socketRecorder);
+    vector<osuCrypto::block> commitmentsEncsInputsAJ;
+    commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(2*j));
+    commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(2*j+1));
+    string m = constructSignatureString(j, kappa, commitmentsA.at(j), commitmentsB.at(j), commitmentsEncsInputsAJ,
+                                        socketRecorder->getSentCat("ot1"+to_string(j)),
+                                        socketRecorder->getRecvCat("ot1"+to_string(j)),
+                                        socketRecorder->getSentCat("ot2"+to_string(j)),
+                                        socketRecorder->getRecvCat("ot2"+to_string(j)));
     string signature = Signature::sign(sk, m);
     SignatureHolder *signatureHolder = new SignatureHolder(m, signature);
     output.push_back(signatureHolder);

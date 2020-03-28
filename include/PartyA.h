@@ -32,8 +32,12 @@ class PartyA {
     static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda, int kappa, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);
     static CryptoPP::byte* commitCircuit(int kappa, string type, GarbledCircuit *F, osuCrypto::block decommit);
 
-    static string constructSignatureString(int j, int kappa, vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB,
-                                          vector<osuCrypto::block> commitmentsEncsInputsA, bool allTranscripts, SocketRecorder *socketRecorder);
+    static string constructSignatureString(int j, int kappa, osuCrypto::block commitmentA, osuCrypto::block commitmentB,
+                                          vector<osuCrypto::block> commitmentsEncsInputsA,
+                                          vector<pair<int, unsigned char*>> transcriptSent1,
+                                          vector<pair<int, unsigned char*>> transcriptRecv1,
+                                          vector<pair<int, unsigned char*>> transcriptSent2,
+                                          vector<pair<int, unsigned char*>> transcriptRecv2);
 
   protected:
 
