@@ -89,6 +89,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
       return false;
     }
   }
+  cout << "J: correct transcripts for 1st ot" << endl;
 
   recCli.close();
   recSer.close();
@@ -97,22 +98,43 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   ios.stop();
 
   //Simulated garbling
-  cout << "J: simulating garbling" << endl;
-
   CircuitInterface *circuitInstance = circuit->createInstance(kappa, seedA);
   CircuitReader cr = CircuitReader();
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuitInstance, GV::filename);
   if(!import.first) {throw runtime_error("J: Error! Could not import circuit");}
   vector<vector<CryptoPP::byte*>> encsSim = import.second;
 
+  //Checking commitment for encodings
+  vector<osuCrypto::block> commitsEncs;
+  vector<pair<osuCrypto::block, osuCrypto::block>> decommitsEncs;
+  map<unsigned int, unsigned int> ivA;
+  ivA[j] = 2;
+  PartyA::auxCommitEncsA(j, kappa, seedA, &ivA, encsSim, &commitsEncs, &decommitsEncs);
+
+  int startIndex = 0;
+  for(int i=0; i<GV::n1; i++) {
+    CryptoPP::byte *commitEncASim0 = Util::blockToByte(commitsEncs.at(startIndex+2*i), Util::COMMIT_LENGTH);
+    CryptoPP::byte *commitEncASim1 = Util::blockToByte(commitsEncs.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
+    CryptoPP::byte* commitEncA0 = Util::blockToByte(commitEncsA.at(startIndex+2*i), Util::COMMIT_LENGTH);
+    CryptoPP::byte* commitEncA1 = Util::blockToByte(commitEncsA.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
+
+    if(memcmp(commitEncASim0, commitEncA0, Util::COMMIT_LENGTH) != 0 ||
+       memcmp(commitEncASim1, commitEncA1, Util::COMMIT_LENGTH) != 0) {
+      cout << "J: party A has cheated. Reason: wrong commitment for encodings" << endl;
+      return true;
+    }
+  }
+  cout << "J: correct commitments for encodings" << endl;
+
+  //Checking commitment for cicuits
   GarbledCircuit *F = circuitInstance->exportCircuit();
-  int iv = 2+3*GV::n1;
-  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, iv), kappa);
+  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, ivA[j]), kappa);
   CryptoPP::byte *commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
   if(memcmp(commitASim, Util::blockToByte(commitA, Util::COMMIT_LENGTH), Util::COMMIT_LENGTH) != 0) {
     cout << "J: party A has cheated. Reason: wrong commitment for circuits" << endl;
     return true;
   }
+  cout << "J: correct commitments for circuits" << endl;
 
   cout << "J: everything ok" << endl;
   return false;

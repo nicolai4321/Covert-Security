@@ -299,8 +299,8 @@ int main() {
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
   int lambda = 8;
-  int x = 10;
-  int y = 21;
+  int x = 5;
+  int y = 2;
 
   //runCircuitFiles(kappa);
   startProtocol(kappa, lambda, x, y);
