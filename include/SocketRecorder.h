@@ -23,10 +23,6 @@ public:
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
 
-              if(name.compare("none") != 0) {
-                cout << name << " send (" << siz << ")" << endl;
-              }
-
               CryptoPP::byte* b = new CryptoPP::byte[siz];
               memcpy(b, data, siz);
 
@@ -39,6 +35,9 @@ public:
                 vector<pair<int, unsigned char*>> v = dataSentCat[sentCatIndex];
                 v.push_back(p);
                 dataSentCat[sentCatIndex] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " send (" << siz << "), storing in '" << sentCatIndex << "'" << endl;
+                }
               } else {
                 string index = forceIndex+to_string(forceIterSent);
                 if(forceSent == 0) {
@@ -49,6 +48,11 @@ public:
                 vector<pair<int, unsigned char*>> v = dataSentCat[index];
                 v.push_back(p);
                 dataSentCat[index] = v;
+
+                if(name.compare("none") != 0) {
+                  cout << name << " send (" << siz << "), storing in '" << index << "'" << endl;
+                }
+
 
                 forceSent++;
                 if(forceSent == forceSentTotal) {
@@ -81,10 +85,6 @@ public:
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
 
-              if(name.compare("none") != 0) {
-                cout << name << " recv(" << siz << ")" << endl;
-              }
-
               mChl.recv(data, siz);
               bytesTransfered += siz;
 
@@ -98,6 +98,9 @@ public:
                 vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
                 v.push_back(p);
                 dataRecvCat[recvCatIndex] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " recv(" << siz << ") storing in '" << recvCatIndex << "'" << endl;
+                }
               } else {
                 string index = forceIndex+to_string(forceIterRecv);
                 if(forceRecv == 0) {
@@ -108,6 +111,9 @@ public:
                 vector<pair<int, unsigned char*>> v = dataRecvCat[index];
                 v.push_back(p);
                 dataRecvCat[index] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " recv(" << siz << ") storing in '" << index << "'" << endl;
+                }
 
                 forceRecv++;
                 if(forceRecv == forceRecvTotal) {
@@ -204,7 +210,7 @@ public:
       forceRecv = 0;
     }
 
-    void setName(string s) {
+    void follow(string s) {
       name = s;
     }
 

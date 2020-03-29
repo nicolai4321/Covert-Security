@@ -143,8 +143,8 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
   string yString = Util::intToBitString(input, GV::n2);
 
   vector<osuCrypto::block> encsB;
-  sRecorder->forceStore("ot2", lambd+1, 10, 4);
-  for(int j=-1; j<lambd; j++) {
+  sRecorder->forceStore("ot2", lambd, 10, 4);
+  for(int j=0; j<lambd; j++) {
     osuCrypto::BitVector b(GV::n2);
     for(int i=0; i<GV::n2; i++) {
       if(j == gamm) {
@@ -155,19 +155,10 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
     }
 
     vector<osuCrypto::block> encs(GV::n2);
-    CryptoPP::byte* seed;
-    CryptoPP::byte* seedInput;
-    if(j==-1) {
-      seed = seedsB.at(0);
-      CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, (*ivB)[0]);
-    } else {
-      seed = seedsB.at(j);
-      CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
-    }
-
+    CryptoPP::byte* seed = seedsB.at(j);
+    CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     Util::setBaseCli(recver, channel, seed, kapp);
-    if(j==0) {sRecorder->forceStore("ot2", lambd+1, 10, 4);}
     recver->receiveChosen(b, encs, prng, channel);
 
     if(j==gamm) {
@@ -419,10 +410,8 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     }
   }
 
-  //if(callJudge) { //TODO
-  if(true) {
-    int cha = 5; //TODO
-    j = (cha==gamma) ? 6 : cha;//TODO
+  if(callJudge) {
+    cout << "B: calling judge" << endl;
     vector<osuCrypto::block> commitmentsEncsAJ;
     int startIndex = 2*j*GV::n1;
     for(int i=0; i<GV::n1; i++) {
@@ -441,15 +430,15 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
                                   socSerSim->getRecvCat("ot2"+to_string(j)));
 
     cout << "B: the judgement is: " << judgement << endl;
-    /*
+
     socSerSim->close();
     socCliSim->close();
     recSerSim.close();
     recCliSim.close();
     chlSerSim.close();
-    chlCliSim.close();*/
+    chlCliSim.close();
 
-    //return false; //TODO
+    return false;
   }
 
   socSerSim->close();

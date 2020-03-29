@@ -150,9 +150,8 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
 void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                     map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
 
-  vector<vector<CryptoPP::byte*>> v = (encs[0]);
-  encs[-1] = v;
-  for(int j=-1; j<lambd; j++) {
+  sRecorder->forceStore("ot2", lambd, 4, 10);
+  for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(GV::n2);
     for(int i=0; i<GV::n2; i++) {
       osuCrypto::block block0 = Util::byteToBlock(encs[j].at(GV::n1+i).at(0), kapp);
@@ -160,16 +159,9 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
       data[i] = {block0, block1};
     }
 
-    CryptoPP::byte* seedInput;
-    if(j==-1) {
-      seedInput = Util::randomByte(kapp, seedsA.at(0), (*iv)[0]);
-    } else {
-      seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
-    }
-
-    Util::setBaseSer(sender, channel);
-    if(j==0) {sRecorder->forceStore("ot2", lambd+1, 4, 10);}
+    CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
+    Util::setBaseSer(sender, channel);
     sender->sendChosen(data, prng, channel);
   }
 }

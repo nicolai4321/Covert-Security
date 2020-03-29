@@ -27,13 +27,15 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   SocketRecorder *socketRecorderClient = (SocketRecorder*) siCli;
   osuCrypto::Channel recSer(ios, siSer);
   osuCrypto::Channel recCli(ios, siCli);
+  osuCrypto::KosOtExtReceiver recver;
+  osuCrypto::KosOtExtSender sender;
+  CryptoPP::byte *seedA;
+
   chlCli.waitForConnection();
   recCli.waitForConnection();
 
-  CryptoPP::byte *seedA;
 
   auto threadCli = thread([&]() {
-    osuCrypto::KosOtExtReceiver recver;
     Util::setBaseCli(&recver, recCli, seedB, kappa);
 
     int iv = 0;
@@ -91,12 +93,6 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   }
   cout << "J: correct transcripts for 1st ot" << endl;
 
-  recCli.close();
-  recSer.close();
-  chlCli.close();
-  chlSer.close();
-  ios.stop();
-
   //Simulated garbling
   CircuitInterface *circuitInstance = circuit->createInstance(kappa, seedA);
   CircuitReader cr = CircuitReader();
@@ -136,7 +132,83 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   }
   cout << "J: correct commitments for circuits" << endl;
 
-  cout << "J: everything ok" << endl;
+  socketRecorderServer->storeIn("ot2");
+  socketRecorderClient->storeIn("ot2");
+
+  auto threadCli2 = thread([&]() {
+    int iv = 1;
+
+    osuCrypto::BitVector choices(GV::n2);
+    for(int i=0; i<GV::n2; i++) {
+      choices[i] = 0;
+    }
+
+    vector<osuCrypto::block> recv(GV::n2);
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
+
+    Util::setBaseCli(&recver, recCli, seedB, kappa);
+    recver.receiveChosen(choices, recv, prng, recCli);
+  });
+
+  auto threadSer2 = thread([&]() {
+    int iv = 1;
+    vector<array<block, 2>> data(GV::n2);
+    for(int i=0; i<GV::n2; i++) {
+      osuCrypto::block enc0 = Util::byteToBlock(encsSim.at(GV::n1+i).at(0), kappa);
+      osuCrypto::block enc1 = Util::byteToBlock(encsSim.at(GV::n1+i).at(1), kappa);
+      data[i] = {enc0, enc1};
+    }
+
+    Util::setBaseSer(&sender, recSer);
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedA, iv);
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
+    sender.sendChosen(data, prng, recSer);
+  });
+
+  threadCli2.join();
+  threadSer2.join();
+
+  vector<pair<int, CryptoPP::byte*>> transcriptSimSent2 = socketRecorderServer->getSentCat("ot2");
+  vector<pair<int, CryptoPP::byte*>> transcriptSimRecv2 = socketRecorderServer->getRecvCat("ot2");
+
+  //messages received
+  if(memcmp(transcriptSimRecv2.at(0).second, transcriptRecv2.at(0).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(1).second, transcriptRecv2.at(1).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(2).second, transcriptRecv2.at(2).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(3).second, transcriptRecv2.at(3).second, 20) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(4).second, transcriptRecv2.at(4).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(5).second, transcriptRecv2.at(5).second, 16384) != 0) return 0;
+
+  //messages sent
+  if(memcmp(transcriptSimSent2.at(0).second, transcriptSent2.at(0).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2.at(1).second, transcriptSent2.at(1).second, 16) != 0) return 1;
+
+  //messages received
+  if(memcmp(transcriptSimRecv2.at(6).second, transcriptRecv2.at(6).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(7).second, transcriptRecv2.at(7).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(8).second, transcriptRecv2.at(8).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(9).second, transcriptRecv2.at(9).second, 48) != 0) return 0;
+
+  //messages sent
+  if(memcmp(transcriptSimSent2.at(2).second, transcriptSent2.at(2).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2.at(3).second, transcriptSent2.at(3).second, 96) != 0) return 1;
+
+  if(transcriptSent2.size() != 4) {
+    cout << "J: obs, wrong size of sent messages" << endl;
+  }
+
+  if(transcriptRecv2.size() != 10) {
+    cout << "J: obs, wrong size of recv messages" << endl;
+  }
+
+  recCli.close();
+  recSer.close();
+  chlCli.close();
+  chlSer.close();
+  ios.stop();
+
+  cout << "J: correct transcripts for 2nd ot" << endl;
   return false;
 }
 
