@@ -33,14 +33,14 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   auto threadCli = thread([&]() {
     osuCrypto::KosOtExtReceiver recver;
     Util::setBaseCli(&recver, recCli, seedB, kappa);
-    osuCrypto::PRNG prng(Util::byteToBlock(seedB, kappa));
+
+    int iv = 0;
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
     vector<osuCrypto::block> seedA(1);
     recver.receiveChosen(choices, seedA, prng, recCli);
-
-    //cout << "j: " << j << endl;
-    //Util::printBlockInBits(seedA[0], 16);
   });
 
   //This thread below does the OT with the transcript
@@ -70,13 +70,14 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   threadSer.join();
   threadCli.join();
 
-  //Checks that the received messages are identical
+  //Checks that the received messages have same length
   vector<pair<int, CryptoPP::byte*>> transcriptSimRecv1 = socketRecorderServer->getRecvCat("def");
   if(transcriptSimRecv1.size() != transcriptRecv1.size()) {
     cout << "J: The transcripts have incorrect size!" << endl;
     return false;
   }
 
+  //Checks that the received messages are identical
   for(int i=0; i<transcriptSimRecv1.size(); i++) {
     pair<int, CryptoPP::byte*> p0 = transcriptSimRecv1.at(i);
     pair<int, CryptoPP::byte*> p1 = transcriptRecv1.at(i);

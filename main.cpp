@@ -277,6 +277,21 @@ void test(int kappa) {
 
   t3.join();
   t4.join();
+
+  vector<pair<int, CryptoPP::byte*>> dataRecv1 = socketRecorderServer->getRecvCat("ot1");
+  vector<pair<int, CryptoPP::byte*>> dataRecv2 = socketRecorderServer->getRecvCat("ot2");
+
+  if(dataRecv1.size() != dataRecv2.size()) {
+    cout << "not same size" << endl;
+  }
+
+  for(int i=0; i<dataRecv1.size(); i++) {
+    pair<int, CryptoPP::byte*> p1 = dataRecv1.at(i);
+    pair<int, CryptoPP::byte*> p2 = dataRecv2.at(i);
+    if(memcmp(p1.second, p2.second, p2.first) != 0) {
+      cout << "not equal (" << i << "/" << dataRecv1.size() << ")" << endl;
+    }
+  }
 }
 
 int main() {
