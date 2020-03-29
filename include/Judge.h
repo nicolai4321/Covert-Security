@@ -9,7 +9,7 @@ using namespace std;
 
 class Judge {
   public:
-    Judge(int kappa, CryptoPP::DSA::PublicKey pk);
+    Judge(int kappa, CryptoPP::DSA::PublicKey pk, CircuitInterface* circuit);
     virtual ~Judge();
 
     /*
@@ -26,6 +26,7 @@ class Judge {
   private:
     int kappa;
     CryptoPP::DSA::PublicKey pk;
+    CircuitInterface* circuit;
 };
 
 #endif // JUDGE_H

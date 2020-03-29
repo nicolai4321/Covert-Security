@@ -30,6 +30,8 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   chlCli.waitForConnection();
   recCli.waitForConnection();
 
+  CryptoPP::byte *seedA;
+
   auto threadCli = thread([&]() {
     osuCrypto::KosOtExtReceiver recver;
     Util::setBaseCli(&recver, recCli, seedB, kappa);
@@ -39,8 +41,9 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
-    vector<osuCrypto::block> seedA(1);
-    recver.receiveChosen(choices, seedA, prng, recCli);
+    vector<osuCrypto::block> seedAblock(1);
+    recver.receiveChosen(choices, seedAblock, prng, recCli);
+    seedA = Util::blockToByte(seedAblock[0], kappa);
   });
 
   //This thread below does the OT with the transcript
@@ -93,12 +96,32 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   chlSer.close();
   ios.stop();
 
-  return true;
+  //Simulated garbling
+  cout << "J: simulating garbling" << endl;
+
+  CircuitInterface *circuitInstance = circuit->createInstance(kappa, seedA);
+  CircuitReader cr = CircuitReader();
+  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuitInstance, GV::filename);
+  if(!import.first) {throw runtime_error("J: Error! Could not import circuit");}
+  vector<vector<CryptoPP::byte*>> encsSim = import.second;
+
+  GarbledCircuit *F = circuitInstance->exportCircuit();
+  int iv = 2+3*GV::n1;
+  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, iv), kappa);
+  CryptoPP::byte *commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
+  if(memcmp(commitASim, Util::blockToByte(commitA, Util::COMMIT_LENGTH), Util::COMMIT_LENGTH) != 0) {
+    cout << "J: party A has cheated. Reason: wrong commitment for circuits" << endl;
+    return true;
+  }
+
+  cout << "J: everything ok" << endl;
+  return false;
 }
 
-Judge::Judge(int k, CryptoPP::DSA::PublicKey publicKey){
+Judge::Judge(int k, CryptoPP::DSA::PublicKey publicKey, CircuitInterface* c){
   kappa = k;
   pk = publicKey;
+  circuit = c;
 }
 
 Judge::~Judge(){

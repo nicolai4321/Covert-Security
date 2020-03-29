@@ -422,7 +422,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     SignatureHolder* signatureHolder = signatureHolders.at(j);
     string signature = signatureHolder->getSignature();
 
-    Judge judge(kappa, pk);
+    Judge judge(kappa, pk, circuit);
     bool judgement = judge.accuse(j, signature, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,
                                   socketRecorder->getRecvCat("ot1"+to_string(j)),
                                   socketRecorder->getSentCat("ot1"+to_string(j)),

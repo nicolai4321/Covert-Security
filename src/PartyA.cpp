@@ -105,20 +105,16 @@ bool PartyA::startProtocol() {
 /*
   Garbling the circuits and prepare the ot data
 */
-pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb, int kapp, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA) {
+pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb, int kapp, CircuitInterface* circuitI, vector<CryptoPP::byte*> seedsA) {
   vector<CircuitInterface*> circuits;
   map<int, vector<vector<CryptoPP::byte*>>> encs;
 
   for(int j=0; j<lamb; j++) {
-    CircuitInterface *G = circuit->createInstance(kapp, seedsA.at(j));
+    CircuitInterface *G = circuitI->createInstance(kapp, seedsA.at(j));
     CircuitReader cr = CircuitReader();
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
 
-    if(!import.first) {
-      string msg = "Error! Could not import circuit";
-      cout << msg << endl;
-      throw msg;
-    }
+    if(!import.first) {throw runtime_error("Error! Could not import circuit");}
 
     circuits.push_back(G);
     encs[j] = import.second;
@@ -271,7 +267,8 @@ pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>>
   a list of commitments for the circuits and the second
   entry is the decommitments
 */
-pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CircuitInterface*> circuits) {
+pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA,
+                                                                                map<unsigned int, unsigned int>* iv, vector<CircuitInterface*> circuits) {
   pair<vector<osuCrypto::block>, vector<osuCrypto::block>> output;
   vector<osuCrypto::block> commitmentsA;
   vector<osuCrypto::block> decommitmentsA;
