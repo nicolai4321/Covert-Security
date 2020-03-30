@@ -369,6 +369,12 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
 
       if(msg.compare(msgSim) != 0) {
         cout << "B: signature of invalid data for round: " << j << endl;
+        socSerSim->close();
+        socCliSim->close();
+        recSerSim.close();
+        recCliSim.close();
+        chlSerSim.close();
+        chlCliSim.close();
         return false;
       }
     }
@@ -397,7 +403,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
            memcmp(commitSimulated1, commitReceived1, Util::COMMIT_LENGTH) != 0) {
           cout << "B: Corrupt! Simulation of commitments for input encodings does not match" << endl;
           callJudge = true;
-          break;
+          goto skip;
         }
       }
 
@@ -407,10 +413,11 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
       if(memcmp(commitSimulated1, commitReceived1, Util::COMMIT_LENGTH) != 0) {
         cout << "B: Corrupt! Simulation of commitments for circuits does not match" << endl;
         callJudge = true;
-        break;
+        goto skip;
       }
     }
   }
+  skip:
 
   if(callJudge) {
     cout << "B: calling judge" << endl;
