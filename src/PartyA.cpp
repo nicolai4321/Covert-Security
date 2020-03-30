@@ -131,7 +131,7 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
 */
 void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                               vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses) {
-  sRecorder->forceStore("ot1", lambd, 4, 10);
+  sRecorder->forceStore("ot1", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(1);
     osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kapp);
@@ -139,7 +139,7 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
     data[0] = {block0, block1};
     CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
-    Util::setBaseSer(sender, channel);
+    sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
   }
 }
@@ -150,7 +150,7 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
 void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                     map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
 
-  sRecorder->forceStore("ot2", lambd, 4, 10);
+  sRecorder->forceStore("ot2", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(GV::n2);
     for(int i=0; i<GV::n2; i++) {
@@ -161,7 +161,7 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
 
     CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
-    Util::setBaseSer(sender, channel);
+    sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
   }
 }

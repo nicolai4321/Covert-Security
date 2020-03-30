@@ -6,6 +6,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
                    vector<pair<int, unsigned char*>> transcriptRecv1,
                    vector<pair<int, unsigned char*>> transcriptSent2,
                    vector<pair<int, unsigned char*>> transcriptRecv2) {
+  cout << "Judge called: " << j << endl;
   CryptoPP::byte *commit = Util::commit(Util::byteToBlock(seedB, kappa), decommitB);
   osuCrypto::block commitB = Util::byteToBlock(commit, Util::COMMIT_LENGTH);
 
@@ -16,6 +17,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     cout << "J: The signature is not correct" << endl;
     return false;
   }
+  cout << "Judge: correct signature" << endl;
 
   //Network
   osuCrypto::IOService ios(16);
@@ -34,16 +36,16 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   chlCli.waitForConnection();
   recCli.waitForConnection();
 
-
+  socketRecorderServer->storeIn("ot1");
+  socketRecorderClient->storeIn("ot1");
   auto threadCli = thread([&]() {
-    Util::setBaseCli(&recver, recCli, seedB, kappa);
-
     int iv = 0;
     CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
-    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
     vector<osuCrypto::block> seedAblock(1);
+    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
+    recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, seedAblock, prng, recCli);
     seedA = Util::blockToByte(seedAblock[0], kappa);
   });
@@ -52,33 +54,43 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   //that is signed. The received messages is not stored here
   //since they are stored in the socket recorder object.
   auto threadSer = thread([&]() {
-    array<int, 4> b0;
+    //base ots
+    array<int, 8> b0;
     recSer.recv(b0);
 
-    array<int, 5> b1;
+    for(int i=0; i<32; i++) {
+      int index = 2*i+1;
+      recSer.send(transcriptSent1.at(index).second, transcriptSent1.at(index).first);
+    }
+
+    array<int, 4> b1;
     recSer.recv(b1);
 
-    array<int, 4096> b2;
+    //ot
+    array<int, 5> b2;
     recSer.recv(b2);
 
-    recSer.send(transcriptSent1.at(1).second, transcriptSent1.at(1).first);
-
-    array<int, 4> b3;
+    array<int, 4096> b3;
     recSer.recv(b3);
 
-    array<int, 12> b4;
+    recSer.send(transcriptSent1.at(65).second, transcriptSent1.at(65).first);
+
+    array<int, 4> b4;
     recSer.recv(b4);
 
-    recSer.send(transcriptSent1.at(3).second, transcriptSent1.at(3).first);
+    array<int, 12> b5;
+    recSer.recv(b5);
+
+    recSer.send(transcriptSent1.at(67).second, transcriptSent1.at(67).first);
   });
 
   threadSer.join();
   threadCli.join();
 
   //Checks that the received messages have same length
-  vector<pair<int, CryptoPP::byte*>> transcriptSimRecv1 = socketRecorderServer->getRecvCat("def");
+  vector<pair<int, CryptoPP::byte*>> transcriptSimRecv1 = socketRecorderServer->getRecvCat("ot1");
   if(transcriptSimRecv1.size() != transcriptRecv1.size()) {
-    cout << "J: The transcripts have incorrect size!" << endl;
+    cout << "J: The transcripts have incorrect size for the 1st ot!" << endl;
     return false;
   }
 
@@ -87,7 +99,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     pair<int, CryptoPP::byte*> p0 = transcriptSimRecv1.at(i);
     pair<int, CryptoPP::byte*> p1 = transcriptRecv1.at(i);
     if(memcmp(p0.second, p1.second, p1.first) != 0) {
-      cout << "J: The transcripts are not identical!" << endl;
+      cout << "J: The transcripts are not identical for the 1st ot!" << endl;
       return false;
     }
   }
@@ -146,8 +158,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     vector<osuCrypto::block> recv(GV::n2);
     CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
-
-    Util::setBaseCli(&recver, recCli, seedB, kappa);
+    recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, recv, prng, recCli);
   });
 
@@ -160,9 +171,9 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
       data[i] = {enc0, enc1};
     }
 
-    Util::setBaseSer(&sender, recSer);
     CryptoPP::byte *seedInput = Util::randomByte(kappa, seedA, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
+    sender.genBaseOts(prng, recSer);
     sender.sendChosen(data, prng, recSer);
   });
 
@@ -172,35 +183,34 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   vector<pair<int, CryptoPP::byte*>> transcriptSimSent2 = socketRecorderServer->getSentCat("ot2");
   vector<pair<int, CryptoPP::byte*>> transcriptSimRecv2 = socketRecorderServer->getRecvCat("ot2");
 
-  //messages received
+  //base ot
   if(memcmp(transcriptSimRecv2.at(0).second, transcriptRecv2.at(0).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(1).second, transcriptRecv2.at(1).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(1).second, transcriptRecv2.at(1).second, 32) != 0) return 0;
+
+  for(int i=0; i<32; i++) {
+    if(memcmp(transcriptSimSent2.at(2*i).second, transcriptSent2.at(2*i).second, 4) != 0) return 1;
+    if(memcmp(transcriptSimSent2.at(2*i+1).second, transcriptSent2.at(2*i+1).second, 128) != 0) return 1;
+  }
+
   if(memcmp(transcriptSimRecv2.at(2).second, transcriptRecv2.at(2).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(3).second, transcriptRecv2.at(3).second, 20) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(3).second, transcriptRecv2.at(3).second, 16) != 0) return 0;
+
+  //ot
   if(memcmp(transcriptSimRecv2.at(4).second, transcriptRecv2.at(4).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(5).second, transcriptRecv2.at(5).second, 16384) != 0) return 0;
-
-  //messages sent
-  if(memcmp(transcriptSimSent2.at(0).second, transcriptSent2.at(0).second, 4) != 0) return 1;
-  if(memcmp(transcriptSimSent2.at(1).second, transcriptSent2.at(1).second, 16) != 0) return 1;
-
-  //messages received
+  if(memcmp(transcriptSimRecv2.at(5).second, transcriptRecv2.at(5).second, 20) != 0) return 0;
   if(memcmp(transcriptSimRecv2.at(6).second, transcriptRecv2.at(6).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(7).second, transcriptRecv2.at(7).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(7).second, transcriptRecv2.at(7).second, 16384) != 0) return 0;
+
+  if(memcmp(transcriptSimSent2.at(64).second, transcriptSent2.at(64).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2.at(65).second, transcriptSent2.at(65).second, 16) != 0) return 1;
+
   if(memcmp(transcriptSimRecv2.at(8).second, transcriptRecv2.at(8).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(9).second, transcriptRecv2.at(9).second, 48) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(9).second, transcriptRecv2.at(9).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(10).second, transcriptRecv2.at(10).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2.at(11).second, transcriptRecv2.at(11).second, 48) != 0) return 0;
 
-  //messages sent
-  if(memcmp(transcriptSimSent2.at(2).second, transcriptSent2.at(2).second, 4) != 0) return 1;
-  if(memcmp(transcriptSimSent2.at(3).second, transcriptSent2.at(3).second, 96) != 0) return 1;
-
-  if(transcriptSent2.size() != 4) {
-    cout << "J: obs, wrong size of sent messages" << endl;
-  }
-
-  if(transcriptRecv2.size() != 10) {
-    cout << "J: obs, wrong size of recv messages" << endl;
-  }
+  if(memcmp(transcriptSimSent2.at(66).second, transcriptSent2.at(66).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2.at(67).second, transcriptSent2.at(67).second, 96) != 0) return 1;
 
   recCli.close();
   recSer.close();

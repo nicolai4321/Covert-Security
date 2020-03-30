@@ -53,7 +53,6 @@ public:
                   cout << name << " send (" << siz << "), storing in '" << index << "'" << endl;
                 }
 
-
                 forceSent++;
                 if(forceSent == forceSentTotal) {
                   forceSent = 0;

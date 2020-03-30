@@ -2,6 +2,9 @@
 #define JUDGE_H
 #include "cryptlib.h"
 #include "cryptoTools/Crypto/Commit.h"
+#include "cryptoTools/Network/Channel.h"
+#include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
+#include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "PartyA.h"
 #include "Signature.h"
 #include "Util.h"

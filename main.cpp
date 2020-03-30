@@ -192,119 +192,16 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   }
 }
 
-void test(int kappa) {
-  //Network
-  osuCrypto::IOService ios(16);
-  osuCrypto::Channel chlSer = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::SocketInterface *siSer = new SocketRecorder(chlSer);
-  osuCrypto::SocketInterface *siCli= new SocketRecorder(chlCli);
-  SocketRecorder *socketRecorderServer = (SocketRecorder*) siSer;
-  SocketRecorder *socketRecorderClient = (SocketRecorder*) siCli;
-  osuCrypto::Channel recSer(ios, siSer);
-  osuCrypto::Channel recCli(ios, siCli);
-  chlCli.waitForConnection();
-  recCli.waitForConnection();
-
-  CryptoPP::byte *seed = Util::randomByte(kappa);
-  CryptoPP::byte *witness = Util::randomByte(kappa);
-  socketRecorderClient->storeIn("ot1");
-  socketRecorderServer->storeIn("ot1");
-
-  auto t1 = thread([&]() {
-    osuCrypto::KosOtExtReceiver recver;
-    Util::setBaseCli(&recver, recCli, seed, kappa);
-    osuCrypto::PRNG prng(osuCrypto::toBlock(5));
-    osuCrypto::BitVector choices(1);
-    choices[0] = 0;
-    vector<osuCrypto::block> msg(1);
-    recver.receiveChosen(choices, msg, prng, recCli);
-    Util::printBlockInBits(msg[0], 16);
-  });
-
-  auto t2 = thread([&]() {
-    osuCrypto::KosOtExtSender sender;
-    osuCrypto::PRNG prng(osuCrypto::toBlock(5));
-
-    vector<array<osuCrypto::block, 2>> sendMessages(1);
-    Util::setBaseSer(&sender, recSer);
-    sendMessages[0] = {Util::byteToBlock(seed, kappa), Util::byteToBlock(witness, kappa)};
-
-    sender.sendChosen(sendMessages, prng, recSer);
-  });
-
-  t1.join();
-  t2.join();
-
-  socketRecorderServer->storeIn("ot2");
-  socketRecorderClient->storeIn("ot2");
-
-  auto t3 = thread([&]() {
-    osuCrypto::KosOtExtReceiver recver;
-    Util::setBaseCli(&recver, recCli, seed, kappa);
-    osuCrypto::PRNG prng(osuCrypto::toBlock(5));
-    osuCrypto::BitVector choices(1);
-    choices[0] = 0;
-    vector<osuCrypto::block> msg(1);
-    recver.receiveChosen(choices, msg, prng, recCli);
-    Util::printBlockInBits(msg[0], 16);
-  });
-
-  auto t4 = thread([&]() {
-    //ot from transscripts
-    vector<pair<int, CryptoPP::byte*>> sentData = socketRecorderServer->getSentCat("ot1");
-    vector<pair<int, CryptoPP::byte*>> recvData = socketRecorderServer->getRecvCat("ot1");
-
-    array<int, 4> b0;
-    recSer.recv(b0);
-
-    array<int, 5> b1;
-    recSer.recv(b1);
-
-    array<int, 4096> b2;
-    recSer.recv(b2);
-
-    recSer.send(sentData.at(1).second, sentData.at(1).first);
-
-    array<int, 4> b3;
-    recSer.recv(b3);
-
-    array<int, 12> b4;
-    recSer.recv(b4);
-
-    recSer.send(sentData.at(3).second, sentData.at(3).first);
-  });
-
-  t3.join();
-  t4.join();
-
-  vector<pair<int, CryptoPP::byte*>> dataRecv1 = socketRecorderServer->getRecvCat("ot1");
-  vector<pair<int, CryptoPP::byte*>> dataRecv2 = socketRecorderServer->getRecvCat("ot2");
-
-  if(dataRecv1.size() != dataRecv2.size()) {
-    cout << "not same size" << endl;
-  }
-
-  for(int i=0; i<dataRecv1.size(); i++) {
-    pair<int, CryptoPP::byte*> p1 = dataRecv1.at(i);
-    pair<int, CryptoPP::byte*> p2 = dataRecv2.at(i);
-    if(memcmp(p1.second, p2.second, p2.first) != 0) {
-      cout << "not equal (" << i << "/" << dataRecv1.size() << ")" << endl;
-    }
-  }
-}
-
 int main() {
   cout << "covert start" << endl;
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
   int lambda = 8;
   int x = 5;
-  int y = 4;
+  int y = 0;
 
   //runCircuitFiles(kappa);
   startProtocol(kappa, lambda, x, y);
-  //test(kappa);
 
   cout << "covert end" << endl;
   return 0;
