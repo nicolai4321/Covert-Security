@@ -21,9 +21,10 @@ class Util {
     Util();
 
     //Functions
-    static CryptoPP::byte* generateIV();
-    static string encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv);
-    static string decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv);
+    static CryptoPP::byte* byteQueueToByte(CryptoPP::ByteQueue* byteQueue);
+    static CryptoPP::ByteQueue encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength);
+    static CryptoPP::byte* decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength);
+
     static CryptoPP::byte* h(string m);
     static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);

@@ -192,6 +192,24 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   }
 }
 
+CryptoPP::byte *sigmaFunc(CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
+  CryptoPP::byte *xored = Util::byteOp(b0, b1, "XOR", length);
+  return Util::mergeBytes(b0, xored, length);
+}
+
+CryptoPP::byte* aesHash(CryptoPP::byte* b, int length, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength) {
+  int halfLength = length/2;
+  CryptoPP::byte* b0 = new CryptoPP::byte[halfLength];
+  CryptoPP::byte* b1 = new CryptoPP::byte[halfLength];
+  memcpy(b0, b+halfLength, halfLength);
+  memcpy(b1, b, halfLength);
+
+  CryptoPP::byte* sigma = sigmaFunc(b0, b1, halfLength);
+  CryptoPP::ByteQueue cipherQueue = Util::encrypt(sigma, length, key, keyLength, iv, ivLength);
+  CryptoPP::byte* cipher = Util::byteQueueToByte(&cipherQueue);
+  return Util::byteOp(sigma, cipher, "XOR", length);
+}
+
 int main() {
   cout << "covert start" << endl;
 
@@ -201,7 +219,26 @@ int main() {
   int y = 0;
 
   //runCircuitFiles(kappa);
-  startProtocol(kappa, lambda, x, y);
+  //startProtocol(kappa, lambda, x, y);
+
+  int length = 16;
+  CryptoPP::byte *b = new CryptoPP::byte[length];
+  memset(b+length/2, 0x13, length/2);
+  memset(b, 0x64, length/2);
+
+  Util::printByteInBits(b, length);
+
+  int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
+  int ivLength = CryptoPP::AES::BLOCKSIZE;
+  CryptoPP::SecByteBlock key(keyLength);
+  CryptoPP::SecByteBlock iv(ivLength);
+
+  memset(key, 0x00, keyLength);
+  memset(iv, 0x00, ivLength);
+
+  CryptoPP::ByteQueue cipher = Util::encrypt(b, length, key, keyLength, iv, ivLength);
+  CryptoPP::byte *rec = Util::decrypt(cipher, key, keyLength, iv, ivLength);
+  Util::printByteInBits(rec, length);
 
   cout << "covert end" << endl;
   return 0;

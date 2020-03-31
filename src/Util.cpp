@@ -81,44 +81,44 @@ CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, 
 }
 
 /*
-  Constructs the initialization vector
-*/
-CryptoPP::byte* Util::generateIV() {
-  CryptoPP::AutoSeededRandomPool asrp;
-  CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
-  asrp.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
-
-  return iv;
-}
-
-/*
   Encrypts message p
 */
-string Util::encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv) {
-  CryptoPP::AES::Encryption aesEnc(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEnc(aesEnc, iv);
+CryptoPP::ByteQueue Util::encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength) {
+  CryptoPP::ByteQueue cipherQueue;
+  CryptoPP::ByteQueue plainQueue;
+  plainQueue.Put(plain, plainLength);
 
-  std::string c;
-  CryptoPP::StreamTransformationFilter stf(cbcEnc, new CryptoPP::StringSink(c));
-  stf.Put(reinterpret_cast<const unsigned char*>(p.c_str()), p.length());
-  stf.MessageEnd();
+  CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption enc;
+  enc.SetKeyWithIV(key, keyLength, iv, ivLength);
+  CryptoPP::StreamTransformationFilter f1(enc, new CryptoPP::Redirector(cipherQueue));
+  plainQueue.CopyTo(f1);
+  f1.MessageEnd();
 
-  return c;
+  return cipherQueue;
 }
 
 /*
   Decrypts message c
 */
-string Util::decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv) {
-  CryptoPP::AES::Decryption aesDec(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDec(aesDec, iv);
+CryptoPP::byte* Util::decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength) {
+  CryptoPP::ByteQueue recoverQueue;
+  CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption dec;
+  dec.SetKeyWithIV(key, keyLength, iv, ivLength);
 
-  string s;
-  CryptoPP::StreamTransformationFilter stf(cbcDec, new CryptoPP::StringSink(s));
-  stf.Put(reinterpret_cast<const unsigned char*>(c.c_str()), c.size());
-  stf.MessageEnd();
+  CryptoPP::StreamTransformationFilter f2(dec, new CryptoPP::Redirector(recoverQueue));
+  cipherQueue.CopyTo(f2);
+  f2.MessageEnd();
 
-  return s;
+  return byteQueueToByte(&recoverQueue);
+}
+
+CryptoPP::byte* Util::byteQueueToByte(CryptoPP::ByteQueue* byteQueue) {
+  int length = byteQueue->CurrentSize();
+  CryptoPP::byte *b = new CryptoPP::byte[length];
+  for(int i=0; i<length; i++) {
+    b[i] = (*byteQueue)[i];
+  }
+  return b;
 }
 
 /*
