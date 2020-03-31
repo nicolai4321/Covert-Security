@@ -30,9 +30,40 @@ public:
               p.first = siz;
               p.second = b;
 
-              vector<pair<int, unsigned char*>> v = dataSentCat[sentCatIndex];
-              v.push_back(p);
-              dataSentCat[sentCatIndex] = v;
+
+              if(forceIterSentTotal == 0) {
+                vector<pair<int, unsigned char*>> v = dataSentCat[sentCatIndex];
+                v.push_back(p);
+                dataSentCat[sentCatIndex] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " send (" << siz << "), storing in '" << sentCatIndex << "'" << endl;
+                }
+              } else {
+                string index = forceIndex+to_string(forceIterSent);
+                if(forceSent == 0) {
+                  vector<pair<int, unsigned char*>> vIni;
+                  dataSentCat[index] = vIni;
+                  debugger.push_back(index);
+                }
+                vector<pair<int, unsigned char*>> v = dataSentCat[index];
+                v.push_back(p);
+                dataSentCat[index] = v;
+
+                if(name.compare("none") != 0) {
+                  cout << name << " send (" << siz << "), storing in '" << index << "'" << endl;
+                }
+
+                forceSent++;
+                if(forceSent == forceSentTotal) {
+                  forceSent = 0;
+                  forceIterSent++;
+                }
+
+                if(forceIterSent == forceIterSentTotal) {
+                  forceSentTotal = 0;
+                  forceIterSentTotal = 0;
+                }
+              }
 
               mChl.send(data, siz);
               bytesTransfered += siz;
@@ -62,9 +93,38 @@ public:
               p.first = siz;
               p.second = b;
 
-              vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
-              v.push_back(p);
-              dataRecvCat[recvCatIndex] = v;
+              if(forceIterRecvTotal == 0) {
+                vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
+                v.push_back(p);
+                dataRecvCat[recvCatIndex] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " recv(" << siz << ") storing in '" << recvCatIndex << "'" << endl;
+                }
+              } else {
+                string index = forceIndex+to_string(forceIterRecv);
+                if(forceRecv == 0) {
+                  vector<pair<int, unsigned char*>> vIni;
+                  dataRecvCat[index] = vIni;
+                  debugger.push_back(index);
+                }
+                vector<pair<int, unsigned char*>> v = dataRecvCat[index];
+                v.push_back(p);
+                dataRecvCat[index] = v;
+                if(name.compare("none") != 0) {
+                  cout << name << " recv(" << siz << ") storing in '" << index << "'" << endl;
+                }
+
+                forceRecv++;
+                if(forceRecv == forceRecvTotal) {
+                  forceRecv = 0;
+                  forceIterRecv++;
+                }
+
+                if(forceIterRecv == forceIterRecvTotal) {
+                  forceRecvTotal = 0;
+                  forceIterRecvTotal = 0;
+                }
+              }
           } catch (...) {
               ec = boost::system::errc::make_error_code(boost::system::errc::io_error);
               break;
@@ -137,7 +197,35 @@ public:
       dataRecvCat[s] = v1;
     }
 
+    void forceStore(string name, int iter, int nrSent, int nrRecv) {
+      forceIndex = name;
+      forceIterSentTotal = iter;
+      forceIterRecvTotal = iter;
+      forceIterSent = 0;
+      forceIterRecv = 0;
+      forceSentTotal = nrSent;
+      forceRecvTotal = nrRecv;
+      forceSent = 0;
+      forceRecv = 0;
+    }
+
+    void follow(string s) {
+      name = s;
+    }
+
   private:
+    string name = "none";
+
+    string forceIndex;
+    int forceIterSentTotal = 0;
+    int forceIterRecvTotal = 0;
+    int forceIterSent = 0;
+    int forceIterRecv = 0;
+    int forceSentTotal = 0;
+    int forceRecvTotal = 0;
+    int forceSent = 0;
+    int forceRecv = 0;
+
     osuCrypto::Channel mChl;
     map<string, vector<pair<int, unsigned char*>>> dataSentCat;
     map<string, vector<pair<int, unsigned char*>>> dataRecvCat;

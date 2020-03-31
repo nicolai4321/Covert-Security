@@ -14,12 +14,6 @@
 #include "modes.h"
 #include "osrng.h"
 #include "randpool.h"
-
-//TODO move
-#include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
-#include "libOTe/TwoChooseOne/KosOtExtSender.h"
-#include "cryptoTools/Network/Channel.h"
-
 using namespace std;
 
 class Util {
@@ -62,10 +56,6 @@ class Util {
     static void printByte(CryptoPP::byte* b, int length);
     static void printByteInBits(CryptoPP::byte* b, int length);
     static void printBlockInBits(osuCrypto::block b, int length);
-
-    static void setBaseOTs(osuCrypto::KosOtExtSender* sender, osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlSer, osuCrypto::Channel chlCli, CryptoPP::byte* seed);
-    static void setBaseCli(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlCli, CryptoPP::byte* seed, int kappa);
-    static void setBaseSer(osuCrypto::KosOtExtSender* sender, osuCrypto::Channel chlSer);
 
     //Variables
     static const int SEED_LENGTH = 16;
