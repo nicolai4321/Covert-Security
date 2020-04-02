@@ -83,13 +83,13 @@ CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, 
 /*
   Encrypts message p
 */
-CryptoPP::ByteQueue Util::encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength) {
+CryptoPP::ByteQueue Util::encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::SecByteBlock* key, int keyLength) {
   CryptoPP::ByteQueue cipherQueue;
   CryptoPP::ByteQueue plainQueue;
   plainQueue.Put(plain, plainLength);
 
-  CryptoPP::CTR_Mode<CryptoPP::AES>::Encryption enc;
-  enc.SetKeyWithIV(key, keyLength, iv, ivLength);
+  CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption enc;
+  enc.SetKey(*key, keyLength);
   CryptoPP::StreamTransformationFilter f1(enc, new CryptoPP::Redirector(cipherQueue));
   plainQueue.CopyTo(f1);
   f1.MessageEnd();
@@ -100,10 +100,10 @@ CryptoPP::ByteQueue Util::encrypt(CryptoPP::byte* plain, int plainLength, Crypto
 /*
   Decrypts message c
 */
-CryptoPP::byte* Util::decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength, CryptoPP::byte* iv, int ivLength) {
+CryptoPP::byte* Util::decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength) {
   CryptoPP::ByteQueue recoverQueue;
-  CryptoPP::CTR_Mode<CryptoPP::AES>::Decryption dec;
-  dec.SetKeyWithIV(key, keyLength, iv, ivLength);
+  CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption dec;
+  dec.SetKey(key, keyLength);
 
   CryptoPP::StreamTransformationFilter f2(dec, new CryptoPP::Redirector(recoverQueue));
   cipherQueue.CopyTo(f2);
