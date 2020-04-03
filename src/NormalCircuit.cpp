@@ -33,8 +33,8 @@ vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName) {
   for false and true
 */
 vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed, iv); iv++;
-  CryptoPP::byte *encT = Util::randomByte(kappa, seed, iv); iv++;
+  CryptoPP::byte *encF = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  CryptoPP::byte *encT = Util::randomByte(kappa, seed, kappa, iv); iv++;
 
   vector<CryptoPP::byte*> encodings;
   encodings.push_back(encF);
@@ -88,7 +88,7 @@ void NormalCircuit::addEQW(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encF, encF, encFO));
   garbledTable.push_back(encodeGate(encT, encT, encTO));
 
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -111,7 +111,7 @@ void NormalCircuit::addINV(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
 
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -135,7 +135,7 @@ void NormalCircuit::addXOR(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encFR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -159,7 +159,7 @@ void NormalCircuit::addAND(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encFO));
   garbledTable.push_back(encodeGate(encTL, encFR, encFO));
   garbledTable.push_back(encodeGate(encTL, encTR, encTO));
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 

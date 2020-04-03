@@ -40,7 +40,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   socketRecorderClient->storeIn("ot1");
   auto threadCli = thread([&]() {
     int iv = 0;
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, kappa, iv);
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
     vector<osuCrypto::block> seedAblock(1);
@@ -136,7 +136,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
 
   //Checking commitment for cicuits
   GarbledCircuit *F = circuitInstance->exportCircuit();
-  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, ivA[j]), kappa);
+  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, kappa, ivA[j]), kappa);
   CryptoPP::byte *commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
   if(memcmp(commitASim, Util::blockToByte(commitA, Util::COMMIT_LENGTH), Util::COMMIT_LENGTH) != 0) {
     cout << "J: party A has cheated. Reason: wrong commitment for circuits" << endl;
@@ -156,7 +156,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     }
 
     vector<osuCrypto::block> recv(GV::n2);
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, iv);
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, recv, prng, recCli);
@@ -171,7 +171,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
       data[i] = {enc0, enc1};
     }
 
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedA, iv);
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedA, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     sender.genBaseOts(prng, recSer);
     sender.sendChosen(data, prng, recSer);

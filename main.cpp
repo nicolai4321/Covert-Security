@@ -99,7 +99,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
   Runs the circuit files
 */
 void runCircuitFiles(int kappa) {
-  CryptoPP::byte *seed = Util::randomByte(Util::SEED_LENGTH);
+  CryptoPP::byte *seed = Util::randomByte(kappa);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -137,34 +137,19 @@ void runCircuitFiles(int kappa) {
 }
 
 void startProtocol(int kappa, int lambda, int x, int y) {
-  //Network
-  osuCrypto::IOService ios(16);
-  osuCrypto::Channel chlSer = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
-  osuCrypto::Channel chlCli = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
-  osuCrypto::SocketInterface *siSer = new SocketRecorder(chlSer);
-  osuCrypto::SocketInterface *siCli= new SocketRecorder(chlCli);
-  SocketRecorder *socketRecorderServer = (SocketRecorder*) siSer;
-  SocketRecorder *socketRecorderClient = (SocketRecorder*) siCli;
-  osuCrypto::Channel chlSerOT(ios, siSer);
-  osuCrypto::Channel chlCliOT(ios, siCli);
-  chlCli.waitForConnection();
-  chlCliOT.waitForConnection();
-
   //Digital Signature
   CryptoPP::DSA::PrivateKey sk = Signature::generateRandomPrivateKey(1024);
   CryptoPP::DSA::PublicKey pk = Signature::generatePublicKey(sk);
 
   //Circuit
-  CryptoPP::byte *unimportantSeed = Util::randomByte(Util::SEED_LENGTH);
+  CryptoPP::byte *unimportantSeed = Util::randomByte(kappa);
   CircuitInterface *circuit;
   EvaluatorInterface *evaluator;
 
   if(Util::randomInt(0, 1)) {
-    cout << "Half - x: " << x << ", y: " << y << endl;
     circuit = new HalfCircuit(kappa, unimportantSeed);
     evaluator = new EvaluatorHalf();
   } else {
-    cout << "Normal - x: " << x << ", y: " << y << endl;
     circuit = new NormalCircuit(kappa, unimportantSeed);
     evaluator = new EvaluatorNormal();
   }
@@ -172,21 +157,16 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   bool b0;
   bool b1;
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, chlSerOT, socketRecorderServer, circuit);
+    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, circuit);
     b0 = partyA.startProtocol();
-  });
+ });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, pk, kappa, lambda, chlCliOT, socketRecorderClient, circuit, evaluator, &ios);
+    PartyB partyB = PartyB(y, pk, kappa, lambda, circuit, evaluator);
     b1 = partyB.startProtocol();
   });
 
   threadA.join();
   threadB.join();
-  chlCliOT.close();
-  chlSerOT.close();
-  chlCli.close();
-  chlSer.close();
-  ios.stop();
 
   if(b0 && b1) {
     cout << "Success" << endl;
@@ -195,18 +175,7 @@ void startProtocol(int kappa, int lambda, int x, int y) {
   }
 }
 
-int main() {
-  cout << "covert start" << endl;
-
-  int kappa = 16; //they use 16 bytes, 16*8=128 bits
-  int lambda = 8;
-  int x = 5;
-  int y = 2;
-
-  //runCircuitFiles(kappa);
-  //startProtocol(kappa, lambda, x, y);
-
-  int length = kappa;
+void runHashFuncs(int length) {
   CryptoPP::byte *b = Util::randomByte(length);
   int rounds = 1000000;
 
@@ -228,6 +197,19 @@ int main() {
   }
   double durationNormal = (clock()-startNormal) / (double) CLOCKS_PER_SEC;
   cout << "std: " << durationNormal << endl;
+}
+
+int main() {
+  cout << "covert start" << endl;
+
+  int kappa = 16; //they use 16 bytes, 16*8=128 bits
+  int lambda = 8;
+  int x = 5;
+  int y = 2;
+
+  //runCircuitFiles(kappa);
+  startProtocol(kappa, lambda, x, y);
+  //runHashFuncs(kappa);
 
   cout << "covert end" << endl;
   return 0;

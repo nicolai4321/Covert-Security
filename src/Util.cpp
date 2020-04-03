@@ -124,12 +124,12 @@ CryptoPP::byte* Util::byteQueueToByte(CryptoPP::ByteQueue* byteQueue) {
 /*
   Randomly shuffles a vector
 */
-void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, unsigned int iv) {
+void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int length, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
 
   prng.Shuffle(v.begin(), v.end());
 }
@@ -147,13 +147,13 @@ CryptoPP::byte* Util::randomByte(int length) {
 /*
   Returns a random byte with a seed
 */
-CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, unsigned int iv) {
+CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
   CryptoPP::byte *b = new CryptoPP::byte[length];
   prng.GenerateBlock(b, length);
 
@@ -180,13 +180,13 @@ long Util::randomInt(int minInt, int maxInt) {
 /*
   Returns random number between minInt and maxInt with seed
 */
-long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv) {
+long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
 
   CryptoPP::Integer r;
   if(minInt == 0) {

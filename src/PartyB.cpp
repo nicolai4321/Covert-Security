@@ -1,19 +1,15 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, CryptoPP::DSA::PublicKey publicKey, int k, int l, osuCrypto::Channel cOT, SocketRecorder *sr,
-               CircuitInterface* cir, EvaluatorInterface* eI, osuCrypto::IOService* ioser) {
+PartyB::PartyB(int input, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cir, EvaluatorInterface* eI) {
   y = input;
   pk = publicKey;
   kappa = k;
   lambda = l;
-  chlOT = cOT;
-  chl = sr->getMChl();
-  socketRecorder = sr;
   circuit = cir;
   evaluator = eI;
-  ios = ioser;
 
+  //Circuit reader
   CircuitReader cr = CircuitReader();
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, GV::filename);
   if(import.first) {
@@ -32,6 +28,14 @@ PartyB::~PartyB() {}
   Starts the protocol
 */
 bool PartyB::startProtocol() {
+  //Network
+  ios = new osuCrypto::IOService(16);
+  chl = osuCrypto::Session(*ios, GV::ADDRESS, osuCrypto::SessionMode::Client).addChannel();
+  osuCrypto::SocketInterface *socket= new SocketRecorder(chl);
+  socketRecorder = (SocketRecorder*) socket;
+  chlOT = osuCrypto::Channel(*ios, socket);
+
+  //Gamma
   gamma = Util::randomInt(0, lambda-1);
 
   //Generating random seeds
@@ -56,10 +60,12 @@ bool PartyB::startProtocol() {
   }
 
   cout << "B: sending my commitments" << endl;
+  chl.waitForConnection();
   chl.asyncSend(move(commitmentsBSend));
 
   //First OT
   osuCrypto::KosOtExtReceiver recver;
+  chlOT.waitForConnection();
   vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, chlOT, socketRecorder, seedsB, &ivB);
   cout << "B: has done first OT" << endl;
 
@@ -82,6 +88,9 @@ bool PartyB::startProtocol() {
 
   //Simulate party A to check signatures and commitments
   if(!simulatePartyA(&recver, seedsB, signatureHolders, seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB, decommitmentsB)) {
+    chlOT.close();
+    chl.close();
+    ios->stop();
     return false;
   }
 
@@ -111,8 +120,16 @@ bool PartyB::startProtocol() {
   chl.recv(decommitmentsCircuitA);
   cout << "B: has received decommits" << endl;
 
-  if(!checkCommitments(F, decommitmentsEncA, decommitmentsCircuitA, commitmentsEncsA, commitmentsCircuitsA, encsInputsA)) {return false;}
+  if(!checkCommitments(F, decommitmentsEncA, decommitmentsCircuitA, commitmentsEncsA, commitmentsCircuitsA, encsInputsA)) {
+    chlOT.close();
+    chl.close();
+    ios->stop();
+    return false;
+  }
 
+  chlOT.close();
+  chl.close();
+  ios->stop();
   return evaluate(F, encsInputsA, encsInputsB);
 }
 
@@ -127,7 +144,7 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
     osuCrypto::BitVector b(1);
     b[0] = (j==gamma) ? 1 : 0;
 
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsB.at(j), (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsB.at(j), kappa, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     vector<osuCrypto::block> dest(1);
     recver->genBaseOts(prng, channel);
@@ -158,7 +175,7 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
 
     vector<osuCrypto::block> encs(GV::n2);
     CryptoPP::byte* seed = seedsB.at(j);
-    CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+    CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, kapp, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     recver->genBaseOts(prng, channel);
     recver->receiveChosen(b, encs, prng, channel);
