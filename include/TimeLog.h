@@ -5,6 +5,7 @@
 #include "fstream"
 #include "iostream"
 #include "map"
+#include "cmath"
 #include "string"
 #include "vector"
 using namespace std;

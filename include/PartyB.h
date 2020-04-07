@@ -25,7 +25,7 @@ using namespace std;
 
 class PartyB {
   public:
-    PartyB(int y, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, EvaluatorInterface *evaluator, TimeLog *timeLog);
+    PartyB(int y, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, EvaluatorInterface *evaluator, TimeLog *timeLog);
 
     virtual ~PartyB();
 
@@ -53,7 +53,7 @@ class PartyB {
     int kappa;
     int lambda;
     int gamma;
-    CryptoPP::DSA::PublicKey pk;
+    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk;
     osuCrypto::Channel chl;
     osuCrypto::Channel chlOT;
     SocketRecorder *socketRecorder;

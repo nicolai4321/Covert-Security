@@ -1,18 +1,18 @@
 #include "Judge.h"
 using namespace std;
 
-bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
-                   vector<pair<int, unsigned char*>> transcriptSent1,
-                   vector<pair<int, unsigned char*>> transcriptRecv1,
-                   vector<pair<int, unsigned char*>> transcriptSent2,
-                   vector<pair<int, unsigned char*>> transcriptRecv2) {
+bool Judge::accuse(int j, CryptoPP::byte *signature, int signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
+                   vector<pair<int, unsigned char*>> *transcriptSent1,
+                   vector<pair<int, unsigned char*>> *transcriptRecv1,
+                   vector<pair<int, unsigned char*>> *transcriptSent2,
+                   vector<pair<int, unsigned char*>> *transcriptRecv2) {
   cout << "Judge called: " << j << endl;
   CryptoPP::byte *commit = Util::commit(Util::byteToBlock(seedB, kappa), decommitB);
   osuCrypto::block commitB = Util::byteToBlock(commit, Util::COMMIT_LENGTH);
 
-  string signatureMsg = PartyA::constructSignatureString(j, kappa, commitA, commitB, commitEncsA, transcriptSent1,
+  pair<CryptoPP::byte*, int> signatureMsg = PartyA::constructSignatureByte(j, kappa, &commitA, &commitB, &commitEncsA, transcriptSent1,
                                                          transcriptRecv1, transcriptSent2, transcriptRecv2);
-  bool correctSignature = Signature::verify(pk, signature, signatureMsg);
+  bool correctSignature = Signature::verify(pk, signatureMsg.first, signatureMsg.second, signature, signatureLength);
   if(!correctSignature) {
     cout << "J: The signature is not correct" << endl;
     return false;
@@ -60,7 +60,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
 
     for(int i=0; i<32; i++) {
       int index = 2*i+1;
-      recSer.send(transcriptSent1.at(index).second, transcriptSent1.at(index).first);
+      recSer.send(transcriptSent1->at(index).second, transcriptSent1->at(index).first);
     }
 
     array<int, 4> b1;
@@ -73,7 +73,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     array<int, 4096> b3;
     recSer.recv(b3);
 
-    recSer.send(transcriptSent1.at(65).second, transcriptSent1.at(65).first);
+    recSer.send(transcriptSent1->at(65).second, transcriptSent1->at(65).first);
 
     array<int, 4> b4;
     recSer.recv(b4);
@@ -81,23 +81,23 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
     array<int, 12> b5;
     recSer.recv(b5);
 
-    recSer.send(transcriptSent1.at(67).second, transcriptSent1.at(67).first);
+    recSer.send(transcriptSent1->at(67).second, transcriptSent1->at(67).first);
   });
 
   threadSer.join();
   threadCli.join();
 
   //Checks that the received messages have same length
-  vector<pair<int, CryptoPP::byte*>> transcriptSimRecv1 = socketRecorderServer->getRecvCat("ot1");
-  if(transcriptSimRecv1.size() != transcriptRecv1.size()) {
+  vector<pair<int, CryptoPP::byte*>> *transcriptSimRecv1 = socketRecorderServer->getRecvCat("ot1");
+  if(transcriptSimRecv1->size() != transcriptRecv1->size()) {
     cout << "J: The transcripts have incorrect size for the 1st ot!" << endl;
     return false;
   }
 
   //Checks that the received messages are identical
-  for(int i=0; i<transcriptSimRecv1.size(); i++) {
-    pair<int, CryptoPP::byte*> p0 = transcriptSimRecv1.at(i);
-    pair<int, CryptoPP::byte*> p1 = transcriptRecv1.at(i);
+  for(int i=0; i<transcriptSimRecv1->size(); i++) {
+    pair<int, CryptoPP::byte*> p0 = transcriptSimRecv1->at(i);
+    pair<int, CryptoPP::byte*> p1 = transcriptRecv1->at(i);
     if(memcmp(p0.second, p1.second, p1.first) != 0) {
       cout << "J: The transcripts are not identical for the 1st ot!" << endl;
       return false;
@@ -180,37 +180,37 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   threadCli2.join();
   threadSer2.join();
 
-  vector<pair<int, CryptoPP::byte*>> transcriptSimSent2 = socketRecorderServer->getSentCat("ot2");
-  vector<pair<int, CryptoPP::byte*>> transcriptSimRecv2 = socketRecorderServer->getRecvCat("ot2");
+  vector<pair<int, CryptoPP::byte*>> *transcriptSimSent2 = socketRecorderServer->getSentCat("ot2");
+  vector<pair<int, CryptoPP::byte*>> *transcriptSimRecv2 = socketRecorderServer->getRecvCat("ot2");
 
   //base ot
-  if(memcmp(transcriptSimRecv2.at(0).second, transcriptRecv2.at(0).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(1).second, transcriptRecv2.at(1).second, 32) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(0).second, transcriptRecv2->at(0).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(1).second, transcriptRecv2->at(1).second, 32) != 0) return 0;
 
   for(int i=0; i<32; i++) {
-    if(memcmp(transcriptSimSent2.at(2*i).second, transcriptSent2.at(2*i).second, 4) != 0) return 1;
-    if(memcmp(transcriptSimSent2.at(2*i+1).second, transcriptSent2.at(2*i+1).second, 128) != 0) return 1;
+    if(memcmp(transcriptSimSent2->at(2*i).second, transcriptSent2->at(2*i).second, 4) != 0) return 1;
+    if(memcmp(transcriptSimSent2->at(2*i+1).second, transcriptSent2->at(2*i+1).second, 128) != 0) return 1;
   }
 
-  if(memcmp(transcriptSimRecv2.at(2).second, transcriptRecv2.at(2).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(3).second, transcriptRecv2.at(3).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(2).second, transcriptRecv2->at(2).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(3).second, transcriptRecv2->at(3).second, 16) != 0) return 0;
 
   //ot
-  if(memcmp(transcriptSimRecv2.at(4).second, transcriptRecv2.at(4).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(5).second, transcriptRecv2.at(5).second, 20) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(6).second, transcriptRecv2.at(6).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(7).second, transcriptRecv2.at(7).second, 16384) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(4).second, transcriptRecv2->at(4).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(5).second, transcriptRecv2->at(5).second, 20) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(6).second, transcriptRecv2->at(6).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(7).second, transcriptRecv2->at(7).second, 16384) != 0) return 0;
 
-  if(memcmp(transcriptSimSent2.at(64).second, transcriptSent2.at(64).second, 4) != 0) return 1;
-  if(memcmp(transcriptSimSent2.at(65).second, transcriptSent2.at(65).second, 16) != 0) return 1;
+  if(memcmp(transcriptSimSent2->at(64).second, transcriptSent2->at(64).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2->at(65).second, transcriptSent2->at(65).second, 16) != 0) return 1;
 
-  if(memcmp(transcriptSimRecv2.at(8).second, transcriptRecv2.at(8).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(9).second, transcriptRecv2.at(9).second, 16) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(10).second, transcriptRecv2.at(10).second, 4) != 0) return 0;
-  if(memcmp(transcriptSimRecv2.at(11).second, transcriptRecv2.at(11).second, 48) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(8).second, transcriptRecv2->at(8).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(9).second, transcriptRecv2->at(9).second, 16) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(10).second, transcriptRecv2->at(10).second, 4) != 0) return 0;
+  if(memcmp(transcriptSimRecv2->at(11).second, transcriptRecv2->at(11).second, 48) != 0) return 0;
 
-  if(memcmp(transcriptSimSent2.at(66).second, transcriptSent2.at(66).second, 4) != 0) return 1;
-  if(memcmp(transcriptSimSent2.at(67).second, transcriptSent2.at(67).second, 96) != 0) return 1;
+  if(memcmp(transcriptSimSent2->at(66).second, transcriptSent2->at(66).second, 4) != 0) return 1;
+  if(memcmp(transcriptSimSent2->at(67).second, transcriptSent2->at(67).second, 96) != 0) return 1;
 
   recCli.close();
   recSer.close();
@@ -222,7 +222,7 @@ bool Judge::accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::bl
   return false;
 }
 
-Judge::Judge(int k, CryptoPP::DSA::PublicKey publicKey, CircuitInterface* c){
+Judge::Judge(int k, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, CircuitInterface* c){
   kappa = k;
   pk = publicKey;
   circuit = c;

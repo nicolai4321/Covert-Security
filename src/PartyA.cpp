@@ -1,7 +1,7 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cI, TimeLog *timelog) {
+PartyA::PartyA(int input, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey secretKey, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, int k, int l, CircuitInterface* cI, TimeLog *timelog) {
   x = input;
   sk = secretKey;
   pk = publicKey;
@@ -377,18 +377,20 @@ CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, 
 /*
   This function constructs a signature string
 */
-string PartyA::constructSignatureString(int j, int kapp, osuCrypto::block commitmentA, osuCrypto::block commitmentB,
-                                        vector<osuCrypto::block> commitmentsEncsInputsA,
-                                        vector<pair<int, unsigned char*>> transcriptSent1,
-                                        vector<pair<int, unsigned char*>> transcriptRecv1,
-                                        vector<pair<int, unsigned char*>> transcriptSent2,
-                                        vector<pair<int, unsigned char*>> transcriptRecv2) {
+pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCrypto::block *commitmentA, osuCrypto::block *commitmentB,
+                                        vector<osuCrypto::block> *commitmentsEncsInputsA,
+                                        vector<pair<int, unsigned char*>> *transcriptSent1,
+                                        vector<pair<int, unsigned char*>> *transcriptRecv1,
+                                        vector<pair<int, unsigned char*>> *transcriptSent2,
+                                        vector<pair<int, unsigned char*>> *transcriptRecv2) {
+  vector<pair<CryptoPP::byte*,int>> bytes;
+  int bytesSize = 0;
+
   //Circuit
   string circuitString = "";
   string line;
   string filepath = "circuits/"+GV::filename;
-  ifstream reader;
-  reader.open(filepath);
+  ifstream reader(filepath);
   if(reader.is_open()) {
     while (!reader.eof()) {
       getline(reader, line);
@@ -398,39 +400,65 @@ string PartyA::constructSignatureString(int j, int kapp, osuCrypto::block commit
     throw runtime_error("A: Could not read circuit file");
   }
 
+  pair<CryptoPP::byte*, int> p0(Util::stringToByte(circuitString, circuitString.length()), circuitString.length());
+  bytes.push_back(p0);
+  bytesSize += circuitString.length();
+
   //Commitments from A
-  string comCircuitA = Util::blockToString(commitmentA, kapp);
+  pair<CryptoPP::byte*, int> p1(Util::blockToByte(*commitmentA, kapp), kapp);
+  bytes.push_back(p1);
+  bytesSize += kapp;
+
   string comEncsA;
   for(int i=0; i<GV::n1; i++) {
-    comEncsA += Util::blockToString(commitmentsEncsInputsA.at(2*i), kapp);
-    comEncsA += Util::blockToString(commitmentsEncsInputsA.at(2*i+1), kapp);
+    pair<CryptoPP::byte*, int> p2(Util::blockToByte((*commitmentsEncsInputsA).at(2*i), kapp), kapp);
+    pair<CryptoPP::byte*, int> p3(Util::blockToByte((*commitmentsEncsInputsA).at(2*i+1), kapp), kapp);
+    bytes.push_back(p2);
+    bytes.push_back(p3);
   }
+  bytesSize += 2*kapp*GV::n1;
 
   //Commitments from B
-  string comSeedB = Util::blockToString(commitmentB, kapp);
+  pair<CryptoPP::byte*, int> p4(Util::blockToByte(*commitmentB, kapp), kapp);
+  bytes.push_back(p4);
+  bytesSize += kapp;
 
   //Transcripts
-  string ot1Sent = "";
-  for(pair<int, unsigned char*> p : transcriptSent1) {
-    ot1Sent += Util::byteToString(p.second, p.first);
+  for(pair<int, unsigned char*> p : (*transcriptSent1)) {
+    pair<CryptoPP::byte*, int> p5(p.second, p.first);
+    bytes.push_back(p5);
+    bytesSize += p.first;
   }
 
-  string ot1Recv = "";
-  for(pair<int, unsigned char*> p : transcriptRecv1) {
-    ot1Recv += Util::byteToString(p.second, p.first);
+  for(pair<int, unsigned char*> p : (*transcriptRecv1)) {
+    pair<CryptoPP::byte*, int> p6(p.second, p.first);
+    bytes.push_back(p6);
+    bytesSize += p.first;
   }
 
-  string ot2Sent = "";
-  for(pair<int, unsigned char*> p : transcriptSent2) {
-    ot2Sent += Util::byteToString(p.second, p.first);
+  for(pair<int, unsigned char*> p : (*transcriptSent2)) {
+    pair<CryptoPP::byte*, int> p7(p.second, p.first);
+    bytes.push_back(p7);
+    bytesSize += p.first;
   }
 
-  string ot2Recv = "";
-  for(pair<int, unsigned char*> p : transcriptRecv2) {
-    ot2Recv += Util::byteToString(p.second, p.first);
+  for(pair<int, unsigned char*> p : (*transcriptRecv2)) {
+    pair<CryptoPP::byte*, int> p8(p.second, p.first);
+    bytes.push_back(p8);
+    bytesSize += p.first;
   }
 
-  return to_string(j) + circuitString + comSeedB + comCircuitA + comEncsA + ot1Sent + ot1Recv + ot2Sent + ot2Recv;
+  CryptoPP::byte *outputByte = new CryptoPP::byte[bytesSize];
+  int counter = 0;
+  for(pair<CryptoPP::byte*, int> p : bytes) {
+      memcpy(outputByte+counter, p.first, p.second);
+      counter = p.second;
+  }
+
+  pair<CryptoPP::byte*, int> output;
+  output.first = outputByte;
+  output.second = bytesSize;
+  return output;
 }
 
 /*
@@ -446,13 +474,13 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> co
       commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(startIndex+2*i));
       commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(startIndex+2*i+1));
     }
-    string m = constructSignatureString(j, kappa, commitmentsA.at(j), commitmentsB.at(j), commitmentsEncsInputsAJ,
-                                        socketRecorder->getSentCat("ot1"+to_string(j)),
-                                        socketRecorder->getRecvCat("ot1"+to_string(j)),
-                                        socketRecorder->getSentCat("ot2"+to_string(j)),
-                                        socketRecorder->getRecvCat("ot2"+to_string(j)));
-    string signature = Signature::sign(sk, m);
-    SignatureHolder *signatureHolder = new SignatureHolder(m, signature);
+    pair<CryptoPP::byte*, int> msg = constructSignatureByte(j, kappa, &commitmentsA.at(j), &commitmentsB.at(j), &commitmentsEncsInputsAJ,
+                                                            socketRecorder->getSentCat("ot1"+to_string(j)),
+                                                            socketRecorder->getRecvCat("ot1"+to_string(j)),
+                                                            socketRecorder->getSentCat("ot2"+to_string(j)),
+                                                            socketRecorder->getRecvCat("ot2"+to_string(j)));
+    pair<CryptoPP::byte*, int> signature = Signature::sign(sk, msg.first, msg.second);
+    SignatureHolder *signatureHolder = new SignatureHolder(msg.first, msg.second, signature.first, signature.second);
     output.push_back(signatureHolder);
   }
   return output;

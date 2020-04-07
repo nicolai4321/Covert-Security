@@ -1,12 +1,14 @@
 #ifndef PARTYA_H
 #define PARTYA_H
-#include <iostream>
 #include "CircuitInterface.h"
 #include "CircuitReader.h"
 #include "cryptlib.h"
 #include "cryptoTools/Network/IOService.h"
 #include "cryptoTools/Network/SocketAdapter.h"
+#include "files.h"
+#include "filters.h"
 #include "GV.h"
+#include "iostream"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "NormalCircuit.h"
 #include "Signature.h"
@@ -17,7 +19,7 @@ using namespace std;
 
 class PartyA {
   public:
-    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
+    PartyA(int x, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
     virtual ~PartyA();
 
     bool startProtocol();
@@ -35,12 +37,12 @@ class PartyA {
     static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda, int kappa, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);
     static CryptoPP::byte* commitCircuit(int kappa, string type, GarbledCircuit *F, osuCrypto::block decommit);
 
-    static string constructSignatureString(int j, int kappa, osuCrypto::block commitmentA, osuCrypto::block commitmentB,
-                                          vector<osuCrypto::block> commitmentsEncsInputsA,
-                                          vector<pair<int, unsigned char*>> transcriptSent1,
-                                          vector<pair<int, unsigned char*>> transcriptRecv1,
-                                          vector<pair<int, unsigned char*>> transcriptSent2,
-                                          vector<pair<int, unsigned char*>> transcriptRecv2);
+    static pair<CryptoPP::byte*,int> constructSignatureByte(int j, int kappa, osuCrypto::block *commitmentA, osuCrypto::block *commitmentB,
+                                                            vector<osuCrypto::block> *commitmentsEncsInputsA,
+                                                            vector<pair<int, unsigned char*>> *transcriptSent1,
+                                                            vector<pair<int, unsigned char*>> *transcriptRecv1,
+                                                            vector<pair<int, unsigned char*>> *transcriptSent2,
+                                                            vector<pair<int, unsigned char*>> *transcriptRecv2);
 
   protected:
 
@@ -48,8 +50,8 @@ class PartyA {
     int x;
     int kappa;
     int lambda;
-    CryptoPP::DSA::PrivateKey sk;
-    CryptoPP::DSA::PublicKey pk;
+    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk;
+    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk;
     osuCrypto::Channel chl;
     osuCrypto::Channel chlOT;
     SocketRecorder *socketRecorder;

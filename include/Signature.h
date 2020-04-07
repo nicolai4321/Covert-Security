@@ -1,51 +1,48 @@
 #ifndef SIGNATURE_H
 #define SIGNATURE_H
-#include <string>
-#include "dsa.h"
-#include "osrng.h"
+//#include "dsa.h"
+//#include "osrng.h"
+#include "esign.h"
+#include "SignatureHolder.h"
+#include "string"
+#include "whrlpool.h"
 using namespace std;
 
 class Signature {
   public:
-    static CryptoPP::DSA::PrivateKey generateRandomPrivateKey(int siz) {
-      CryptoPP::AutoSeededRandomPool asrp;
-      CryptoPP::DSA::PrivateKey sk;
-      sk.GenerateRandomWithKeySize(asrp, siz);
-      return sk;
+    static pair<CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey,
+                CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey> generateKeys(int siz) {
+      CryptoPP::AutoSeededRandomPool rng;
+      CryptoPP::InvertibleESIGNFunction parameters;
+      parameters.GenerateRandomWithKeySize(rng, siz);
+
+      CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk(parameters);
+      CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk(parameters);
+      pair<CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey> output;
+      output.first = sk;
+      output.second = pk;
+      return output;
     }
 
-    static CryptoPP::DSA::PublicKey generatePublicKey(CryptoPP::DSA::PrivateKey sk) {
-      CryptoPP::AutoSeededRandomPool asrp;
-      CryptoPP::DSA::PublicKey pk;
-      pk.AssignFrom(sk);
-      if (!sk.Validate(asrp, 3) || !pk.Validate(asrp, 3)) {
-        throw runtime_error("DSA key generation failed");
-      }
-      return pk;
+    static pair<CryptoPP::byte*, int> sign(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk, CryptoPP::byte *msg, int length) {
+      CryptoPP::AutoSeededRandomPool rng;
+      CryptoPP::ESIGN<CryptoPP::Whirlpool>::Signer signer(sk);
+      CryptoPP::byte *signature = new CryptoPP::byte[signer.MaxSignatureLength()];
+      signer.SignMessage(rng, msg, length, signature);
+
+      pair<CryptoPP::byte*, int> output;
+      output.first = signature;
+      output.second = signer.SignatureLength();
+      return output;
     }
 
-    static string sign(CryptoPP::DSA::PrivateKey sk, string message) {
-      CryptoPP::AutoSeededRandomPool asrp;
-      string signature;
-      CryptoPP::DSA::Signer signer(sk);
-      CryptoPP::StringSource ss1(message, true,
-        new CryptoPP::SignerFilter(asrp, signer,
-          new CryptoPP::StringSink(signature)
-        )
-      );
-      return signature;
+    static bool verify(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, SignatureHolder *sh) {
+      return verify(pk, sh->getMsg(), sh->getMsgLength(), sh->getSignature(), sh->getSignatureLength());
     }
 
-    static bool verify(CryptoPP::DSA::PublicKey pk, string signature, string message) {
-      try {
-        CryptoPP::DSA::Verifier verifier(pk);
-        CryptoPP::StringSource ss2(message+signature, true,
-          new CryptoPP::SignatureVerificationFilter(
-              verifier, NULL, CryptoPP::SignatureVerificationFilter::THROW_EXCEPTION));
-        return true;
-      } catch(...) {
-        return false;
-      }
+    static bool verify(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, CryptoPP::byte *msg, int msgLength, CryptoPP::byte *signature, int sigLength) {
+      CryptoPP::ESIGN<CryptoPP::Whirlpool>::Verifier verifier(pk);
+      return verifier.VerifyMessage(msg, msgLength, signature, sigLength);
     }
 
   protected:

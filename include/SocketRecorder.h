@@ -155,29 +155,29 @@ public:
       if(!b) throw runtime_error("Socket recorder has no record for '"+s+"'");
     }
 
-    vector<pair<int, unsigned char*>> getSentCat(string cat) {
+    vector<pair<int, unsigned char*>> *getSentCat(string cat) {
       check(cat);
-      vector<pair<int, unsigned char*>> output;
+      vector<pair<int, unsigned char*>> *output = new vector<pair<int, unsigned char*>>();
       for(pair<int, unsigned char*> p0 : dataSentCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
         p1.second = p0.second;
         if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
-        output.push_back(p1);
+        output->push_back(p1);
       }
 
       return output;
     }
 
-    vector<pair<int, unsigned char*>> getRecvCat(string cat) {
+    vector<pair<int, unsigned char*>> *getRecvCat(string cat) {
       check(cat);
-      vector<pair<int, unsigned char*>> output;
+      vector<pair<int, unsigned char*>> *output = new vector<pair<int, unsigned char*>>();
       for(pair<int, unsigned char*> p0 : dataRecvCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
         p1.second = p0.second;
         if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
-        output.push_back(p1);
+        output->push_back(p1);
       }
 
       return output;

@@ -33,7 +33,13 @@ string TimeLog::getTimes() {
     }
     if(!found) throw runtime_error("No key for :"+mark);
 
-    output += mark + ": " + to_string(timeDiff(p.second, endMarks[mark])) + "ms\n";
+    int time = timeDiff(p.second, endMarks[mark]);
+    string align = "";
+    for(int i=1; i<8; i++) {
+      if(time < pow(10, i)) align += " ";
+    }
+
+    output += align + to_string(time) + "ms  " + mark + "\n";
   }
   return output;
 }

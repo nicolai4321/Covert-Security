@@ -1,20 +1,24 @@
 #ifndef SIGNATUREHOLDER_H
 #define SIGNATUREHOLDER_H
-#include <string>
+#include "cryptlib.h"
 using namespace std;
 
 class SignatureHolder {
   public:
-    SignatureHolder(string msg, string signature);
+    SignatureHolder(CryptoPP::byte *msg, int msgLength, CryptoPP::byte *signature, int signatureLength);
     virtual ~SignatureHolder();
-    string getMsg();
-    string getSignature();
+    CryptoPP::byte *getMsg();
+    CryptoPP::byte *getSignature();
+    int getMsgLength();
+    int getSignatureLength();
 
   protected:
 
   private:
-    string msg;
-    string signature;
+    CryptoPP::byte *msg;
+    int msgLength;
+    CryptoPP::byte *signature;
+    int signatureLength;
 };
 
 #endif // SIGNATUREHOLDER_H

@@ -1,16 +1,26 @@
 #include "SignatureHolder.h"
 
-string SignatureHolder::getMsg() {
+CryptoPP::byte *SignatureHolder::getMsg() {
   return msg;
 }
 
-string SignatureHolder::getSignature() {
+CryptoPP::byte * SignatureHolder::getSignature() {
   return signature;
 }
 
-SignatureHolder::SignatureHolder(string m, string s) {
+int SignatureHolder::getMsgLength() {
+ return msgLength;
+}
+
+int SignatureHolder::getSignatureLength() {
+  return signatureLength;
+}
+
+SignatureHolder::SignatureHolder(CryptoPP::byte *m, int mLength, CryptoPP::byte *s, int sLength) {
   msg = m;
+  msgLength = mLength;
   signature = s;
+  signatureLength = sLength;
 }
 
 SignatureHolder::~SignatureHolder() {}

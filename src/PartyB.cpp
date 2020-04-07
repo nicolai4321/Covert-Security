@@ -1,7 +1,7 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cir, EvaluatorInterface* eI, TimeLog *timelog) {
+PartyB::PartyB(int input, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, int k, int l, CircuitInterface* cir, EvaluatorInterface* eI, TimeLog *timelog) {
   y = input;
   pk = publicKey;
   kappa = k;
@@ -346,18 +346,19 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
                             vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB,
                             vector<osuCrypto::block> decommitmentsB) {
   //Checking signatures
+  timeLog->markTime("  check signatures");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking signatures" << endl;
   for(int j=0; j<lambda; j++) {
     SignatureHolder* signatureHolder = signatureHolders.at(j);
-    string msg = signatureHolder->getMsg();
-    string signature = signatureHolder->getSignature();
-    if(!Signature::verify(pk, signature, msg)) {
+    if(!Signature::verify(pk, signatureHolder)) {
       cout << "B: found invalid signature" << endl;
       return false;
     }
   }
+  timeLog->endMark("  check signatures");
 
   //Generating seeds
+  timeLog->markTime("  seeds");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: generating seeds" << endl;
   map<unsigned int, unsigned int> ivAsim;
   map<unsigned int, unsigned int> ivBSim;
@@ -367,14 +368,18 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     ivAsim[j] = 1;
     ivBSim[j] = 1;
   }
+  timeLog->endMark("  seeds");
 
   //Simulated garbling
+  timeLog->markTime("  garbling");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: simulating garbling" << endl;
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
+  timeLog->endMark("  garbling");
 
   //Network
+  timeLog->markTime("  network setup");
   osuCrypto::Channel chlSerSim = osuCrypto::Session(*ios, GV::ADDRESS_SIM, osuCrypto::SessionMode::Server).addChannel();
   osuCrypto::Channel chlCliSim = osuCrypto::Session(*ios, GV::ADDRESS_SIM, osuCrypto::SessionMode::Client).addChannel();
   osuCrypto::SocketInterface *siSerSim = new SocketRecorder(chlSerSim);
@@ -385,35 +390,46 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   osuCrypto::Channel recCliSim(*ios, siCliSim);
   chlCliSim.waitForConnection();
   recCliSim.waitForConnection();
+  timeLog->endMark("  network setup");
 
   //Simulating the 2nd OT
+  timeLog->markTime("  2nd ot");
   auto senderThread = thread([&]() {
   osuCrypto::KosOtExtSender sender;
     PartyA::otEncs(&sender, lambda, kappa, recSerSim, socSerSim, encsSimulated, seedsA, &ivAsim);
   });
   otEncodingsB(recver, y, lambda, kappa, gamma, recCliSim, socCliSim, seedsB, &ivBSim);
   senderThread.join();
+  timeLog->endMark("  2nd ot");
 
   //Checking the conent of the transscripts
+  timeLog->markTime("  check transscripts");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking transscripts" << endl;
   for(int j=0; j<lambda; j++) {
     if(j != gamma) {
-      SignatureHolder* signatureHolder = signatureHolders.at(j);
-      string msg = signatureHolder->getMsg();
+      timeLog->markTime("    get msg"+to_string(j));
+      SignatureHolder *signatureHolder = signatureHolders.at(j);
+      CryptoPP::byte *msg = signatureHolder->getMsg();
+      timeLog->endMark("    get msg"+to_string(j));
 
+      timeLog->markTime("    find commitments for encs"+to_string(j));
       vector<osuCrypto::block> commitmentsEncsAJ;
       int startIndex = 2*j*GV::n1;
       for(int i=0; i<GV::n1; i++) {
         commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
         commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i+1));
       }
-      string msgSim = PartyA::constructSignatureString(j, kappa, commitmentsCircuitsA.at(j), commitmentsB.at(j), commitmentsEncsAJ,
-                                                       socketRecorder->getRecvCat("ot1"+to_string(j)),
-                                                       socketRecorder->getSentCat("ot1"+to_string(j)),
-                                                       socSerSim->getSentCat("ot2"+to_string(j)),
-                                                       socSerSim->getRecvCat("ot2"+to_string(j)));
+      timeLog->endMark("    find commitments for encs"+to_string(j));
 
-      if(msg.compare(msgSim) != 0) {
+      timeLog->markTime("    construct signature string"+to_string(j));
+      pair<CryptoPP::byte*,int> msgSim = PartyA::constructSignatureByte(j, kappa, &commitmentsCircuitsA.at(j), &commitmentsB.at(j), &commitmentsEncsAJ,
+                                                                         socketRecorder->getRecvCat("ot1"+to_string(j)),
+                                                                         socketRecorder->getSentCat("ot1"+to_string(j)),
+                                                                         socSerSim->getSentCat("ot2"+to_string(j)),
+                                                                         socSerSim->getRecvCat("ot2"+to_string(j)));
+      timeLog->endMark("    construct signature string"+to_string(j));
+
+      if(memcmp(msg, msgSim.first, msgSim.second) != 0) {
         cout << "B: signature of invalid data for round: " << j << endl;
         socSerSim->close();
         socCliSim->close();
@@ -425,16 +441,22 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
       }
     }
   }
+  timeLog->endMark("  check transscripts");
 
   //Checking commitments
+  timeLog->markTime("  commitments encs");
   pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated =
     PartyA::commitEncsA(lambda, kappa, seedsA, &ivAsim, encsSimulated);
   vector<osuCrypto::block> commitmentsEncsASimulated = commitPairSimulated.first;
+  timeLog->endMark("  commitments encs");
 
+  timeLog->markTime("  commitments circuits");
   pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, &ivAsim, circuits);
   vector<osuCrypto::block> commitmentsA = commitPair.first;
   vector<osuCrypto::block> decommitmentsA = commitPair.second;
+  timeLog->endMark("  commitments circuits");
 
+  timeLog->markTime("  check commits");
   bool callJudge = false;
   int j;
   for(j=0; j<lambda; j++) {
@@ -464,7 +486,9 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     }
   }
   skip:
+  timeLog->endMark("  check commits");
 
+  timeLog->markTime("  call judge");
   if(callJudge) {
     cout << "B: calling judge" << endl;
     vector<osuCrypto::block> commitmentsEncsAJ;
@@ -475,10 +499,11 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     }
 
     SignatureHolder* signatureHolder = signatureHolders.at(j);
-    string signature = signatureHolder->getSignature();
+    CryptoPP::byte *signature = signatureHolder->getSignature();
+    int signatureLength = signatureHolder->getSignatureLength();
 
     Judge judge(kappa, pk, circuit);
-    bool judgement = judge.accuse(j, signature, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,
+    bool judgement = judge.accuse(j, signature, signatureLength, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,
                                   socketRecorder->getRecvCat("ot1"+to_string(j)),
                                   socketRecorder->getSentCat("ot1"+to_string(j)),
                                   socSerSim->getSentCat("ot2"+to_string(j)),
@@ -495,12 +520,15 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
 
     return false;
   }
+  timeLog->endMark("  call judge");
 
+  timeLog->markTime("  network close");
   socSerSim->close();
   socCliSim->close();
   recSerSim.close();
   recCliSim.close();
   chlSerSim.close();
   chlCliSim.close();
+  timeLog->endMark("  network close");
   return true;
 }

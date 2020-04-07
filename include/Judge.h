@@ -12,23 +12,23 @@ using namespace std;
 
 class Judge {
   public:
-    Judge(int kappa, CryptoPP::DSA::PublicKey pk, CircuitInterface* circuit);
+    Judge(int kappa, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, CircuitInterface* circuit);
     virtual ~Judge();
 
     /*
       This method will determine if the accusation is valid or not
     */
-    bool accuse(int j, string signature, CryptoPP::byte* seedB, osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
-                vector<pair<int, unsigned char*>> transcriptSent1,
-                vector<pair<int, unsigned char*>> transcriptRecv1,
-                vector<pair<int, unsigned char*>> transcriptSent2,
-                vector<pair<int, unsigned char*>> transcriptRecv2);
+    bool accuse(int j, CryptoPP::byte *signature, int signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
+                vector<pair<int, unsigned char*>> *transcriptSent1,
+                vector<pair<int, unsigned char*>> *transcriptRecv1,
+                vector<pair<int, unsigned char*>> *transcriptSent2,
+                vector<pair<int, unsigned char*>> *transcriptRecv2);
 
   protected:
 
   private:
     int kappa;
-    CryptoPP::DSA::PublicKey pk;
+    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk;
     CircuitInterface* circuit;
 };
 
