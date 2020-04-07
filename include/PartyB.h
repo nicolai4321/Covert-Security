@@ -20,11 +20,12 @@
 #include "Signature.h"
 #include "SignatureHolder.h"
 #include "SocketRecorder.h"
+#include "TimeLog.h"
 using namespace std;
 
 class PartyB {
   public:
-    PartyB(int y, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface* circuit, EvaluatorInterface* evaluator);
+    PartyB(int y, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, EvaluatorInterface *evaluator, TimeLog *timeLog);
 
     virtual ~PartyB();
 
@@ -62,6 +63,7 @@ class PartyB {
     vector<string> outputGatesB;
     map<string, vector<string>> gateInfoB;
     osuCrypto::IOService* ios;
+    TimeLog *timeLog;
 };
 
 #endif // PARTYB_H

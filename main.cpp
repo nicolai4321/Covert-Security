@@ -1,5 +1,3 @@
-#include <iostream>
-#include <string>
 #include "CircuitInterface.h"
 #include "CircuitReader.h"
 #include "cryptoTools/Common/BitVector.h"
@@ -9,12 +7,14 @@
 #include "EvaluatorHalf.h"
 #include "EvaluatorInterface.h"
 #include "EvaluatorNormal.h"
+#include "fstream"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
 #include "HashAES.h"
 #include "HashHardware.h"
 #include "HashInterface.h"
 #include "HashNormal.h"
+#include "iostream"
 #include "NormalCircuit.h"
 #include "libOTe/TwoChooseOne/KosOtExtReceiver.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
@@ -22,8 +22,11 @@
 #include "PartyB.h"
 #include "Signature.h"
 #include "SocketRecorder.h"
+#include "string"
+#include "TimeLog.h"
 #include "Util.h"
 using namespace std;
+using namespace std::chrono;
 
 /*
   Runs a circuit from a file and checks that the amount of
@@ -141,25 +144,38 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
   //Digital Signature
   CryptoPP::DSA::PrivateKey sk = Signature::generateRandomPrivateKey(1024);
   CryptoPP::DSA::PublicKey pk = Signature::generatePublicKey(sk);
+  TimeLog *timeLog = new TimeLog();
+  TimeLog *timeLogA = new TimeLog();
+  TimeLog *timeLogB = new TimeLog();
 
   bool b0;
   bool b1;
-  clock_t start = clock();
+
+  timeLog->markTime("protocol time");
   auto threadA = thread([&]() {
-    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, circuit);
+    PartyA partyA = PartyA(x, sk, pk, kappa, lambda, circuit, timeLogA);
     b0 = partyA.startProtocol();
  });
   auto threadB = thread([&]() {
-    PartyB partyB = PartyB(y, pk, kappa, lambda, circuit, evaluator);
+    PartyB partyB = PartyB(y, pk, kappa, lambda, circuit, evaluator, timeLogB);
     b1 = partyB.startProtocol();
   });
 
   threadA.join();
   threadB.join();
-  double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
+  timeLog->endMark("protocol time");
 
   if(b0 && b1) {
-    cout << circuit->toString() << ": success - time: " << duration << endl << endl;
+    cout << circuit->toString() << ": success" << endl;
+    string s = timeLog->getTimes();
+    s += "\nA:\n";
+    s += timeLogA->getTimes();
+    s += "\nB:\n";
+    s += timeLogB->getTimes();
+
+    ofstream file(circuit->toString()+".txt");
+    file << s;
+
     return true;
   } else {
     cout << circuit->toString() << ": fail" << endl << endl;
@@ -196,11 +212,11 @@ void startProtocols(int kappa) {
 
   //normal
   startProtocol(kappa, lambda, x, y, normalCircuitNH, normalEvaluatorNH);
-  startProtocol(kappa, lambda, x, y, normalCircuitHH, normalEvaluatorHH);
+  //startProtocol(kappa, lambda, x, y, normalCircuitHH, normalEvaluatorHH);
 
   //half
   startProtocol(kappa, lambda, x, y, halfCircuitNH, halfEvaluatorNH);
-  startProtocol(kappa, lambda, x, y, halfCircuitHH, halfEvaluatorHH);
+  //startProtocol(kappa, lambda, x, y, halfCircuitHH, halfEvaluatorHH);
 }
 
 void timeHash(HashInterface *hashInter, int length, int rounds, string name) {

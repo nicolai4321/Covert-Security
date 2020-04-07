@@ -12,11 +12,12 @@
 #include "Signature.h"
 #include "SignatureHolder.h"
 #include "SocketRecorder.h"
+#include "TimeLog.h"
 using namespace std;
 
 class PartyA {
   public:
-    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface* circuit);
+    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
     virtual ~PartyA();
 
     bool startProtocol();
@@ -54,6 +55,7 @@ class PartyA {
     SocketRecorder *socketRecorder;
     osuCrypto::IOService *ios;
     CircuitInterface *circuit;
+    TimeLog *timeLog;
 };
 
 #endif // PARTYA_H

@@ -1,0 +1,32 @@
+protocol time: 940242ms
+
+A:
+network setup: 829ms
+generating seeds: 267ms
+waiting for commitments: 6904ms
+first ot: 235560ms
+garbling: 45726ms
+second ot: 238995ms
+commit encs: 6790ms
+commit circuits: 6403ms
+construct signatures: 46005ms
+sending commitments and signatures: 27ms
+waiting for gamma, witness: 346687ms
+checking: 13ms
+export circuit: 490ms
+sending circuit, encodings and decommitments: 416ms
+closing network: 846ms
+B:
+network setup: 717ms
+generate gamma, seeds: 195ms
+generate commitments of own seed: 112ms
+sending seeds: 108ms
+1st ot: 235853ms
+2nd ot: 284852ms
+waiting for commitments: 59097ms
+waiting for signatures: 42ms
+simulate: 346328ms
+send gamma seed witness: 16ms
+waiting for circuit and decommits: 1141ms
+checking commits: 1382ms
+evaluate: 2427ms

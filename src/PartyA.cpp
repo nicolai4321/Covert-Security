@@ -1,13 +1,14 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cI) {
+PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cI, TimeLog *timelog) {
   x = input;
   sk = secretKey;
   pk = publicKey;
   kappa = k;
   lambda = l;
   circuit = cI;
+  timeLog = timelog;
 }
 
 PartyA::~PartyA() {}
@@ -17,13 +18,16 @@ PartyA::~PartyA() {}
 */
 bool PartyA::startProtocol() {
   //Network
+  timeLog->markTime("network setup");
   ios = new osuCrypto::IOService(16);
   chl = osuCrypto::Session(*ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
   osuCrypto::SocketInterface *socket = new SocketRecorder(chl);
   socketRecorder = (SocketRecorder*) socket;
   chlOT = osuCrypto::Channel(*ios, socket);
+  timeLog->endMark("network setup");
 
   //Generating random seeds and witnesses
+  timeLog->markTime("generating seeds");
   vector<CryptoPP::byte*> seedsA;
   vector<CryptoPP::byte*> witnesses;
   map<unsigned int, unsigned int> iv;
@@ -32,40 +36,56 @@ bool PartyA::startProtocol() {
     witnesses.push_back(Util::randomByte(kappa));
     iv[j] = 0;
   }
+  timeLog->endMark("generating seeds");
 
   //Get the commitments of the seeds from party B
+  timeLog->markTime("waiting for commitments");
   vector<osuCrypto::block> commitmentsB;
   chl.recv(commitmentsB);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received commitments from other party" << endl;
+  timeLog->endMark("waiting for commitments");
 
   //First OT
+  timeLog->markTime("first ot");
   osuCrypto::KosOtExtSender sender;
   otSeedsWitnesses(&sender, lambda, kappa, chlOT, socketRecorder, seedsA, &iv, witnesses);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done first OT" << endl;
+  timeLog->endMark("first ot");
 
   //Garbling
+  timeLog->markTime("garbling");
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done garbling" << endl;
+  timeLog->endMark("garbling");
 
   //Second OT
+  timeLog->markTime("second ot");
   otEncs(&sender, lambda, kappa, chlOT, socketRecorder, encs, seedsA, &iv);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done second OT" << endl;
+  timeLog->endMark("second ot");
 
   //Commiting input encodings
+  timeLog->markTime("commit encs");
   pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
   vector<osuCrypto::block> commitmentsEncsInputsA = commitPair0.first;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
+  timeLog->endMark("commit encs");
 
   //Commiting circuits
+  timeLog->markTime("commit circuits");
   pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
   vector<osuCrypto::block> commitmentsA = commitPair1.first;
   vector<osuCrypto::block> decommitmentsA = commitPair1.second;
+  timeLog->endMark("commit circuits");
 
   //Construct signatures
+  timeLog->markTime("construct signatures");
   vector<SignatureHolder*> signatureHolders = constructSignatures(commitmentsA, commitmentsB, commitmentsEncsInputsA);
+  timeLog->endMark("construct signatures");
 
+  timeLog->markTime("sending commitments and signatures");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending commitments for encoded inputs" << endl;
   chl.asyncSend(move(commitmentsEncsInputsA));
 
@@ -74,11 +94,16 @@ bool PartyA::startProtocol() {
 
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending signatures" << endl;
   chl.asyncSendCopy(signatureHolders);
+  timeLog->endMark("sending commitments and signatures");
 
   //Receive gamma, seeds and witness
+  timeLog->markTime("waiting for gamma, witness");
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
   chl.recv(gammaSeedsWitnessBlock);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received gamma, seeds and witness" << endl;
+  timeLog->endMark("waiting for gamma, witness");
+
+  timeLog->markTime("checking");
   int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
 
   //Checks the seeds and witness
@@ -88,10 +113,15 @@ bool PartyA::startProtocol() {
     ios->stop();
     return false;
   }
+  timeLog->endMark("checking");
 
   //Send garbled circuit
+  timeLog->markTime("export circuit");
   CircuitInterface *circuit = circuits.at(gamma);
   GarbledCircuit *F = circuit->exportCircuit();
+  timeLog->endMark("export circuit");
+
+  timeLog->markTime("sending circuit, encodings and decommitments");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending F" << endl;
   chl.asyncSendCopy(F);
 
@@ -104,12 +134,15 @@ bool PartyA::startProtocol() {
   chl.asyncSend(move(getDecommitmentsInputA(gamma, decommitmentsEncsA)));
 
   //Sending A's decommitment for the circuit
-  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for commits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for circuits" << endl;
   chl.asyncSend(move(decommitmentsA));
+  timeLog->endMark("sending circuit, encodings and decommitments");
 
+  timeLog->markTime("closing network");
   chlOT.close();
   chl.close();
   ios->stop();
+  timeLog->endMark("closing network");
 
   return true;
 }
