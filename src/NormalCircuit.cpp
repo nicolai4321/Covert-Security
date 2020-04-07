@@ -1,23 +1,8 @@
 #include "NormalCircuit.h"
 using namespace std;
 
-NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s) {
-  kappa = k;
-  seed = s;
-
-  //Constant 0
-  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "");
-  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
-
-  //Constant 1
-  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "");
-  gatesEvaluated[CONST_ONE] = encsO.at(1);
-}
-
-NormalCircuit::~NormalCircuit() {}
-
-CircuitInterface* NormalCircuit::createInstance(int k, CryptoPP::byte* s) {
-  return new NormalCircuit(k, s);
+CircuitInterface* NormalCircuit::createInstance(int k, CryptoPP::byte *s) {
+  return new NormalCircuit(k, s, h);
 }
 
 /*
@@ -33,8 +18,8 @@ vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName) {
   for false and true
 */
 vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed, iv); iv++;
-  CryptoPP::byte *encT = Util::randomByte(kappa, seed, iv); iv++;
+  CryptoPP::byte *encF = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  CryptoPP::byte *encT = Util::randomByte(kappa, seed, kappa, iv); iv++;
 
   vector<CryptoPP::byte*> encodings;
   encodings.push_back(encF);
@@ -59,7 +44,7 @@ CryptoPP::byte* NormalCircuit::encodeGate(CryptoPP::byte* encL, CryptoPP::byte* 
   CryptoPP::byte *zero = new CryptoPP::byte[kappa];
   memset(zero, 0x00, kappa);
 
-  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *l = h->hashByte(Util::mergeBytes(encL, encR, kappa), 2*kappa);
   CryptoPP::byte *r = Util::mergeBytes(encO, zero, kappa);
   return Util::byteOp(l, r, "XOR", 2*kappa);
 }
@@ -88,7 +73,7 @@ void NormalCircuit::addEQW(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encF, encF, encFO));
   garbledTable.push_back(encodeGate(encT, encT, encTO));
 
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -111,7 +96,7 @@ void NormalCircuit::addINV(string inputGate, string outputGate) {
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
 
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -135,7 +120,7 @@ void NormalCircuit::addXOR(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encTO));
   garbledTable.push_back(encodeGate(encTL, encFR, encTO));
   garbledTable.push_back(encodeGate(encTL, encTR, encFO));
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -159,7 +144,7 @@ void NormalCircuit::addAND(string inputGateL, string inputGateR, string outputGa
   garbledTable.push_back(encodeGate(encFL, encTR, encFO));
   garbledTable.push_back(encodeGate(encTL, encFR, encFO));
   garbledTable.push_back(encodeGate(encTL, encTR, encTO));
-  Util::shuffle(garbledTable, seed, iv); iv++;
+  Util::shuffle(garbledTable, seed, kappa, iv); iv++;
   garbledTables[outputGate] = garbledTable;
 }
 
@@ -187,9 +172,25 @@ map<string, vector<CryptoPP::byte*>> NormalCircuit::getGarbledTables() {
 }
 
 string NormalCircuit::toString() {
-  return "Normal circuit";
+  return "Normal circuit (hash: " + h->toString() + ")";
 }
 
 string NormalCircuit::getType() {
   return NormalCircuit::TYPE;
 }
+
+NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s, HashInterface *hashInterface) {
+  kappa = k;
+  seed = s;
+  h = hashInterface;
+
+  //Constant 0
+  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "");
+  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
+
+  //Constant 1
+  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "");
+  gatesEvaluated[CONST_ONE] = encsO.at(1);
+}
+
+NormalCircuit::~NormalCircuit() {}

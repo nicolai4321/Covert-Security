@@ -1,16 +1,12 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, osuCrypto::Channel cOT,
-               SocketRecorder *sr, CircuitInterface* cI) {
+PartyA::PartyA(int input, CryptoPP::DSA::PrivateKey secretKey, CryptoPP::DSA::PublicKey publicKey, int k, int l, CircuitInterface* cI) {
   x = input;
   sk = secretKey;
   pk = publicKey;
   kappa = k;
   lambda = l;
-  chlOT = cOT;
-  chl = sr->getMChl();
-  socketRecorder = sr;
   circuit = cI;
 }
 
@@ -20,6 +16,13 @@ PartyA::~PartyA() {}
   Starts the protocol
 */
 bool PartyA::startProtocol() {
+  //Network
+  ios = new osuCrypto::IOService(16);
+  chl = osuCrypto::Session(*ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::SocketInterface *socket = new SocketRecorder(chl);
+  socketRecorder = (SocketRecorder*) socket;
+  chlOT = osuCrypto::Channel(*ios, socket);
+
   //Generating random seeds and witnesses
   vector<CryptoPP::byte*> seedsA;
   vector<CryptoPP::byte*> witnesses;
@@ -33,22 +36,22 @@ bool PartyA::startProtocol() {
   //Get the commitments of the seeds from party B
   vector<osuCrypto::block> commitmentsB;
   chl.recv(commitmentsB);
-  cout << "A: has received commitments from other party" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received commitments from other party" << endl;
 
   //First OT
   osuCrypto::KosOtExtSender sender;
   otSeedsWitnesses(&sender, lambda, kappa, chlOT, socketRecorder, seedsA, &iv, witnesses);
-  cout << "A: has done first OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done first OT" << endl;
 
   //Garbling
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
-  cout << "A: has done garbling" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done garbling" << endl;
 
   //Second OT
   otEncs(&sender, lambda, kappa, chlOT, socketRecorder, encs, seedsA, &iv);
-  cout << "A: has done second OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done second OT" << endl;
 
   //Commiting input encodings
   pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
@@ -63,41 +66,50 @@ bool PartyA::startProtocol() {
   //Construct signatures
   vector<SignatureHolder*> signatureHolders = constructSignatures(commitmentsA, commitmentsB, commitmentsEncsInputsA);
 
-  cout << "A: sending commitments for encoded inputs" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending commitments for encoded inputs" << endl;
   chl.asyncSend(move(commitmentsEncsInputsA));
 
-  cout << "A: sending commitments for circuits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending commitments for circuits" << endl;
   chl.asyncSend(move(commitmentsA));
 
-  cout << "A: sending signatures" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending signatures" << endl;
   chl.asyncSendCopy(signatureHolders);
 
   //Receive gamma, seeds and witness
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
   chl.recv(gammaSeedsWitnessBlock);
-  cout << "A: has received gamma, seeds and witness" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received gamma, seeds and witness" << endl;
   int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
 
   //Checks the seeds and witness
-  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {return false;}
+  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {
+    chlOT.close();
+    chl.close();
+    ios->stop();
+    return false;
+  }
 
   //Send garbled circuit
   CircuitInterface *circuit = circuits.at(gamma);
   GarbledCircuit *F = circuit->exportCircuit();
-  cout << "A: sending F" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending F" << endl;
   chl.asyncSendCopy(F);
 
   //Sending A's encoding inputs
-  cout << "A: sending my encoded input" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending my encoded input" << endl;
   chl.asyncSend(move(getEncsInputA(gamma, encs)));
 
   //Sending A's decommitments for the encoding inputs
-  cout << "A: sending decommits for my input encodings" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for my input encodings" << endl;
   chl.asyncSend(move(getDecommitmentsInputA(gamma, decommitmentsEncsA)));
 
   //Sending A's decommitment for the circuit
-  cout << "A: sending decommits for commits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for commits" << endl;
   chl.asyncSend(move(decommitmentsA));
+
+  chlOT.close();
+  chl.close();
+  ios->stop();
 
   return true;
 }
@@ -137,7 +149,7 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
     osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kapp);
     osuCrypto::block block1 = Util::byteToBlock(witnesses.at(j), kapp);
     data[0] = {block0, block1};
-    CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
+    CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
@@ -159,7 +171,7 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
       data[i] = {block0, block1};
     }
 
-    CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
+    CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
@@ -222,8 +234,8 @@ vector<osuCrypto::block> PartyA::getDecommitmentsInputA(int gamma, vector<pair<o
 void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA, map<unsigned int, unsigned int>* iv, vector<vector<CryptoPP::byte*>> encs,
                     vector<osuCrypto::block>* commitmentsEncsInputsA, vector<pair<osuCrypto::block, osuCrypto::block>>* decommitmentsEncsA) {
   for(int i=0; i<GV::n1; i++) {
-    osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kapp, seedA, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
-    osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kapp, seedA, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
+    osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
+    osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
 
     CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs.at(i).at(0), kapp), decommit0);
     CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs.at(i).at(1), kapp), decommit1);
@@ -234,7 +246,7 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA, map<unsigned
     decommitmentsEncsA->push_back(p);
 
     //Random order so that party B cannot extract my input when I give him decommitments
-    if(Util::randomInt(0, 1, seedA, (*iv)[j])) {
+    if(Util::randomInt(0, 1, seedA, kapp, (*iv)[j])) {
       commitmentsEncsInputsA->push_back(Util::byteToBlock(c0, Util::COMMIT_LENGTH));
       commitmentsEncsInputsA->push_back(Util::byteToBlock(c1, Util::COMMIT_LENGTH));
     } else {
@@ -277,7 +289,7 @@ pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(
 
   for(int j=0; j<lamb; j++) {
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
-    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
+    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
     CryptoPP::byte *c = commitCircuit(kapp, cir->getType(), F, decommit);
 
     decommitmentsA.push_back(decommit);

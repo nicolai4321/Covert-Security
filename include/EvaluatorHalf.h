@@ -8,18 +8,20 @@
 #include "cryptlib.h"
 #include "EvaluatorInterface.h"
 #include "GV.h"
+#include "HashInterface.h"
 #include "Util.h"
 using namespace std;
 
 class EvaluatorHalf: public EvaluatorInterface {
   public:
-    EvaluatorHalf();
+    EvaluatorHalf(HashInterface *hashInterface);
     virtual ~EvaluatorHalf();
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
 
   protected:
 
   private:
+    HashInterface *h;
 };
 
 #endif // EVALUATORHALF_H

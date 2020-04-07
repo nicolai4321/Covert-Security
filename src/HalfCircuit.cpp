@@ -1,32 +1,8 @@
 #include "HalfCircuit.h"
 using namespace std;
 
-HalfCircuit::HalfCircuit(int k, CryptoPP::byte* s) {
-  kappa = k;
-  seed = s;
-  r = Util::randomByte(kappa, seed, iv); iv++;
-
-  //Ensuring that the last bit in r is 1
-  unsigned char b = (unsigned char) 1;
-  r[kappa-1] = r[kappa-1] | b;
-
-  //Constant 0
-  CryptoPP::byte *encFZ = Util::randomByte(kappa, seed, iv); iv++;
-  CryptoPP::byte *encTZ = Util::byteOp(encFZ, r, "XOR", kappa);
-  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "", encFZ, encTZ);
-  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
-
-  //Constant 1
-  CryptoPP::byte *encFO = Util::randomByte(kappa, seed, iv); iv++;
-  CryptoPP::byte *encTO = Util::byteOp(encFO, r, "XOR", kappa);
-  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "", encFO, encTO);
-  gatesEvaluated[CONST_ONE] = encsO.at(1);
-}
-
-HalfCircuit::~HalfCircuit() {}
-
 CircuitInterface* HalfCircuit::createInstance(int k, CryptoPP::byte* s) {
-  return new HalfCircuit(k, s);
+  return new HalfCircuit(k, s, h);
 }
 
 /*
@@ -34,7 +10,7 @@ CircuitInterface* HalfCircuit::createInstance(int k, CryptoPP::byte* s) {
   for false and true
 */
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed, iv); iv++;
+  CryptoPP::byte *encF = Util::randomByte(kappa, seed, kappa, iv); iv++;
   CryptoPP::byte *encT = Util::byteOp(encF, r, "XOR", kappa);
   return addGate(gateName, "INPUT", "", "", encF, encT);
 }
@@ -109,22 +85,22 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
   CryptoPP::byte *wat = leftEnc.at(1);
 
   CryptoPP::byte *WGF = (pa*pb) ?
-    Util::byteOp(Util::h(leftEnc.at(pa), kappa), r, "XOR", kappa):
-    Util::h(leftEnc.at(pa), kappa);
+    Util::byteOp(h->hashByte(leftEnc.at(pa), kappa), r, "XOR", kappa):
+    h->hashByte(leftEnc.at(pa), kappa);
 
   CryptoPP::byte *WGT = Util::byteOp(WGF, r, "XOR", kappa);
 
   CryptoPP::byte *TG = (pb) ?
-    Util::byteOp(Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "XOR", kappa), r, "XOR", kappa):
-    Util::byteOp(Util::h(waf, kappa), Util::h(wat, kappa), "XOR", kappa);
+    Util::byteOp(Util::byteOp(h->hashByte(waf, kappa), h->hashByte(wat, kappa), "XOR", kappa), r, "XOR", kappa):
+    Util::byteOp(h->hashByte(waf, kappa), h->hashByte(wat, kappa), "XOR", kappa);
 
   //Evaluator part
   CryptoPP::byte *wbf = rightEnc.at(0);
   CryptoPP::byte *wbt = rightEnc.at(1);
 
-  CryptoPP::byte *WEF = Util::h(rightEnc.at(pb), kappa);
+  CryptoPP::byte *WEF = h->hashByte(rightEnc.at(pb), kappa);
   CryptoPP::byte *WET = Util::byteOp(WEF, r, "XOR", kappa);
-  CryptoPP::byte *TE = Util::byteOp(Util::byteOp(Util::h(wbf, kappa), Util::h(wbt, kappa), "XOR", kappa), waf, "XOR", kappa);
+  CryptoPP::byte *TE = Util::byteOp(Util::byteOp(h->hashByte(wbf, kappa), h->hashByte(wbt, kappa), "XOR", kappa), waf, "XOR", kappa);
 
   //Adding gates
   vector<CryptoPP::byte*> encodings;
@@ -162,9 +138,34 @@ map<string, vector<CryptoPP::byte*>> HalfCircuit::getAndEncodings() {
 }
 
 string HalfCircuit::toString() {
-  return "Half circuit";
+  return "Half circuit (hash: " + h->toString() + ")";
 }
 
 string HalfCircuit::getType() {
   return HalfCircuit::TYPE;
 }
+
+HalfCircuit::HalfCircuit(int k, CryptoPP::byte* s, HashInterface *hashInterface) {
+  kappa = k;
+  seed = s;
+  r = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  h = hashInterface;
+
+  //Ensuring that the last bit in r is 1
+  unsigned char b = (unsigned char) 1;
+  r[kappa-1] = r[kappa-1] | b;
+
+  //Constant 0
+  CryptoPP::byte *encFZ = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  CryptoPP::byte *encTZ = Util::byteOp(encFZ, r, "XOR", kappa);
+  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "", encFZ, encTZ);
+  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
+
+  //Constant 1
+  CryptoPP::byte *encFO = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  CryptoPP::byte *encTO = Util::byteOp(encFO, r, "XOR", kappa);
+  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "", encFO, encTO);
+  gatesEvaluated[CONST_ONE] = encsO.at(1);
+}
+
+HalfCircuit::~HalfCircuit() {}

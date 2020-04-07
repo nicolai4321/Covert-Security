@@ -21,19 +21,14 @@ class Util {
     Util();
 
     //Functions
-    static CryptoPP::byte* generateIV();
-    static string encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv);
-    static string decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv);
-    static CryptoPP::byte* h(string m);
-    static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);
     static CryptoPP::byte* commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length);
 
-    static void shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, unsigned int iv);
+    static void shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int length, unsigned int iv);
     static CryptoPP::byte* randomByte(int length);
-    static CryptoPP::byte* randomByte(int length, CryptoPP::byte* seed, unsigned int iv);
+    static CryptoPP::byte* randomByte(int length, CryptoPP::byte* seed, int seedLength, unsigned int iv);
     static long randomInt(int minInt, int maxInt);
-    static long randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv);
+    static long randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv);
     static string randomString(int length);
 
     static osuCrypto::block byteToBlock(CryptoPP::byte* b, int length);
@@ -58,7 +53,6 @@ class Util {
     static void printBlockInBits(osuCrypto::block b, int length);
 
     //Variables
-    static const int SEED_LENGTH = 16;
     static const int IV_LENGTH = 16;
     static const int COMMIT_LENGTH = 16;
 

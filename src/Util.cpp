@@ -35,24 +35,6 @@ CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, 
 }
 
 /*
-  Returns a hashed byte
-*/
-CryptoPP::byte* Util::h(CryptoPP::byte* b, int length) {
-  string s = Util::byteToString(b, length);
-  return h(s);
-}
-
-/*
-  Returns a hashed byte
-*/
-CryptoPP::byte* Util::h(string m) {
-  CryptoPP::byte* b = new CryptoPP::byte[CryptoPP::SHA256::DIGESTSIZE];
-  CryptoPP::SHA256 hash;
-  hash.CalculateDigest(b, (CryptoPP::byte*) m.c_str(), m.length());
-  return b;
-}
-
-/*
   Commit (16 bytes)
 */
 CryptoPP::byte* Util::commit(osuCrypto::block b, osuCrypto::block r) {
@@ -81,55 +63,14 @@ CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, 
 }
 
 /*
-  Constructs the initialization vector
-*/
-CryptoPP::byte* Util::generateIV() {
-  CryptoPP::AutoSeededRandomPool asrp;
-  CryptoPP::byte *iv = new CryptoPP::byte[CryptoPP::AES::BLOCKSIZE];
-  asrp.GenerateBlock(iv, CryptoPP::AES::BLOCKSIZE);
-
-  return iv;
-}
-
-/*
-  Encrypts message p
-*/
-string Util::encrypt(string p, CryptoPP::byte* key, CryptoPP::byte* iv) {
-  CryptoPP::AES::Encryption aesEnc(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  CryptoPP::CBC_Mode_ExternalCipher::Encryption cbcEnc(aesEnc, iv);
-
-  std::string c;
-  CryptoPP::StreamTransformationFilter stf(cbcEnc, new CryptoPP::StringSink(c));
-  stf.Put(reinterpret_cast<const unsigned char*>(p.c_str()), p.length());
-  stf.MessageEnd();
-
-  return c;
-}
-
-/*
-  Decrypts message c
-*/
-string Util::decrypt(string c, CryptoPP::byte* key, CryptoPP::byte* iv) {
-  CryptoPP::AES::Decryption aesDec(key, CryptoPP::AES::DEFAULT_KEYLENGTH);
-  CryptoPP::CBC_Mode_ExternalCipher::Decryption cbcDec(aesDec, iv);
-
-  string s;
-  CryptoPP::StreamTransformationFilter stf(cbcDec, new CryptoPP::StringSink(s));
-  stf.Put(reinterpret_cast<const unsigned char*>(c.c_str()), c.size());
-  stf.MessageEnd();
-
-  return s;
-}
-
-/*
   Randomly shuffles a vector
 */
-void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, unsigned int iv) {
+void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int length, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
 
   prng.Shuffle(v.begin(), v.end());
 }
@@ -147,13 +88,13 @@ CryptoPP::byte* Util::randomByte(int length) {
 /*
   Returns a random byte with a seed
 */
-CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, unsigned int iv) {
+CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
   CryptoPP::byte *b = new CryptoPP::byte[length];
   prng.GenerateBlock(b, length);
 
@@ -180,13 +121,13 @@ long Util::randomInt(int minInt, int maxInt) {
 /*
   Returns random number between minInt and maxInt with seed
 */
-long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, unsigned int iv) {
+long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv) {
   CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, longToByte(iv), 8);
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, SEED_LENGTH, ivByte, IV_LENGTH);
+  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
 
   CryptoPP::Integer r;
   if(minInt == 0) {

@@ -7,12 +7,13 @@
 #include "CircuitInterface.h"
 #include "cryptlib.h"
 #include "GarbledCircuit.h"
+#include "HashInterface.h"
 #include "Util.h"
 using namespace std;
 
 class NormalCircuit: public CircuitInterface {
   public:
-    NormalCircuit(int kappa, CryptoPP::byte* seed);
+    NormalCircuit(int kappa, CryptoPP::byte* seed, HashInterface *hashInterface);
     virtual ~NormalCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
@@ -32,10 +33,11 @@ class NormalCircuit: public CircuitInterface {
   protected:
 
   private:
+    map<string, vector<CryptoPP::byte*>> garbledTables;
+    HashInterface *h;
+
     CryptoPP::byte* encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO);
     vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR);
-
-    map<string, vector<CryptoPP::byte*>> garbledTables;
 };
 
 #endif // GARBLEDCIRCUIT_H

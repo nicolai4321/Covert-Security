@@ -1,9 +1,6 @@
 #include "EvaluatorHalf.h"
 using namespace std;
 
-EvaluatorHalf::EvaluatorHalf() {}
-EvaluatorHalf::~EvaluatorHalf() {}
-
 /*
   Evaluates the circuit and returns a pair
   the boolean is true if the evaluation was successful
@@ -38,12 +35,12 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         CryptoPP::byte *Wb = gatesEvaluated[gateR];
 
         CryptoPP::byte *WG = (sa) ?
-          Util::byteOp(Util::h(Wa, kappa), TG, "XOR", kappa):
-          Util::h(Wa, kappa);
+          Util::byteOp(h->hashByte(Wa, kappa), TG, "XOR", kappa):
+          h->hashByte(Wa, kappa);
 
         CryptoPP::byte *WE = (sb) ?
-          Util::byteOp(Util::h(Wb, kappa), Util::byteOp(TE, Wa, "XOR", kappa), "XOR", kappa):
-          Util::h(Wb, kappa);
+          Util::byteOp(h->hashByte(Wb, kappa), Util::byteOp(TE, Wa, "XOR", kappa), "XOR", kappa):
+          h->hashByte(Wb, kappa);
 
         gatesEvaluated[gateName] = Util::byteOp(WG, WE, "XOR", kappa);
       } else {
@@ -72,3 +69,9 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
     return output;
   }
 }
+
+EvaluatorHalf::EvaluatorHalf(HashInterface *hashInterface) {
+  h = hashInterface;
+}
+
+EvaluatorHalf::~EvaluatorHalf() {}

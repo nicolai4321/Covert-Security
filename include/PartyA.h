@@ -5,6 +5,7 @@
 #include "CircuitReader.h"
 #include "cryptlib.h"
 #include "cryptoTools/Network/IOService.h"
+#include "cryptoTools/Network/SocketAdapter.h"
 #include "GV.h"
 #include "libOTe/TwoChooseOne/KosOtExtSender.h"
 #include "NormalCircuit.h"
@@ -15,8 +16,7 @@ using namespace std;
 
 class PartyA {
   public:
-    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, osuCrypto::Channel chlOT,
-           SocketRecorder* socketRecorder, CircuitInterface* circuit);
+    PartyA(int x, CryptoPP::DSA::PrivateKey sk, CryptoPP::DSA::PublicKey pk, int kappa, int lambda, CircuitInterface* circuit);
     virtual ~PartyA();
 
     bool startProtocol();
@@ -52,6 +52,7 @@ class PartyA {
     osuCrypto::Channel chl;
     osuCrypto::Channel chlOT;
     SocketRecorder *socketRecorder;
+    osuCrypto::IOService *ios;
     CircuitInterface *circuit;
 };
 

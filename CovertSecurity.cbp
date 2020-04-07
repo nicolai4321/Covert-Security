@@ -71,6 +71,10 @@
 		<Unit filename="include/GV.h" />
 		<Unit filename="include/GarbledCircuit.h" />
 		<Unit filename="include/HalfCircuit.h" />
+		<Unit filename="include/HashAES.h" />
+		<Unit filename="include/HashHardware.h" />
+		<Unit filename="include/HashInterface.h" />
+		<Unit filename="include/HashNormal.h" />
 		<Unit filename="include/Judge.h" />
 		<Unit filename="include/NormalCircuit.h" />
 		<Unit filename="include/PartyA.h" />
@@ -87,6 +91,10 @@
 		<Unit filename="src/EvaluatorNormal.cpp" />
 		<Unit filename="src/GarbledCircuit.cpp" />
 		<Unit filename="src/HalfCircuit.cpp" />
+		<Unit filename="src/HashAES.cpp" />
+		<Unit filename="src/HashHardware.cpp" />
+		<Unit filename="src/HashInterface.cpp" />
+		<Unit filename="src/HashNormal.cpp" />
 		<Unit filename="src/Judge.cpp" />
 		<Unit filename="src/NormalCircuit.cpp" />
 		<Unit filename="src/PartyA.cpp" />
