@@ -36,22 +36,22 @@ bool PartyA::startProtocol() {
   //Get the commitments of the seeds from party B
   vector<osuCrypto::block> commitmentsB;
   chl.recv(commitmentsB);
-  cout << "A: has received commitments from other party" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received commitments from other party" << endl;
 
   //First OT
   osuCrypto::KosOtExtSender sender;
   otSeedsWitnesses(&sender, lambda, kappa, chlOT, socketRecorder, seedsA, &iv, witnesses);
-  cout << "A: has done first OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done first OT" << endl;
 
   //Garbling
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
-  cout << "A: has done garbling" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done garbling" << endl;
 
   //Second OT
   otEncs(&sender, lambda, kappa, chlOT, socketRecorder, encs, seedsA, &iv);
-  cout << "A: has done second OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done second OT" << endl;
 
   //Commiting input encodings
   pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
@@ -66,19 +66,19 @@ bool PartyA::startProtocol() {
   //Construct signatures
   vector<SignatureHolder*> signatureHolders = constructSignatures(commitmentsA, commitmentsB, commitmentsEncsInputsA);
 
-  cout << "A: sending commitments for encoded inputs" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending commitments for encoded inputs" << endl;
   chl.asyncSend(move(commitmentsEncsInputsA));
 
-  cout << "A: sending commitments for circuits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending commitments for circuits" << endl;
   chl.asyncSend(move(commitmentsA));
 
-  cout << "A: sending signatures" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending signatures" << endl;
   chl.asyncSendCopy(signatureHolders);
 
   //Receive gamma, seeds and witness
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
   chl.recv(gammaSeedsWitnessBlock);
-  cout << "A: has received gamma, seeds and witness" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received gamma, seeds and witness" << endl;
   int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
 
   //Checks the seeds and witness
@@ -92,19 +92,19 @@ bool PartyA::startProtocol() {
   //Send garbled circuit
   CircuitInterface *circuit = circuits.at(gamma);
   GarbledCircuit *F = circuit->exportCircuit();
-  cout << "A: sending F" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending F" << endl;
   chl.asyncSendCopy(F);
 
   //Sending A's encoding inputs
-  cout << "A: sending my encoded input" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending my encoded input" << endl;
   chl.asyncSend(move(getEncsInputA(gamma, encs)));
 
   //Sending A's decommitments for the encoding inputs
-  cout << "A: sending decommits for my input encodings" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for my input encodings" << endl;
   chl.asyncSend(move(getDecommitmentsInputA(gamma, decommitmentsEncsA)));
 
   //Sending A's decommitment for the circuit
-  cout << "A: sending decommits for commits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: sending decommits for commits" << endl;
   chl.asyncSend(move(decommitmentsA));
 
   chlOT.close();

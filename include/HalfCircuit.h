@@ -6,12 +6,13 @@
 #include "CircuitInterface.h"
 #include "cryptlib.h"
 #include "GarbledCircuit.h"
+#include "HashInterface.h"
 #include "Util.h"
 using namespace std;
 
 class HalfCircuit: public CircuitInterface {
   public:
-    HalfCircuit(int kappa, CryptoPP::byte* seed);
+    HalfCircuit(int kappa, CryptoPP::byte* seed, HashInterface *hashInterface);
     virtual ~HalfCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
@@ -31,11 +32,11 @@ class HalfCircuit: public CircuitInterface {
   protected:
 
   private:
-    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte* encT);
-
     map<string, vector<CryptoPP::byte*>> andEncodings;
-    CryptoPP::byte* r;
+    CryptoPP::byte *r;
+    HashInterface *h;
 
+    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte* encT);
 };
 
 #endif // HALFCIRCUIT_H

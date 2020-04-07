@@ -59,7 +59,7 @@ bool PartyB::startProtocol() {
     decommitmentsB.push_back(r);
   }
 
-  cout << "B: sending my commitments" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: sending my commitments" << endl;
   chl.waitForConnection();
   chl.asyncSend(move(commitmentsBSend));
 
@@ -67,24 +67,24 @@ bool PartyB::startProtocol() {
   osuCrypto::KosOtExtReceiver recver;
   chlOT.waitForConnection();
   vector<osuCrypto::block> seedsWitnessA = otSeedsWitnessA(&recver, chlOT, socketRecorder, seedsB, &ivB);
-  cout << "B: has done first OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has done first OT" << endl;
 
   //Second OT
   vector<osuCrypto::block> encsInputsB = otEncodingsB(&recver, y, lambda, kappa, gamma, chlOT, socketRecorder, seedsB, &ivB);
-  cout << "B: has done second OT" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has done second OT" << endl;
 
   //Receive commitments
   vector<osuCrypto::block> commitmentsEncsA;
   chl.recv(commitmentsEncsA);
-  cout << "B: has received commitments for input encodings from other party" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received commitments for input encodings from other party" << endl;
   vector<osuCrypto::block> commitmentsCircuitsA;
   chl.recv(commitmentsCircuitsA);
-  cout << "B: has received commitments for circuits from other party" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received commitments for circuits from other party" << endl;
 
   //Receive signatures
   vector<SignatureHolder*> signatureHolders;
   chl.recv(signatureHolders);
-  cout << "B: has received signatures" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received signatures" << endl;
 
   //Simulate party A to check signatures and commitments
   if(!simulatePartyA(&recver, seedsB, signatureHolders, seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB, decommitmentsB)) {
@@ -100,25 +100,25 @@ bool PartyB::startProtocol() {
   for(int j=0; j<lambda; j++) {
     gammaSeedsWitnessBlock.push_back(seedsWitnessA.at(j));
   }
-  cout << "B: sending witness, gamma and seeds" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: sending witness, gamma and seeds" << endl;
   chl.asyncSend(move(gammaSeedsWitnessBlock));
 
   //Receive garbled circuit and input encodings from the other party
   GarbledCircuit *F;
   chl.recv(F);
-  cout << "B: has received F" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received F" << endl;
 
   vector<osuCrypto::block> encsInputsA;
   chl.recv(encsInputsA);
-  cout << "B: has received encodings from other party" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received encodings from other party" << endl;
 
   vector<osuCrypto::block> decommitmentsEncA;
   chl.recv(decommitmentsEncA);
-  cout << "B: has received decommits for input encodings" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received decommits for input encodings" << endl;
 
   vector<osuCrypto::block> decommitmentsCircuitA;
   chl.recv(decommitmentsCircuitA);
-  cout << "B: has received decommits" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received decommits" << endl;
 
   if(!checkCommitments(F, decommitmentsEncA, decommitmentsCircuitA, commitmentsEncsA, commitmentsCircuitsA, encsInputsA)) {
     chlOT.close();
@@ -317,7 +317,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
                             vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB,
                             vector<osuCrypto::block> decommitmentsB) {
   //Checking signatures
-  cout << "B: checking signatures" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking signatures" << endl;
   for(int j=0; j<lambda; j++) {
     SignatureHolder* signatureHolder = signatureHolders.at(j);
     string msg = signatureHolder->getMsg();
@@ -329,7 +329,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   }
 
   //Generating seeds
-  cout << "B: generating seeds" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: generating seeds" << endl;
   map<unsigned int, unsigned int> ivAsim;
   map<unsigned int, unsigned int> ivBSim;
   vector<CryptoPP::byte*> seedsA;
@@ -340,7 +340,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   }
 
   //Simulated garbling
-  cout << "B: simulating garbling" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: simulating garbling" << endl;
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
@@ -366,7 +366,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   senderThread.join();
 
   //Checking the conent of the transscripts
-  cout << "B: checking transscripts" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking transscripts" << endl;
   for(int j=0; j<lambda; j++) {
     if(j != gamma) {
       SignatureHolder* signatureHolder = signatureHolders.at(j);

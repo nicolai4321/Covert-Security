@@ -1,9 +1,6 @@
 #include "EvaluatorNormal.h"
 using namespace std;
 
-EvaluatorNormal::EvaluatorNormal() {}
-EvaluatorNormal::~EvaluatorNormal() {}
-
 /*
   Evaluates the circuit and returns a pair
   the boolean is true if the evaluation was successful
@@ -80,7 +77,7 @@ pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte* encL, Cr
   pair<bool, CryptoPP::byte*> output;
   int kappa = F->getKappa();
 
-  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *l = h->hashByte(Util::mergeBytes(encL, encR, kappa), 2*kappa);
   CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*kappa);
 
   CryptoPP::byte *zero = new CryptoPP::byte[kappa];
@@ -102,3 +99,8 @@ pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte* encL, Cr
   }
 }
 
+EvaluatorNormal::EvaluatorNormal(HashInterface *hashInterface) {
+  h = hashInterface;
+}
+
+EvaluatorNormal::~EvaluatorNormal() {}

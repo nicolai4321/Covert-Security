@@ -35,24 +35,6 @@ CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, 
 }
 
 /*
-  Returns a hashed byte
-*/
-CryptoPP::byte* Util::h(CryptoPP::byte* b, int length) {
-  string s = Util::byteToString(b, length);
-  return h(s);
-}
-
-/*
-  Returns a hashed byte
-*/
-CryptoPP::byte* Util::h(string m) {
-  CryptoPP::byte* b = new CryptoPP::byte[CryptoPP::SHA256::DIGESTSIZE];
-  CryptoPP::SHA256 hash;
-  hash.CalculateDigest(b, (CryptoPP::byte*) m.c_str(), m.length());
-  return b;
-}
-
-/*
   Commit (16 bytes)
 */
 CryptoPP::byte* Util::commit(osuCrypto::block b, osuCrypto::block r) {
@@ -78,47 +60,6 @@ CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, 
   CryptoPP::byte *ptr = c->data();
 
   return ptr;
-}
-
-/*
-  Encrypts message p
-*/
-CryptoPP::ByteQueue Util::encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::SecByteBlock* key, int keyLength) {
-  CryptoPP::ByteQueue cipherQueue;
-  CryptoPP::ByteQueue plainQueue;
-  plainQueue.Put(plain, plainLength);
-
-  CryptoPP::ECB_Mode<CryptoPP::AES>::Encryption enc;
-  enc.SetKey(*key, keyLength);
-  CryptoPP::StreamTransformationFilter f1(enc, new CryptoPP::Redirector(cipherQueue));
-  plainQueue.CopyTo(f1);
-  f1.MessageEnd();
-
-  return cipherQueue;
-}
-
-/*
-  Decrypts message c
-*/
-CryptoPP::byte* Util::decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength) {
-  CryptoPP::ByteQueue recoverQueue;
-  CryptoPP::ECB_Mode<CryptoPP::AES>::Decryption dec;
-  dec.SetKey(key, keyLength);
-
-  CryptoPP::StreamTransformationFilter f2(dec, new CryptoPP::Redirector(recoverQueue));
-  cipherQueue.CopyTo(f2);
-  f2.MessageEnd();
-
-  return byteQueueToByte(&recoverQueue);
-}
-
-CryptoPP::byte* Util::byteQueueToByte(CryptoPP::ByteQueue* byteQueue) {
-  int length = byteQueue->CurrentSize();
-  CryptoPP::byte *b = new CryptoPP::byte[length];
-  for(int i=0; i<length; i++) {
-    b[i] = (*byteQueue)[i];
-  }
-  return b;
 }
 
 /*

@@ -21,12 +21,6 @@ class Util {
     Util();
 
     //Functions
-    static CryptoPP::byte* byteQueueToByte(CryptoPP::ByteQueue* byteQueue);
-    static CryptoPP::ByteQueue encrypt(CryptoPP::byte* plain, int plainLength, CryptoPP::SecByteBlock* key, int keyLength);
-    static CryptoPP::byte* decrypt(CryptoPP::ByteQueue cipherQueue, CryptoPP::byte* key, int keyLength);
-
-    static CryptoPP::byte* h(string m);
-    static CryptoPP::byte* h(CryptoPP::byte* b, int length);
     static CryptoPP::byte* commit(osuCrypto::block b, osuCrypto::block r);
     static CryptoPP::byte* commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length);
 

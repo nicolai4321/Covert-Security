@@ -1,23 +1,8 @@
 #include "NormalCircuit.h"
 using namespace std;
 
-NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s) {
-  kappa = k;
-  seed = s;
-
-  //Constant 0
-  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "");
-  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
-
-  //Constant 1
-  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "");
-  gatesEvaluated[CONST_ONE] = encsO.at(1);
-}
-
-NormalCircuit::~NormalCircuit() {}
-
-CircuitInterface* NormalCircuit::createInstance(int k, CryptoPP::byte* s) {
-  return new NormalCircuit(k, s);
+CircuitInterface* NormalCircuit::createInstance(int k, CryptoPP::byte *s) {
+  return new NormalCircuit(k, s, h);
 }
 
 /*
@@ -59,7 +44,7 @@ CryptoPP::byte* NormalCircuit::encodeGate(CryptoPP::byte* encL, CryptoPP::byte* 
   CryptoPP::byte *zero = new CryptoPP::byte[kappa];
   memset(zero, 0x00, kappa);
 
-  CryptoPP::byte *l = Util::h(Util::mergeBytes(encL, encR, kappa), 2*kappa);
+  CryptoPP::byte *l = h->hashByte(Util::mergeBytes(encL, encR, kappa), 2*kappa);
   CryptoPP::byte *r = Util::mergeBytes(encO, zero, kappa);
   return Util::byteOp(l, r, "XOR", 2*kappa);
 }
@@ -187,9 +172,25 @@ map<string, vector<CryptoPP::byte*>> NormalCircuit::getGarbledTables() {
 }
 
 string NormalCircuit::toString() {
-  return "Normal circuit";
+  return "Normal circuit (hash: " + h->toString() + ")";
 }
 
 string NormalCircuit::getType() {
   return NormalCircuit::TYPE;
 }
+
+NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s, HashInterface *hashInterface) {
+  kappa = k;
+  seed = s;
+  h = hashInterface;
+
+  //Constant 0
+  vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "");
+  gatesEvaluated[CONST_ZERO] = encsZ.at(0);
+
+  //Constant 1
+  vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "");
+  gatesEvaluated[CONST_ONE] = encsO.at(1);
+}
+
+NormalCircuit::~NormalCircuit() {}

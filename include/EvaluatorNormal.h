@@ -7,17 +7,20 @@
 #include "cryptlib.h"
 #include "EvaluatorInterface.h"
 #include "GV.h"
+#include "HashInterface.h"
 using namespace std;
 
 class EvaluatorNormal: public EvaluatorInterface {
   public:
-    EvaluatorNormal();
+    EvaluatorNormal(HashInterface *hashInterface);
     virtual ~EvaluatorNormal();
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
 
   protected:
 
   private:
+    HashInterface *h;
+
     pair<bool, CryptoPP::byte*> decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc);
 };
 

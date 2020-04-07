@@ -3,6 +3,7 @@
 #include <vector>
 #include "cryptlib.h"
 #include "GarbledCircuit.h"
+#include "HashInterface.h"
 #include "Util.h"
 using namespace std;
 
