@@ -10,7 +10,6 @@
 #include "fstream"
 #include "GarbledCircuit.h"
 #include "HalfCircuit.h"
-#include "HashAES.h"
 #include "HashHardware.h"
 #include "HashInterface.h"
 #include "HashNormal.h"
@@ -170,12 +169,14 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
   if(b0 && b1) {
     cout << circuit->toString() << ": success" << endl;
     string s = timeLog->getTimes();
+    /*
     s += "\nA:\n";
     s += timeLogA->getTimes();
     s += "\nB:\n";
     s += timeLogB->getTimes();
+    */
 
-    bool saveToFile = true;
+    bool saveToFile = false;
     if(saveToFile) {
       ofstream file(circuit->toString()+".txt");
       file << s;
@@ -197,33 +198,27 @@ void startProtocols(int kappa) {
 
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
-  CryptoPP::SecByteBlock key0(keyLength);
-  CryptoPP::OS_GenerateRandomBlock(false, key0.begin(), key0.size());
-  CryptoPP::byte *key1 = Util::randomByte(keyLength);
-  HashInterface *hashNormal = new HashNormal(kappa);
-  HashInterface *hashLibAES = new HashAES(&key0, keyLength);
-  HashInterface *hashHardware = new HashHardware(key1, keyLength);
+  CryptoPP::byte *key = Util::randomByte(keyLength);
+  HashInterface *hashSha = new HashNormal(kappa);
+  HashInterface *hashHardware = new HashHardware(key, keyLength);
 
   //Circuits
   CryptoPP::byte *unimportantSeed = Util::randomByte(kappa);
 
-  CircuitInterface *normalCircuitNH = new NormalCircuit(kappa, unimportantSeed, hashNormal);
-  EvaluatorInterface *normalEvaluatorNH = new EvaluatorNormal(hashNormal);
-  CircuitInterface *normalCircuitHH = new NormalCircuit(kappa, unimportantSeed, hashHardware);
-  EvaluatorInterface *normalEvaluatorHH = new EvaluatorNormal(hashHardware);
+  //Normal circuit, sha hash
+  CircuitInterface *normalCircuitSha = new NormalCircuit(kappa, unimportantSeed, hashSha);
+  EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashSha);
+  startProtocol(kappa, lambda, x, y, normalCircuitSha, normalEvaluatorSha);
 
-  CircuitInterface *halfCircuitNH = new HalfCircuit(kappa, unimportantSeed, hashNormal);
-  EvaluatorInterface *halfEvaluatorNH = new EvaluatorHalf(hashNormal);
-  CircuitInterface *halfCircuitHH = new HalfCircuit(kappa, unimportantSeed, hashHardware);
-  EvaluatorInterface *halfEvaluatorHH = new EvaluatorHalf(hashHardware);
+  //Half garbling, sha hash
+  CircuitInterface *halfCircuitSha = new HalfCircuit(kappa, unimportantSeed, hashSha);
+  EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashSha);
+  startProtocol(kappa, lambda, x, y, halfCircuitSha, halfEvaluatorSha);
 
-  //normal
-  startProtocol(kappa, lambda, x, y, normalCircuitNH, normalEvaluatorNH);
-  //startProtocol(kappa, lambda, x, y, normalCircuitHH, normalEvaluatorHH);
-
-  //half
-  startProtocol(kappa, lambda, x, y, halfCircuitNH, halfEvaluatorNH);
-  //startProtocol(kappa, lambda, x, y, halfCircuitHH, halfEvaluatorHH);
+  //Half garbling, aes hash
+  CircuitInterface *halfCircuitAES = new HalfCircuit(kappa, unimportantSeed, hashHardware);
+  EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardware);
+  startProtocol(kappa, lambda, x, y, halfCircuitAES, halfEvaluatorAES);
 }
 
 void timeHash(HashInterface *hashInter, int length, int rounds, string name) {
@@ -243,13 +238,8 @@ void runHashFuncs(int kappa, int rounds) {
   HashInterface *hashNormal = new HashNormal(kappa);
   timeHash(hashNormal, kappa, rounds, "normal");
 
-  CryptoPP::SecByteBlock key0(keyLength);
-  CryptoPP::OS_GenerateRandomBlock(false, key0.begin(), key0.size());
-  HashInterface *hashAES = new HashAES(&key0, keyLength);
-  timeHash(hashAES, kappa, rounds, "aes lib");
-
-  CryptoPP::byte *key1 = Util::randomByte(keyLength);
-  HashInterface *hashHard = new HashHardware(key1, keyLength);
+  CryptoPP::byte *key = Util::randomByte(keyLength);
+  HashInterface *hashHard = new HashHardware(key, keyLength);
   timeHash(hashHard, kappa, rounds, "aes hardware");
 }
 

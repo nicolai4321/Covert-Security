@@ -1,7 +1,7 @@
 #include "HashHardware.h"
 using namespace std;
 
-__m128i HashHardware::sigmaFunc(CryptoPP::byte* b, int length) {
+__m128i HashHardware::sigmaFunc(CryptoPP::byte *b, int length) {
   __m128i block = _mm_load_si128((__m128i*) b);
   __m128i b0 = _mm_shuffle_epi32(block, 78);
   __m128i b1 = _mm_and_si128(block, _mm_set_epi64x(0xFFFFFFFFFFFFFFFF, 0x00));

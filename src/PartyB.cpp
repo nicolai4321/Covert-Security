@@ -188,7 +188,7 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
 */
 vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recver, int input, int lambd, int kapp, int gamm, osuCrypto::Channel channel,
                                               SocketRecorder *sRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB) {
-  string yString = Util::intToBitString(input, GV::n2);
+  string yString = bitset<GV::n2>(input).to_string();
 
   vector<osuCrypto::block> encsB;
   sRecorder->forceStore("ot2", lambd, 12, 68);

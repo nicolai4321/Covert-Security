@@ -238,7 +238,7 @@ bool PartyA::checkSeedsWitness(vector<osuCrypto::block> gammaSeedsWitnessBlock, 
 vector<osuCrypto::block> PartyA::getEncsInputA(int gamma, map<int, vector<vector<CryptoPP::byte*>>> encs) {
   vector<osuCrypto::block> encsInputsA;
   vector<vector<CryptoPP::byte*>> circuitEncs = encs[gamma];
-  string xBitString = Util::intToBitString(x, GV::n1);
+  string xBitString = bitset<GV::n1>(x).to_string();
   for(int j=0; j<GV::n1; j++) {
     int b = (int) xBitString[j] - 48;
     encsInputsA.push_back(Util::byteToBlock(circuitEncs.at(j).at(b), kappa));
@@ -251,7 +251,7 @@ vector<osuCrypto::block> PartyA::getEncsInputA(int gamma, map<int, vector<vector
 */
 vector<osuCrypto::block> PartyA::getDecommitmentsInputA(int gamma, vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA) {
   vector<osuCrypto::block> decommitmentsInputA;
-  string xBitString = Util::intToBitString(x, GV::n1);
+  string xBitString = bitset<GV::n1>(x).to_string();
   for(int j=0; j<GV::n1; j++) {
     pair<osuCrypto::block, osuCrypto::block> p = decommitmentsEncsA.at(j+(GV::n1*gamma));
     int b = (int) xBitString[j] - 48;
@@ -387,22 +387,15 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
   int bytesSize = 0;
 
   //Circuit
-  string circuitString = "";
-  string line;
   string filepath = "circuits/"+GV::filename;
-  ifstream reader(filepath);
-  if(reader.is_open()) {
-    while (!reader.eof()) {
-      getline(reader, line);
-      circuitString += line+"\n";
-    }
-  } else {
-    throw runtime_error("A: Could not read circuit file");
-  }
-
-  pair<CryptoPP::byte*, int> p0(Util::stringToByte(circuitString, circuitString.length()), circuitString.length());
+  ifstream in(filepath);
+  in >> noskipws;
+  vector<unsigned char> circuitVector((istream_iterator<unsigned char>(in)), (istream_iterator<unsigned char>()));
+  CryptoPP::byte *circuitByte = new CryptoPP::byte[circuitVector.size()];
+  circuitByte = &circuitVector[0];
+  pair<CryptoPP::byte*, int> p0(circuitByte, circuitVector.size());
   bytes.push_back(p0);
-  bytesSize += circuitString.length();
+  bytesSize += circuitVector.size();
 
   //Commitments from A
   pair<CryptoPP::byte*, int> p1(Util::blockToByte(*commitmentA, kapp), kapp);
@@ -452,7 +445,7 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
   int counter = 0;
   for(pair<CryptoPP::byte*, int> p : bytes) {
       memcpy(outputByte+counter, p.first, p.second);
-      counter = p.second;
+      counter += p.second;
   }
 
   pair<CryptoPP::byte*, int> output;

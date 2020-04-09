@@ -198,8 +198,14 @@ CryptoPP::byte* Util::blockToByte(osuCrypto::block b, int length) {
   Transform integer to a bit-string
 */
 string Util::intToBitString(int i, int length) {
+  if(length > 256) {
+    throw runtime_error("Cannot convert integer to a bit-string for a length over 256 bits"); //TODO
+    //string s = bitset<2048>(i).to_string();
+    //if(length < 2048) s = s.substr(2048-length, length);
+    //return s;
+  }
   string s = bitset<256>(i).to_string();
-  s = s.substr(256-length, length);
+  if(length < 256) s = s.substr(256-length, length);
   return s;
 }
 
