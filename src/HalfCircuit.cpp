@@ -1,7 +1,7 @@
 #include "HalfCircuit.h"
 using namespace std;
 
-CircuitInterface* HalfCircuit::createInstance(int k, CryptoPP::byte* s) {
+CircuitInterface *HalfCircuit::createInstance(int k, CryptoPP::byte *s) {
   return new HalfCircuit(k, s, h);
 }
 
@@ -145,15 +145,15 @@ string HalfCircuit::getType() {
   return HalfCircuit::TYPE;
 }
 
-HalfCircuit::HalfCircuit(int k, CryptoPP::byte* s, HashInterface *hashInterface) {
+HalfCircuit::HalfCircuit(int k, CryptoPP::byte *s, HashInterface *hashInterface) {
   kappa = k;
   seed = s;
   r = Util::randomByte(kappa, seed, kappa, iv); iv++;
   h = hashInterface;
 
-  //Ensuring that the last bit in r is 1
+  //Ensuring that the lsb in r is 1
   unsigned char b = (unsigned char) 1;
-  r[kappa-1] = r[kappa-1] | b;
+  r[0] = r[0] | b;
 
   //Constant 0
   CryptoPP::byte *encFZ = Util::randomByte(kappa, seed, kappa, iv); iv++;

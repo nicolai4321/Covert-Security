@@ -193,8 +193,8 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
 
 void startProtocols(int kappa) {
   int lambda = 8;
-  int x = 5;
-  int y = 2;
+  int x = 4;
+  int y = 4;
 
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;

@@ -37,7 +37,6 @@ class Util {
 
     static osuCrypto::block byteToBlock(CryptoPP::byte *b, int length);
     static CryptoPP::byte *blockToByte(osuCrypto::block b, int length);
-    static string intToBitString(int i, int length);
     static string byteToString(CryptoPP::byte *b, int byteSize);
     static string blockToString(osuCrypto::block b, int length);
     static int byteToInt(CryptoPP::byte *b);

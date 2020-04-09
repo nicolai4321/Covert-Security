@@ -8,8 +8,7 @@ Util::Util() {}
   Returns the least significant bit
 */
 int Util::lsb(CryptoPP::byte* b, int length) {
-  string s = intToBitString(b[length-1], 1);
-  return stoi(s);
+  return stoi(bitset<1>(b[0]).to_string());
 }
 
 /*
@@ -195,21 +194,6 @@ CryptoPP::byte* Util::blockToByte(osuCrypto::block b, int length) {
 }
 
 /*
-  Transform integer to a bit-string
-*/
-string Util::intToBitString(int i, int length) {
-  if(length > 256) {
-    throw runtime_error("Cannot convert integer to a bit-string for a length over 256 bits"); //TODO
-    //string s = bitset<2048>(i).to_string();
-    //if(length < 2048) s = s.substr(2048-length, length);
-    //return s;
-  }
-  string s = bitset<256>(i).to_string();
-  if(length < 256) s = s.substr(256-length, length);
-  return s;
-}
-
-/*
   Transform integer to byte (32 bits)
 */
 CryptoPP::byte* Util::intToByte(int i) {
@@ -322,10 +306,11 @@ void Util::printByte(CryptoPP::byte* b, int length) {
   cout << "byte: " << s << endl;
 }
 
+
 void Util::printByteInBits(CryptoPP::byte* b, int length) {
   cout << "bits: ";
   for(int i=length-1; i>=0; i--) {
-    cout << intToBitString((long) b[i],8) << " ";
+    cout << bitset<8>(b[i]).to_string() << " ";
   }
   cout << endl;
 }
@@ -338,7 +323,7 @@ void Util::printBlockInBits(osuCrypto::block b, int length) {
 string Util::byteToBitString(CryptoPP::byte* b, int length) {
   string out;
   for(int i=0; i<length; i++) {
-    out += intToBitString((long) b[i],8)+" ";
+    out += bitset<8>(b[i]).to_string()+" ";
   }
   return out;
 }
