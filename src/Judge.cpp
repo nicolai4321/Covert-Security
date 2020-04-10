@@ -108,6 +108,7 @@ bool Judge::accuse(int j, CryptoPP::byte *signature, int signatureLength, Crypto
   //Simulated garbling
   CircuitInterface *circuitInstance = circuit->createInstance(kappa, seedA);
   CircuitReader cr = CircuitReader();
+  cr.setReverseInput(true);
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuitInstance, GV::filename);
   if(!import.first) {throw runtime_error("J: Error! Could not import circuit");}
   vector<vector<CryptoPP::byte*>> encsSim = import.second;

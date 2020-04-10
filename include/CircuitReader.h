@@ -16,7 +16,7 @@ class CircuitReader {
     pair<bool, vector<vector<CryptoPP::byte*>>> import(CircuitInterface* c, string filename);
     vector<vector<CryptoPP::byte*>> getOutputEnc();
     int getInputGates();
-    void setReverseOutput(bool b);
+    void setReverseInput(bool b);
 
   protected:
 
@@ -24,7 +24,7 @@ class CircuitReader {
     vector<vector<CryptoPP::byte*>> outputEncs;
     string readOneLine(ifstream& reader);
     int totalInputGates;
-    bool reverseOutput = false;
+    bool reverseInput = false;
 };
 
 #endif // CIRCUITREADER_H

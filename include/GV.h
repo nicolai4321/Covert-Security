@@ -12,9 +12,9 @@ using namespace std;
 */
 class GV {
   public:
-    static const int n1 = 256;
-    static const int n2 = 128;
-    inline static const string filename = "aes_256.txt";
+    static const int n1 = 64;
+    static const int n2 = 64;
+    inline static const string filename = "divide64.txt";
 
     //network
     static const int PORT = 1212;

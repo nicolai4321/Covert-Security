@@ -12,6 +12,7 @@ PartyB::PartyB(int input, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey public
 
   //Circuit reader
   CircuitReader cr = CircuitReader();
+  cr.setReverseInput(true);
   pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, GV::filename);
   if(import.first) {
     GarbledCircuit *F = circuit->exportCircuit();
@@ -323,8 +324,9 @@ bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, v
     if(decoded.first) {
       vector<bool> output = decoded.second;
       cout << "B: Output,";
-      for(bool b : output) {
-        cout << b;
+
+      for(int i=output.size()-1; i>=0; i--) {
+        cout << output.at(i);
       }
       cout << endl;
       return true;

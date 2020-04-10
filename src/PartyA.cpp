@@ -157,6 +157,7 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
   for(int j=0; j<lamb; j++) {
     CircuitInterface *G = circuitI->createInstance(kapp, seedsA.at(j));
     CircuitReader cr = CircuitReader();
+    cr.setReverseInput(true);
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
 
     if(!import.first) {throw runtime_error("Error! Could not import circuit");}

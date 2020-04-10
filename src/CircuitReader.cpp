@@ -59,10 +59,22 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
     readOneLine(reader);
 
     //adds input gates
-    for(int i=0; i<totalInputGates; i++) {
-      string gateName = "w"+to_string(i);
-      vector<CryptoPP::byte*> inputEnc = circuit->addGate(gateName);
-      inputEncs.push_back(inputEnc);
+    if(reverseInput) {
+      int minIndex = 0;
+      for(int inputSize : inputList) {
+        for(int i=inputSize-1; i>=0; i--) {
+          string gateName = "w"+to_string(i+minIndex);
+          vector<CryptoPP::byte*> inputEnc = circuit->addGate(gateName);
+          inputEncs.push_back(inputEnc);
+        }
+        minIndex += inputSize;
+      }
+    } else {
+      for(int i=0; i<totalInputGates; i++) {
+        string gateName = "w"+to_string(i);
+        vector<CryptoPP::byte*> inputEnc = circuit->addGate(gateName);
+        inputEncs.push_back(inputEnc);
+      }
     }
 
     //adds remaining gates
@@ -123,16 +135,9 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
 
     //Output gates
     vector<string> outputGates;
-    if(reverseOutput) {
-      for(int j=totalOutputGates-1; j>=0; j--) {
-        string gateName = "w"+to_string(i-totalOutputGates+j);
-        outputGates.push_back(gateName);
-      }
-    } else {
-      for(int j=0; j<totalOutputGates; j++) {
-        string gateName = "w"+to_string(i-totalOutputGates+j);
-        outputGates.push_back(gateName);
-      }
+    for(int j=0; j<totalOutputGates; j++) {
+      string gateName = "w"+to_string(i-totalOutputGates+j);
+      outputGates.push_back(gateName);
     }
     outputEncs = circuit->setOutputGates(outputGates);
   }
@@ -180,8 +185,8 @@ vector<vector<CryptoPP::byte*>> CircuitReader::getOutputEnc() {
 }
 
 /*
-  Can set the output to be in reverse
+  Can set the input to be in reverse
 */
-void CircuitReader::setReverseOutput(bool b) {
-  reverseOutput = b;
+void CircuitReader::setReverseInput(bool b) {
+  reverseInput = b;
 }

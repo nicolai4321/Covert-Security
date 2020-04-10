@@ -36,6 +36,7 @@ using namespace std::chrono;
 double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int kappa, string filename, string input) {
   try {
     CircuitReader cr = CircuitReader();
+    cr.setReverseInput(true);
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, filename);
     int inputGatesNr = cr.getInputGates();
 
@@ -76,8 +77,9 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
 
       if(decoded.first) {
         cout << "output: ";
-        for(bool b : decoded.second) {
-          cout << b;
+
+        for(int i=decoded.second.size()-1; i>=0; i--) {
+          cout << decoded.second.at(i);
         }
         cout << endl;
 
@@ -109,8 +111,8 @@ void runCircuitFiles(int kappa, HashInterface *hashInterface) {
   double timeTotal1 = 0;
 
   for(string filename : files) {
-    string i0 = "0101000000000000000000000000000000000000000000000000000000000000"; //10
-    string i1 = "0100000000000000000000000000000000000000000000000000000000000000"; //2
+    string i0 = "0000000000000000000000000000000000000000000000000000000000001010"; //10
+    string i1 = "0000000000000000000000000000000000000000000000000000000000000010"; //2
 
     cout << filename << endl;
     cout << "Input: " << i0;
@@ -193,8 +195,8 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
 
 void startProtocols(int kappa) {
   int lambda = 8;
-  int x = 4;
-  int y = 4;
+  int x = 100;
+  int y = 20;
 
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
@@ -247,6 +249,7 @@ int main() {
   cout << "covert start" << endl;
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
+  HashInterface *hashInterface = new HashNormal(kappa);
 
   //runCircuitFiles(kappa, hashInterface);
   startProtocols(kappa);
