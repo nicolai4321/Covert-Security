@@ -1,49 +1,43 @@
 #ifndef SIGNATURE_H
 #define SIGNATURE_H
-//#include "dsa.h"
-//#include "osrng.h"
-#include "esign.h"
+#include "pssr.h"
+#include "rsa.h"
 #include "SignatureHolder.h"
 #include "string"
-#include "whrlpool.h"
 using namespace std;
 
 class Signature {
   public:
-    static pair<CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey,
-                CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey> generateKeys(int siz) {
-      CryptoPP::AutoSeededRandomPool rng;
-      CryptoPP::InvertibleESIGNFunction parameters;
-      parameters.GenerateRandomWithKeySize(rng, siz);
 
-      CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk(parameters);
-      CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk(parameters);
-      pair<CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey> output;
-      output.first = sk;
-      output.second = pk;
-      return output;
-    }
+  static pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> generateKeys(int keySize) {
+    CryptoPP::AutoSeededRandomPool rng;
+    CryptoPP::InvertibleRSAFunction params;
+    params.GenerateRandomWithKeySize(rng, keySize);
+    CryptoPP::RSA::PrivateKey sk(params);
+    CryptoPP::RSA::PublicKey pk(params);
+    pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> output(sk, pk);
+    return output;
+  }
 
-    static pair<CryptoPP::byte*, int> sign(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk, CryptoPP::byte *msg, int length) {
-      CryptoPP::AutoSeededRandomPool rng;
-      CryptoPP::ESIGN<CryptoPP::Whirlpool>::Signer signer(sk);
-      CryptoPP::byte *signature = new CryptoPP::byte[signer.MaxSignatureLength()];
-      signer.SignMessage(rng, msg, length, signature);
+  static pair<CryptoPP::SecByteBlock, int> sign(CryptoPP::RSA::PrivateKey sk, CryptoPP::byte *msg, int msgLength) {
+    CryptoPP::AutoSeededRandomPool rng;
+    CryptoPP::RSASS<CryptoPP::PSS, CryptoPP::SHA256>::Signer signer(sk);
+    CryptoPP::SecByteBlock signature(signer.MaxSignatureLength());
+    size_t signatureLength = signer.SignMessage(rng, msg, msgLength, signature);
+    signature.resize(signatureLength);
 
-      pair<CryptoPP::byte*, int> output;
-      output.first = signature;
-      output.second = signer.SignatureLength();
-      return output;
-    }
+    pair<CryptoPP::SecByteBlock, int> output(signature, signatureLength);
+    return output;
+  }
 
-    static bool verify(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, SignatureHolder *sh) {
-      return verify(pk, sh->getMsg(), sh->getMsgLength(), sh->getSignature(), sh->getSignatureLength());
-    }
+  static bool verify(CryptoPP::RSA::PublicKey pk, SignatureHolder *sh) {
+    return verify(pk, sh->getMsg(), sh->getMsgLength(), sh->getSignature(), sh->getSignatureLength());
+  }
 
-    static bool verify(CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, CryptoPP::byte *msg, int msgLength, CryptoPP::byte *signature, int sigLength) {
-      CryptoPP::ESIGN<CryptoPP::Whirlpool>::Verifier verifier(pk);
-      return verifier.VerifyMessage(msg, msgLength, signature, sigLength);
-    }
+  static bool verify(CryptoPP::RSA::PublicKey pk, CryptoPP::byte *msg, int msgLength, CryptoPP::SecByteBlock signature, int signatureLength) {
+    CryptoPP::RSASS<CryptoPP::PSS, CryptoPP::SHA256>::Verifier verifier(pk);
+    return verifier.VerifyMessage(msg, msgLength, signature, signatureLength);
+  }
 
   protected:
 

@@ -143,9 +143,9 @@ void runCircuitFiles(int kappa, HashInterface *hashInterface) {
 
 bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circuit, EvaluatorInterface *evaluator) {
   //Digital Signature
-  pair<CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey> keys = Signature::generateKeys(64*3);
-  CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk = keys.first;
-  CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk = keys.second;
+  pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> keys = Signature::generateKeys(1024);
+  CryptoPP::RSA::PrivateKey sk = keys.first;
+  CryptoPP::RSA::PublicKey pk = keys.second;
 
   TimeLog *timeLog = new TimeLog();
   TimeLog *timeLogA = new TimeLog();
@@ -171,18 +171,20 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
   if(b0 && b1) {
     cout << circuit->toString() << ": success" << endl;
     string s = timeLog->getTimes();
-    /*
-    s += "\nA:\n";
-    s += timeLogA->getTimes();
-    s += "\nB:\n";
-    s += timeLogB->getTimes();
-    */
 
-    bool saveToFile = false;
-    if(saveToFile) {
+    if(true) {
+      s += "\nA:\n";
+      s += timeLogA->getTimes();
+      s += "\nB:\n";
+      s += timeLogB->getTimes();
+    }
+
+    if(false) {
       ofstream file(circuit->toString()+".txt");
       file << s;
-    } else {
+    }
+
+    if(true) {
       cout << s << endl << endl;
     }
 
@@ -254,7 +256,6 @@ int main() {
   //runCircuitFiles(kappa, hashInterface);
   startProtocols(kappa);
   //runHashFuncs(kappa, 1000000);
-
   cout << "covert end" << endl;
   return 0;
 }

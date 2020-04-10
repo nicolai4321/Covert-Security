@@ -1,7 +1,8 @@
 #include "PartyA.h"
 using namespace std;
 
-PartyA::PartyA(int input, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey secretKey, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, int k, int l, CircuitInterface* cI, TimeLog *timelog) {
+PartyA::PartyA(int input, CryptoPP::RSA::PrivateKey secretKey, CryptoPP::RSA::PublicKey publicKey, int k, int l,
+               CircuitInterface* cI, TimeLog *timelog) {
   x = input;
   sk = secretKey;
   pk = publicKey;
@@ -473,7 +474,7 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> co
                                                             socketRecorder->getRecvCat("ot1"+to_string(j)),
                                                             socketRecorder->getSentCat("ot2"+to_string(j)),
                                                             socketRecorder->getRecvCat("ot2"+to_string(j)));
-    pair<CryptoPP::byte*, int> signature = Signature::sign(sk, msg.first, msg.second);
+    pair<CryptoPP::SecByteBlock, int> signature = Signature::sign(sk, msg.first, msg.second);
     SignatureHolder *signatureHolder = new SignatureHolder(msg.first, msg.second, signature.first, signature.second);
     output.push_back(signatureHolder);
   }

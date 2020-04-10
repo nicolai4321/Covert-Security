@@ -19,7 +19,7 @@ using namespace std;
 
 class PartyA {
   public:
-    PartyA(int x, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
+    PartyA(int x, CryptoPP::RSA::PrivateKey sk, CryptoPP::RSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
     virtual ~PartyA();
 
     bool startProtocol();
@@ -50,8 +50,8 @@ class PartyA {
     int x;
     int kappa;
     int lambda;
-    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PrivateKey sk;
-    CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey pk;
+    CryptoPP::RSA::PrivateKey sk;
+    CryptoPP::RSA::PublicKey pk;
     osuCrypto::Channel chl;
     osuCrypto::Channel chlOT;
     SocketRecorder *socketRecorder;

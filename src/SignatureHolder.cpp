@@ -4,7 +4,7 @@ CryptoPP::byte *SignatureHolder::getMsg() {
   return msg;
 }
 
-CryptoPP::byte * SignatureHolder::getSignature() {
+CryptoPP::SecByteBlock SignatureHolder::getSignature() {
   return signature;
 }
 
@@ -16,7 +16,7 @@ int SignatureHolder::getSignatureLength() {
   return signatureLength;
 }
 
-SignatureHolder::SignatureHolder(CryptoPP::byte *m, int mLength, CryptoPP::byte *s, int sLength) {
+SignatureHolder::SignatureHolder(CryptoPP::byte *m, int mLength, CryptoPP::SecByteBlock s, int sLength) {
   msg = m;
   msgLength = mLength;
   signature = s;

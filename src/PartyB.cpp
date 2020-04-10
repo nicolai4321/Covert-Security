@@ -1,7 +1,7 @@
 #include "PartyB.h"
 using namespace std;
 
-PartyB::PartyB(int input, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, int k, int l, CircuitInterface* cir, EvaluatorInterface* eI, TimeLog *timelog) {
+PartyB::PartyB(int input, CryptoPP::RSA::PublicKey publicKey, int k, int l, CircuitInterface* cir, EvaluatorInterface* eI, TimeLog *timelog) {
   y = input;
   pk = publicKey;
   kappa = k;
@@ -501,7 +501,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     }
 
     SignatureHolder* signatureHolder = signatureHolders.at(j);
-    CryptoPP::byte *signature = signatureHolder->getSignature();
+    CryptoPP::SecByteBlock signature = signatureHolder->getSignature();
     int signatureLength = signatureHolder->getSignatureLength();
 
     Judge judge(kappa, pk, circuit);

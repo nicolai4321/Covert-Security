@@ -1,7 +1,8 @@
 #include "Judge.h"
 using namespace std;
 
-bool Judge::accuse(int j, CryptoPP::byte *signature, int signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
+bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB,
+                   osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
                    vector<pair<int, unsigned char*>> *transcriptSent1,
                    vector<pair<int, unsigned char*>> *transcriptRecv1,
                    vector<pair<int, unsigned char*>> *transcriptSent2,
@@ -223,7 +224,7 @@ bool Judge::accuse(int j, CryptoPP::byte *signature, int signatureLength, Crypto
   return false;
 }
 
-Judge::Judge(int k, CryptoPP::ESIGN<CryptoPP::Whirlpool>::PublicKey publicKey, CircuitInterface* c){
+Judge::Judge(int k, CryptoPP::RSA::PublicKey publicKey, CircuitInterface* c){
   kappa = k;
   pk = publicKey;
   circuit = c;
