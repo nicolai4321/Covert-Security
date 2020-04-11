@@ -1,15 +1,14 @@
 #include "Judge.h"
 using namespace std;
 
-bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB,
-                   osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
+bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLength, CryptoPP::byte* seedB, osuCrypto::block decommitB,
+                   osuCrypto::Commit commitA, vector<osuCrypto::Commit> commitEncsA,
                    vector<pair<int, unsigned char*>> *transcriptSent1,
                    vector<pair<int, unsigned char*>> *transcriptRecv1,
                    vector<pair<int, unsigned char*>> *transcriptSent2,
                    vector<pair<int, unsigned char*>> *transcriptRecv2) {
   cout << "Judge called: " << j << endl;
-  CryptoPP::byte *commit = Util::commit(Util::byteToBlock(seedB, kappa), decommitB);
-  osuCrypto::block commitB = Util::byteToBlock(commit, Util::COMMIT_LENGTH);
+  osuCrypto::Commit commitB = Util::commit(Util::byteToBlock(seedB, kappa), decommitB);
 
   pair<CryptoPP::byte*, int> signatureMsg = PartyA::constructSignatureByte(j, kappa, &commitA, &commitB, &commitEncsA, transcriptSent1,
                                                          transcriptRecv1, transcriptSent2, transcriptRecv2);
@@ -115,7 +114,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength,
   vector<vector<CryptoPP::byte*>> encsSim = import.second;
 
   //Checking commitment for encodings
-  vector<osuCrypto::block> commitsEncs;
+  vector<osuCrypto::Commit> commitsEncs;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitsEncs;
   map<unsigned int, unsigned int> ivA;
   ivA[j] = 2;
@@ -123,13 +122,18 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength,
 
   int startIndex = 0;
   for(int i=0; i<GV::n1; i++) {
-    CryptoPP::byte *commitEncASim0 = Util::blockToByte(commitsEncs.at(startIndex+2*i), Util::COMMIT_LENGTH);
-    CryptoPP::byte *commitEncASim1 = Util::blockToByte(commitsEncs.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
-    CryptoPP::byte* commitEncA0 = Util::blockToByte(commitEncsA.at(startIndex+2*i), Util::COMMIT_LENGTH);
-    CryptoPP::byte* commitEncA1 = Util::blockToByte(commitEncsA.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
+    osuCrypto::Commit commitEncASim0 = commitsEncs.at(startIndex+2*i);
+    osuCrypto::Commit commitEncASim1 = commitsEncs.at(startIndex+2*i+1);
+    osuCrypto::Commit commitEncA0 = commitEncsA.at(startIndex+2*i);
+    osuCrypto::Commit commitEncA1 = commitEncsA.at(startIndex+2*i+1);
 
-    if(memcmp(commitEncASim0, commitEncA0, Util::COMMIT_LENGTH) != 0 ||
-       memcmp(commitEncASim1, commitEncA1, Util::COMMIT_LENGTH) != 0) {
+    if(commitEncASim0.size() != commitEncA0.size() || commitEncASim1.size() != commitEncA1.size()) {
+      cout << "J: party A has cheated. Reason: wrong commitment size for encodings" << endl;
+      return true;
+    }
+
+    if(memcmp(commitEncASim0.data(), commitEncA0.data(), commitEncASim0.size()) != 0 ||
+       memcmp(commitEncASim1.data(), commitEncA1.data(), commitEncASim1.size()) != 0) {
       cout << "J: party A has cheated. Reason: wrong commitment for encodings" << endl;
       return true;
     }
@@ -139,8 +143,14 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength,
   //Checking commitment for cicuits
   GarbledCircuit *F = circuitInstance->exportCircuit();
   osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, kappa, ivA[j]), kappa);
-  CryptoPP::byte *commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
-  if(memcmp(commitASim, Util::blockToByte(commitA, Util::COMMIT_LENGTH), Util::COMMIT_LENGTH) != 0) {
+  osuCrypto::Commit commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
+
+  if(commitASim.size() != commitA.size()) {
+    cout << "J: party A has cheated. Reason: wrong commitment size for circuits" << endl;
+    return true;
+  }
+
+  if(memcmp(commitASim.data(), commitA.data(), commitASim.size()) != 0) {
     cout << "J: party A has cheated. Reason: wrong commitment for circuits" << endl;
     return true;
   }

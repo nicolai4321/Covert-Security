@@ -28,38 +28,38 @@ CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, 
     } else if(op.compare("OR") == 0) {
       b[i] = b0[i] | b1[i];
     } else {
-      cout << "Error! Unkown operator: '" << op << "'" << endl;
+      throw runtime_error("Error! Unknown operator: '" + op + "'");
     }
   }
   return b;
 }
 
 /*
-  Commit (16 bytes)
+  Commit
 */
-CryptoPP::byte* Util::commit(osuCrypto::block b, osuCrypto::block r) {
-  osuCrypto::Commit *c = new osuCrypto::Commit(b, r);
-  CryptoPP::byte *ptr = c->data();
-  return ptr;
+osuCrypto::Commit Util::commit(osuCrypto::block b, osuCrypto::block r) {
+  return osuCrypto::Commit(b, r);
 }
 
 /*
-  Commit (16 bytes)
+  Commit
 */
-CryptoPP::byte* Util::commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length) {
-  int nrBytes = bytes.size();
-  osuCrypto::u8 arr[nrBytes*length];
+osuCrypto::Commit Util::commit(vector<pair<CryptoPP::byte*,int>> bytes, osuCrypto::block r, int totalLength) {
+  osuCrypto::u8 arr[totalLength];
+  int index = 0;
 
-  for(int i=0; i<nrBytes; i++) {
-    for(int j=0; j<length; j++) {
-      arr[j+(i*length)] = bytes.at(i)[j];
+  for(pair<CryptoPP::byte*,int> p : bytes) {
+    CryptoPP::byte *b = p.first;
+    int byteLength = p.second;
+
+    for(int j=0; j<byteLength; j++) {
+      arr[index] = b[j];
+      index++;
     }
   }
-  osuCrypto::span<osuCrypto::u8> s = {arr, nrBytes*length};
-  osuCrypto::Commit *c = new osuCrypto::Commit(s, r);
-  CryptoPP::byte *ptr = c->data();
 
-  return ptr;
+  osuCrypto::span<osuCrypto::u8> s = {arr, totalLength};
+  return osuCrypto::Commit(s, r);
 }
 
 /*
@@ -71,7 +71,6 @@ void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int length, 
   memcpy(ivByte, longToByte(iv), 8);
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
   prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
-
   prng.Shuffle(v.begin(), v.end());
 }
 
@@ -232,8 +231,8 @@ long Util::byteToLong(CryptoPP::byte* b) {
 /*
   Merges two bytes to one
 */
-CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int length) {
-  CryptoPP::byte* b = new CryptoPP::byte[2*length];
+CryptoPP::byte *Util::mergeBytes(CryptoPP::byte *b0, CryptoPP::byte *b1, int length) {
+  CryptoPP::byte *b = new CryptoPP::byte[2*length];
   memcpy(b, b0, length);
   memcpy(b+length, b1, length);
   return b;
@@ -242,10 +241,10 @@ CryptoPP::byte* Util::mergeBytes(CryptoPP::byte* b0, CryptoPP::byte* b1, int len
 /*
   Merges multiple bytes to one
 */
-CryptoPP::byte* Util::mergeBytes(vector<CryptoPP::byte*> bytes, int length) {
+CryptoPP::byte *Util::mergeBytes(vector<CryptoPP::byte*> bytes, int length) {
   int vectorLength = bytes.size();
 
-  CryptoPP::byte* b = new CryptoPP::byte[vectorLength*length];
+  CryptoPP::byte *b = new CryptoPP::byte[vectorLength*length];
   for(int i=0; i<vectorLength; i++) {
     memcpy((b+(i*length)), bytes.at(i), length);
   }

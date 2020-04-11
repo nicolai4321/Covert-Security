@@ -41,7 +41,7 @@ bool PartyA::startProtocol() {
 
   //Get the commitments of the seeds from party B
   timeLog->markTime("waiting for commitments");
-  vector<osuCrypto::block> commitmentsB;
+  vector<osuCrypto::Commit> commitmentsB;
   chl.recv(commitmentsB);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has received commitments from other party" << endl;
   timeLog->endMark("waiting for commitments");
@@ -69,15 +69,15 @@ bool PartyA::startProtocol() {
 
   //Commiting input encodings
   timeLog->markTime("commit encs");
-  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
-  vector<osuCrypto::block> commitmentsEncsInputsA = commitPair0.first;
+  pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
+  vector<osuCrypto::Commit> commitmentsEncsInputsA = commitPair0.first;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
   timeLog->endMark("commit encs");
 
   //Commiting circuits
   timeLog->markTime("commit circuits");
-  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
-  vector<osuCrypto::block> commitmentsA = commitPair1.first;
+  pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
+  vector<osuCrypto::Commit> commitmentsA = commitPair1.first;
   vector<osuCrypto::block> decommitmentsA = commitPair1.second;
   timeLog->endMark("commit circuits");
 
@@ -151,25 +151,26 @@ bool PartyA::startProtocol() {
 /*
   Garbling the circuits and prepare the ot data
 */
-pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb, int kapp, CircuitInterface* circuitI, vector<CryptoPP::byte*> seedsA) {
+pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb,
+                                                                                            int kapp,
+                                                                                            CircuitInterface* circuitI,
+                                                                                            vector<CryptoPP::byte*> seedsA) {
   vector<CircuitInterface*> circuits;
   map<int, vector<vector<CryptoPP::byte*>>> encs;
 
   for(int j=0; j<lamb; j++) {
     CircuitInterface *G = circuitI->createInstance(kapp, seedsA.at(j));
+
     CircuitReader cr = CircuitReader();
     cr.setReverseInput(true);
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
-
     if(!import.first) {throw runtime_error("Error! Could not import circuit");}
 
     circuits.push_back(G);
     encs[j] = import.second;
   }
 
-  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> output;
-  output.first = circuits;
-  output.second = encs;
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> output(circuits, encs);
   return output;
 }
 
@@ -266,14 +267,17 @@ vector<osuCrypto::block> PartyA::getDecommitmentsInputA(int gamma, vector<pair<o
 /*
   Auxillery function for commitEncsA
 */
-void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA, map<unsigned int, unsigned int>* iv, vector<vector<CryptoPP::byte*>> encs,
-                    vector<osuCrypto::block>* commitmentsEncsInputsA, vector<pair<osuCrypto::block, osuCrypto::block>>* decommitmentsEncsA) {
+void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
+                            map<unsigned int, unsigned int>* iv,
+                            vector<vector<CryptoPP::byte*>> encs,
+                            vector<osuCrypto::Commit>* commitmentsEncsInputsA,
+                            vector<pair<osuCrypto::block, osuCrypto::block>>* decommitmentsEncsA) {
   for(int i=0; i<GV::n1; i++) {
     osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
     osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
 
-    CryptoPP::byte *c0 = Util::commit(Util::byteToBlock(encs.at(i).at(0), kapp), decommit0);
-    CryptoPP::byte *c1 = Util::commit(Util::byteToBlock(encs.at(i).at(1), kapp), decommit1);
+    osuCrypto::Commit c0 = Util::commit(Util::byteToBlock(encs.at(i).at(0), kapp), decommit0);
+    osuCrypto::Commit c1 = Util::commit(Util::byteToBlock(encs.at(i).at(1), kapp), decommit1);
 
     pair<osuCrypto::block, osuCrypto::block> p;
     p.first = decommit0;
@@ -282,11 +286,11 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA, map<unsigned
 
     //Random order so that party B cannot extract my input when I give him decommitments
     if(Util::randomInt(0, 1, seedA, kapp, (*iv)[j])) {
-      commitmentsEncsInputsA->push_back(Util::byteToBlock(c0, Util::COMMIT_LENGTH));
-      commitmentsEncsInputsA->push_back(Util::byteToBlock(c1, Util::COMMIT_LENGTH));
+      commitmentsEncsInputsA->push_back(c0);
+      commitmentsEncsInputsA->push_back(c1);
     } else {
-      commitmentsEncsInputsA->push_back(Util::byteToBlock(c1, Util::COMMIT_LENGTH));
-      commitmentsEncsInputsA->push_back(Util::byteToBlock(c0, Util::COMMIT_LENGTH));
+      commitmentsEncsInputsA->push_back(c1);
+      commitmentsEncsInputsA->push_back(c0);
     }
     (*iv)[j] = (*iv)[j]+1;
   }
@@ -297,17 +301,15 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA, map<unsigned
   a list of commitments for the encoding inputs and the
   second entry is the decommitments
 */
-pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>>
+pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>>
 PartyA::commitEncsA(int lamb, int kapp, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, map<int, vector<vector<CryptoPP::byte*>>> encs) {
-  vector<osuCrypto::block> commitmentsEncsInputsA;
+  vector<osuCrypto::Commit> commitmentsEncsInputsA;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA;
   for(int j=0; j<lamb; j++) {
     auxCommitEncsA(j, kapp, seedsA.at(j), iv, encs[j], &commitmentsEncsInputsA, &decommitmentsEncsA);
   }
 
-  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> output;
-  output.first = commitmentsEncsInputsA;
-  output.second = decommitmentsEncsA;
+  pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> output(commitmentsEncsInputsA, decommitmentsEncsA);
   return output;
 }
 
@@ -316,71 +318,89 @@ PartyA::commitEncsA(int lamb, int kapp, vector<CryptoPP::byte*> seedsA, map<unsi
   a list of commitments for the circuits and the second
   entry is the decommitments
 */
-pair<vector<osuCrypto::block>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA,
+pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA,
                                                                                 map<unsigned int, unsigned int>* iv, vector<CircuitInterface*> circuits) {
-  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> output;
-  vector<osuCrypto::block> commitmentsA;
+  vector<osuCrypto::Commit> commitmentsA;
   vector<osuCrypto::block> decommitmentsA;
 
   for(int j=0; j<lamb; j++) {
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
     osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
-    CryptoPP::byte *c = commitCircuit(kapp, cir->getType(), F, decommit);
+    osuCrypto::Commit c = commitCircuit(kapp, cir->getType(), F, decommit);
 
     decommitmentsA.push_back(decommit);
-    commitmentsA.push_back(Util::byteToBlock(c, Util::COMMIT_LENGTH));
+    commitmentsA.push_back(c);
   }
 
-  output.first = commitmentsA;
-  output.second = decommitmentsA;
+  pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> output(commitmentsA, decommitmentsA);
   return output;
 }
 
 /*
   This function commits one garbled circuit
 */
-CryptoPP::byte* PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, osuCrypto::block decommit) {
-  vector<CryptoPP::byte*> commitQueue;
+osuCrypto::Commit PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F, osuCrypto::block decommit) {
+  vector<pair<CryptoPP::byte*,int>> commitQueue;
+  int totalLength = 0;
 
   //constants
   pair<CryptoPP::byte*, CryptoPP::byte*> p = F->getConstants();
-  commitQueue.push_back(p.first);
-  commitQueue.push_back(p.second);
+  pair<CryptoPP::byte*, int> p0(p.first, kapp);
+  pair<CryptoPP::byte*, int> p1(p.second, kapp);
+  commitQueue.push_back(p0);
+  commitQueue.push_back(p1);
+  totalLength += 2*kapp;
 
   //decodings
   for(vector<CryptoPP::byte*> v : F->getDecodings()) {
-    commitQueue.push_back(v.at(0));
-    commitQueue.push_back(v.at(1));
+    pair<CryptoPP::byte*, int> p2(v.at(0), kapp);
+    pair<CryptoPP::byte*, int> p3(v.at(1), kapp);
+    commitQueue.push_back(p2);
+    commitQueue.push_back(p3);
+    totalLength += 2*kapp;
   }
 
   //garbled tables or and-encodings
-  map<string, vector<CryptoPP::byte*>>::iterator it;
-  map<string, vector<CryptoPP::byte*>> encData;
   if(type.compare(NormalCircuit::TYPE) == 0) {
-    encData = F->getGarbledTables();
-  } else {
-    encData = F->getAndEncodings();
-  }
+    map<string, vector<CryptoPP::byte*>> encData = F->getGarbledTables();
+    map<string, vector<CryptoPP::byte*>>::iterator it = encData.begin();
+    it = encData.begin();
+    while(it != encData.end()) {
+      string gateName = it->first;
+      vector<CryptoPP::byte*> v = encData[gateName];
 
-  it = encData.begin();
-  while(it != encData.end()) {
-    string gateName = it->first;
-    vector<CryptoPP::byte*> v = encData[gateName];
-    for(CryptoPP::byte* b : v) {
-      commitQueue.push_back(b);
+      for(CryptoPP::byte *b : v) {
+        pair<CryptoPP::byte*, int> p4(b, 2*kapp);
+        commitQueue.push_back(p4);
+        totalLength += 2*kapp;
+      }
+      it++;
     }
-    it++;
+  } else {
+    map<string, vector<CryptoPP::byte*>> encData = F->getAndEncodings();
+    map<string, vector<CryptoPP::byte*>>::iterator it = encData.begin();
+    it = encData.begin();
+    while(it != encData.end()) {
+      string gateName = it->first;
+      vector<CryptoPP::byte*> v = encData[gateName];
+
+      for(CryptoPP::byte *b : v) {
+        pair<CryptoPP::byte*, int> p4(b, kapp);
+        commitQueue.push_back(p4);
+        totalLength += kapp;
+      }
+      it++;
+    }
   }
 
-  CryptoPP::byte *c = Util::commit(commitQueue, decommit, kapp);
-  return c;
+  return Util::commit(commitQueue, decommit, totalLength);
 }
 
 /*
   This function constructs a signature string
 */
-pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCrypto::block *commitmentA, osuCrypto::block *commitmentB,
-                                        vector<osuCrypto::block> *commitmentsEncsInputsA,
+pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCrypto::Commit *commitmentA, osuCrypto::Commit *commitmentB,
+                                        vector<osuCrypto::Commit> *commitmentsEncsInputsA,
                                         vector<pair<int, unsigned char*>> *transcriptSent1,
                                         vector<pair<int, unsigned char*>> *transcriptRecv1,
                                         vector<pair<int, unsigned char*>> *transcriptSent2,
@@ -400,23 +420,24 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
   bytesSize += circuitVector.size();
 
   //Commitments from A
-  pair<CryptoPP::byte*, int> p1(Util::blockToByte(*commitmentA, kapp), kapp);
+  pair<CryptoPP::byte*, int> p1(commitmentA->data(), commitmentA->size());
   bytes.push_back(p1);
-  bytesSize += kapp;
+  bytesSize += commitmentA->size();
 
   string comEncsA;
   for(int i=0; i<GV::n1; i++) {
-    pair<CryptoPP::byte*, int> p2(Util::blockToByte((*commitmentsEncsInputsA).at(2*i), kapp), kapp);
-    pair<CryptoPP::byte*, int> p3(Util::blockToByte((*commitmentsEncsInputsA).at(2*i+1), kapp), kapp);
+    pair<CryptoPP::byte*, int> p2(commitmentsEncsInputsA->at(2*i).data(), commitmentsEncsInputsA->at(2*i).size());
+    pair<CryptoPP::byte*, int> p3(commitmentsEncsInputsA->at(2*i+1).data(), commitmentsEncsInputsA->at(2*i+1).size());
     bytes.push_back(p2);
     bytes.push_back(p3);
+    bytesSize += commitmentsEncsInputsA->at(2*i).size();
+    bytesSize += commitmentsEncsInputsA->at(2*i+1).size();
   }
-  bytesSize += 2*kapp*GV::n1;
 
   //Commitments from B
-  pair<CryptoPP::byte*, int> p4(Util::blockToByte(*commitmentB, kapp), kapp);
+  pair<CryptoPP::byte*, int> p4(commitmentB->data(), commitmentB->size());
   bytes.push_back(p4);
-  bytesSize += kapp;
+  bytesSize += commitmentB->size();
 
   //Transcripts
   for(pair<int, unsigned char*> p : (*transcriptSent1)) {
@@ -459,11 +480,11 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
 /*
   This function constructs the signatures
 */
-vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> commitmentsA, vector<osuCrypto::block> commitmentsB,
-                                                     vector<osuCrypto::block> commitmentsEncsInputsA) {
+vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::Commit> commitmentsA, vector<osuCrypto::Commit> commitmentsB,
+                                                     vector<osuCrypto::Commit> commitmentsEncsInputsA) {
   vector<SignatureHolder*> output;
   for(int j=0; j<lambda; j++) {
-    vector<osuCrypto::block> commitmentsEncsInputsAJ;
+    vector<osuCrypto::Commit> commitmentsEncsInputsAJ;
     int startIndex = 2*j*GV::n1;
     for(int i=0; i<GV::n1; i++) {
       commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(startIndex+2*i));
@@ -474,7 +495,7 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::block> co
                                                             socketRecorder->getRecvCat("ot1"+to_string(j)),
                                                             socketRecorder->getSentCat("ot2"+to_string(j)),
                                                             socketRecorder->getRecvCat("ot2"+to_string(j)));
-    pair<CryptoPP::SecByteBlock, int> signature = Signature::sign(sk, msg.first, msg.second);
+    pair<CryptoPP::SecByteBlock, size_t> signature = Signature::sign(sk, msg.first, msg.second);
     SignatureHolder *signatureHolder = new SignatureHolder(msg.first, msg.second, signature.first, signature.second);
     output.push_back(signatureHolder);
   }

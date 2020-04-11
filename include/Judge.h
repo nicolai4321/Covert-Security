@@ -18,8 +18,8 @@ class Judge {
     /*
       This method will determine if the accusation is valid or not
     */
-    bool accuse(int j, CryptoPP::SecByteBlock signature, int signatureLength, CryptoPP::byte* seedB,
-                osuCrypto::block decommitB, osuCrypto::block commitA, vector<osuCrypto::block> commitEncsA,
+    bool accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLength, CryptoPP::byte* seedB,
+                osuCrypto::block decommitB, osuCrypto::Commit commitA, vector<osuCrypto::Commit> commitEncsA,
                 vector<pair<int, unsigned char*>> *transcriptSent1,
                 vector<pair<int, unsigned char*>> *transcriptRecv1,
                 vector<pair<int, unsigned char*>> *transcriptSent2,

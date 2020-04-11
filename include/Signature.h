@@ -19,14 +19,14 @@ class Signature {
     return output;
   }
 
-  static pair<CryptoPP::SecByteBlock, int> sign(CryptoPP::RSA::PrivateKey sk, CryptoPP::byte *msg, int msgLength) {
+  static pair<CryptoPP::SecByteBlock, size_t> sign(CryptoPP::RSA::PrivateKey sk, CryptoPP::byte *msg, int msgLength) {
     CryptoPP::AutoSeededRandomPool rng;
     CryptoPP::RSASS<CryptoPP::PSS, CryptoPP::SHA256>::Signer signer(sk);
     CryptoPP::SecByteBlock signature(signer.MaxSignatureLength());
     size_t signatureLength = signer.SignMessage(rng, msg, msgLength, signature);
     signature.resize(signatureLength);
 
-    pair<CryptoPP::SecByteBlock, int> output(signature, signatureLength);
+    pair<CryptoPP::SecByteBlock, size_t> output(signature, signatureLength);
     return output;
   }
 
@@ -34,7 +34,7 @@ class Signature {
     return verify(pk, sh->getMsg(), sh->getMsgLength(), sh->getSignature(), sh->getSignatureLength());
   }
 
-  static bool verify(CryptoPP::RSA::PublicKey pk, CryptoPP::byte *msg, int msgLength, CryptoPP::SecByteBlock signature, int signatureLength) {
+  static bool verify(CryptoPP::RSA::PublicKey pk, CryptoPP::byte *msg, int msgLength, CryptoPP::SecByteBlock signature, size_t signatureLength) {
     CryptoPP::RSASS<CryptoPP::PSS, CryptoPP::SHA256>::Verifier verifier(pk);
     return verifier.VerifyMessage(msg, msgLength, signature, signatureLength);
   }

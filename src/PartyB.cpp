@@ -54,15 +54,14 @@ bool PartyB::startProtocol() {
 
   //Commitments of the seeds for party B
   timeLog->markTime("generate commitments of own seed");
-  vector<osuCrypto::block> commitmentsBSend;
-  vector<osuCrypto::block> commitmentsB;
+  vector<osuCrypto::Commit> commitmentsBSend;
+  vector<osuCrypto::Commit> commitmentsB;
   vector<osuCrypto::block> decommitmentsB;
   for(int j=0; j<lambda; j++) {
     osuCrypto::block r = Util::byteToBlock(Util::randomByte(kappa), kappa);
-    CryptoPP::byte *c = Util::commit(Util::byteToBlock(seedsB.at(j), kappa), r);
-    osuCrypto::block b = Util::byteToBlock(c, Util::COMMIT_LENGTH);
-    commitmentsB.push_back(b);
-    commitmentsBSend.push_back(b);
+    osuCrypto::Commit c = Util::commit(Util::byteToBlock(seedsB.at(j), kappa), r);
+    commitmentsB.push_back(c);
+    commitmentsBSend.push_back(c);
     decommitmentsB.push_back(r);
   }
   timeLog->endMark("generate commitments of own seed");
@@ -89,10 +88,10 @@ bool PartyB::startProtocol() {
 
   //Receive commitments
   timeLog->markTime("waiting for commitments");
-  vector<osuCrypto::block> commitmentsEncsA;
+  vector<osuCrypto::Commit> commitmentsEncsA;
   chl.recv(commitmentsEncsA);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received commitments for input encodings from other party" << endl;
-  vector<osuCrypto::block> commitmentsCircuitsA;
+  vector<osuCrypto::Commit> commitmentsCircuitsA;
   chl.recv(commitmentsCircuitsA);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has received commitments for circuits from other party" << endl;
   timeLog->endMark("waiting for commitments");
@@ -223,13 +222,18 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
 /*
   This function checks the commitments for the lambda circuit
 */
-bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA,
-                              vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA) {
-  CryptoPP::byte *commitSim = PartyA::commitCircuit(kappa, circuit->getType(), F, decommitmentsCircuitA.at(gamma));
-  CryptoPP::byte *commit = Util::blockToByte(commitmentsCircuitsA.at(gamma), Util::COMMIT_LENGTH);
+bool PartyB::checkCommitments(GarbledCircuit* F,
+                              vector<osuCrypto::block> decommitmentsEncA,
+                              vector<osuCrypto::block> decommitmentsCircuitA,
+                              vector<osuCrypto::Commit> commitmentsEncsA,
+                              vector<osuCrypto::Commit> commitmentsCircuitsA,
+                              vector<osuCrypto::block> encsInputsA) {
+  CryptoPP::byte *commitSim = PartyA::commitCircuit(kappa, circuit->getType(), F, decommitmentsCircuitA.at(gamma)).data();
+  CryptoPP::byte *commit = commitmentsCircuitsA.at(gamma).data();
+  int sizCircuitCommit = commitmentsCircuitsA.at(gamma).size();
 
-  if(memcmp(commitSim, commit, Util::COMMIT_LENGTH) != 0) {
-    cout << "B: Error! Invalid circuit commitment from other party" << endl;
+  if(memcmp(commitSim, commit, sizCircuitCommit) != 0) {
+    cout << "B: Error! Invalid circuit commitment from other party (lambda)" << endl;
     return false;
   }
 
@@ -237,12 +241,12 @@ bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decomm
   int startIndex = 2*gamma*GV::n1;
   for(int i=0; i<GV::n1; i++) {
     osuCrypto::block decommit = decommitmentsEncA.at(i);
-    CryptoPP::byte* c = Util::commit(encsInputsA.at(i), decommit);
-    CryptoPP::byte* c0 = Util::blockToByte(commitmentsEncsA.at(startIndex+2*i), Util::COMMIT_LENGTH);
-    CryptoPP::byte* c1 = Util::blockToByte(commitmentsEncsA.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
+    osuCrypto::Commit c = Util::commit(encsInputsA.at(i), decommit);
+    CryptoPP::byte* c0 = commitmentsEncsA.at(startIndex+2*i).data();
+    CryptoPP::byte* c1 = commitmentsEncsA.at(startIndex+2*i+1).data();
 
-    if(memcmp(c, c0, Util::COMMIT_LENGTH) != 0 && memcmp(c, c1, Util::COMMIT_LENGTH) != 0) {
-      cout << "B: Error! Invalid input encoding commitment from other party" << endl;
+    if(memcmp(c.data(), c0, c.size()) != 0 && memcmp(c.data(), c1, c.size()) != 0) {
+      cout << "B: Error! Invalid input encoding commitment from other party (lambda)" << endl;
       return false;
     }
   }
@@ -250,12 +254,12 @@ bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decomm
   //Checking gate order
   vector<string> gateOrderA = F->getGateOrder();
   if(gateOrderA.size() != gateInfoB.size()) {
-    cout << "B: Error! Not same amount of gates" << endl;
+    cout << "B: Error! Not same amount of gates (lambda)" << endl;
     return false;
   }
   for(int i=0; i<gateOrderA.size(); i++) {
     if(gateOrderA.at(i).compare(gateOrderB.at(i)) != 0) {
-      cout << "B: Error! Gate order does not match" << endl;
+      cout << "B: Error! Gate order does not match (lambda)" << endl;
       return false;
     }
   }
@@ -263,12 +267,12 @@ bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decomm
   //Checking output gates
   vector<string> outputGatesA = F->getOutputGates();
   if(outputGatesA.size() != outputGatesB.size()) {
-    cout << "B: Error! Not same amount of output gates" << endl;
+    cout << "B: Error! Not same amount of output gates (lambda)" << endl;
     return false;
   }
   for(int i=0; i<outputGatesA.size(); i++) {
     if(outputGatesA.at(i).compare(outputGatesB.at(i)) != 0) {
-      cout << "B: Error! Output gates does not match" << endl;
+      cout << "B: Error! Output gates does not match (lambda)" << endl;
       return false;
     }
   }
@@ -291,14 +295,14 @@ bool PartyB::checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decomm
     string gateRB = vB.at(2);
 
     if(gateTypeA.compare(gateTypeB) != 0 || gateLA.compare(gateLB) != 0 || gateRA.compare(gateRB) != 0) {
-      cout << "B: Error! Gate info does not match" << endl;
+      cout << "B: Error! Gate info does not match (lambda)" << endl;
       return false;
     }
     itA++;
     itB++;
   }
   if(itA != gateInfoA.end() || itB != gateInfoB.end()) {
-    cout << "B: Error! Size of gate info does not match" << endl;
+    cout << "B: Error! Size of gate info does not match (lambda)" << endl;
     return false;
   }
 
@@ -343,15 +347,19 @@ bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, v
 /*
   Checks that the input encodings is computed from the seed
 */
-bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP::byte*> seedsB, vector<SignatureHolder*> signatureHolders,
-                            vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA,
-                            vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB,
+bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
+                            vector<CryptoPP::byte*> seedsB,
+                            vector<SignatureHolder*> signatureHolders,
+                            vector<osuCrypto::block> seedsWitnessA,
+                            vector<osuCrypto::Commit> commitmentsEncsA,
+                            vector<osuCrypto::Commit> commitmentsCircuitsA,
+                            vector<osuCrypto::Commit> commitmentsB,
                             vector<osuCrypto::block> decommitmentsB) {
   //Checking signatures
   timeLog->markTime("  check signatures");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking signatures" << endl;
   for(int j=0; j<lambda; j++) {
-    SignatureHolder* signatureHolder = signatureHolders.at(j);
+    SignatureHolder *signatureHolder = signatureHolders.at(j);
     if(!Signature::verify(pk, signatureHolder)) {
       cout << "B: found invalid signature" << endl;
       return false;
@@ -415,7 +423,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
       timeLog->endMark("    get msg"+to_string(j));
 
       timeLog->markTime("    find commitments for encs"+to_string(j));
-      vector<osuCrypto::block> commitmentsEncsAJ;
+      vector<osuCrypto::Commit> commitmentsEncsAJ;
       int startIndex = 2*j*GV::n1;
       for(int i=0; i<GV::n1; i++) {
         commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
@@ -447,14 +455,14 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
 
   //Checking commitments
   timeLog->markTime("  commitments encs");
-  pair<vector<osuCrypto::block>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated =
+  pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPairSimulated =
     PartyA::commitEncsA(lambda, kappa, seedsA, &ivAsim, encsSimulated);
-  vector<osuCrypto::block> commitmentsEncsASimulated = commitPairSimulated.first;
+  vector<osuCrypto::Commit> commitmentsEncsASimulated = commitPairSimulated.first;
   timeLog->endMark("  commitments encs");
 
   timeLog->markTime("  commitments circuits");
-  pair<vector<osuCrypto::block>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, &ivAsim, circuits);
-  vector<osuCrypto::block> commitmentsA = commitPair.first;
+  pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, &ivAsim, circuits);
+  vector<osuCrypto::Commit> commitmentsA = commitPair.first;
   vector<osuCrypto::block> decommitmentsA = commitPair.second;
   timeLog->endMark("  commitments circuits");
 
@@ -465,23 +473,36 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
     if(j != gamma) {
       int startIndex = 2*j*GV::n1;
       for(int i=0; i<GV::n1; i++) {
-        CryptoPP::byte *commitSimulated0 = Util::blockToByte(commitmentsEncsASimulated.at(startIndex+2*i), Util::COMMIT_LENGTH);
-        CryptoPP::byte *commitReceived0 = Util::blockToByte(commitmentsEncsA.at(startIndex+2*i), Util::COMMIT_LENGTH);
-        CryptoPP::byte *commitSimulated1 = Util::blockToByte(commitmentsEncsASimulated.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
-        CryptoPP::byte *commitReceived1 = Util::blockToByte(commitmentsEncsA.at(startIndex+2*i+1), Util::COMMIT_LENGTH);
-        if(memcmp(commitSimulated0, commitReceived0, Util::COMMIT_LENGTH) != 0 ||
-           memcmp(commitSimulated1, commitReceived1, Util::COMMIT_LENGTH) != 0) {
+        osuCrypto::Commit commitSimulated0 = commitmentsEncsASimulated.at(startIndex+2*i);
+        osuCrypto::Commit commitReceived0 = commitmentsEncsA.at(startIndex+2*i);
+        osuCrypto::Commit commitSimulated1 = commitmentsEncsASimulated.at(startIndex+2*i+1);
+        osuCrypto::Commit commitReceived1 = commitmentsEncsA.at(startIndex+2*i+1);
+
+        if(commitSimulated0.size() != commitReceived0.size() || commitSimulated1.size() != commitReceived1.size()) {
+          cout << "B: Corrupt! Simulation of commitments for input encodings does not have same length" << endl;
+          callJudge = true;
+          goto skip;
+        }
+
+        if(memcmp(commitSimulated0.data(), commitReceived0.data(), commitSimulated0.size()) != 0 ||
+           memcmp(commitSimulated1.data(), commitReceived1.data(), commitSimulated1.size()) != 0) {
           cout << "B: Corrupt! Simulation of commitments for input encodings does not match" << endl;
           callJudge = true;
           goto skip;
         }
       }
 
-      CryptoPP::byte *commitSimulated1 = Util::blockToByte(commitmentsA.at(j), Util::COMMIT_LENGTH);
-      CryptoPP::byte *commitReceived1 = Util::blockToByte(commitmentsCircuitsA.at(j), Util::COMMIT_LENGTH);
+      osuCrypto::Commit commitSim1 = commitmentsA.at(j);
+      osuCrypto::Commit commitRec1 = commitmentsCircuitsA.at(j);
 
-      if(memcmp(commitSimulated1, commitReceived1, Util::COMMIT_LENGTH) != 0) {
-        cout << "B: Corrupt! Simulation of commitments for circuits does not match" << endl;
+      if(commitSim1.size() != commitRec1.size()) {
+        cout << "B: Corrupt! Simulation of commitments for circuits does not have same length" << endl;
+        callJudge = true;
+        goto skip;
+      }
+
+      if(memcmp(commitSim1.data(), commitRec1.data(), commitSim1.size()) != 0) {
+        cout << "B: Corrupt! Simulation of commitments for circuits does not match (" << j << ")" << endl;
         callJudge = true;
         goto skip;
       }
@@ -493,16 +514,16 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP
   timeLog->markTime("  call judge");
   if(callJudge) {
     cout << "B: calling judge" << endl;
-    vector<osuCrypto::block> commitmentsEncsAJ;
+    vector<osuCrypto::Commit> commitmentsEncsAJ;
     int startIndex = 2*j*GV::n1;
     for(int i=0; i<GV::n1; i++) {
       commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
       commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i+1));
     }
 
-    SignatureHolder* signatureHolder = signatureHolders.at(j);
+    SignatureHolder *signatureHolder = signatureHolders.at(j);
     CryptoPP::SecByteBlock signature = signatureHolder->getSignature();
-    int signatureLength = signatureHolder->getSignatureLength();
+    size_t signatureLength = signatureHolder->getSignatureLength();
 
     Judge judge(kappa, pk, circuit);
     bool judgement = judge.accuse(j, signature, signatureLength, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,

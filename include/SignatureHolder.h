@@ -6,12 +6,12 @@ using namespace std;
 
 class SignatureHolder {
   public:
-    SignatureHolder(CryptoPP::byte *msg, int msgLength, CryptoPP::SecByteBlock signature, int signatureLength);
+    SignatureHolder(CryptoPP::byte *msg, int msgLength, CryptoPP::SecByteBlock signature, size_t signatureLength);
     virtual ~SignatureHolder();
     CryptoPP::byte *getMsg();
     CryptoPP::SecByteBlock getSignature();
     int getMsgLength();
-    int getSignatureLength();
+    size_t getSignatureLength();
 
   protected:
 
@@ -19,7 +19,7 @@ class SignatureHolder {
     CryptoPP::byte *msg;
     int msgLength;
     CryptoPP::SecByteBlock signature;
-    int signatureLength;
+    size_t signatureLength;
 };
 
 #endif // SIGNATUREHOLDER_H

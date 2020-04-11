@@ -14,7 +14,7 @@ class GV {
   public:
     static const int n1 = 64;
     static const int n2 = 64;
-    inline static const string filename = "mult64.txt";
+    inline static const string filename = "adder64.txt";
 
     //network
     static const int PORT = 1212;

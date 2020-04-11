@@ -32,13 +32,18 @@ class PartyB {
     bool startProtocol();
 
     bool checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA,
-                          vector<osuCrypto::block> commitmentsEncsA, vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA);
+                          vector<osuCrypto::Commit> commitmentsEncsA, vector<osuCrypto::Commit> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA);
 
     bool evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsGammaB);
 
-    bool simulatePartyA(osuCrypto::KosOtExtReceiver* recver, vector<CryptoPP::byte*> seedsB,
-                        vector<SignatureHolder*> signatureHolders, vector<osuCrypto::block> seedsWitnessA, vector<osuCrypto::block> commitmentsEncsA,
-                        vector<osuCrypto::block> commitmentsCircuitsA, vector<osuCrypto::block> commitmentsB, vector<osuCrypto::block> decommitmentsB);
+    bool simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
+                        vector<CryptoPP::byte*> seedsB,
+                        vector<SignatureHolder*> signatureHolders,
+                        vector<osuCrypto::block> seedsWitnessA,
+                        vector<osuCrypto::Commit> commitmentsEncsA,
+                        vector<osuCrypto::Commit> commitmentsCircuitsA,
+                        vector<osuCrypto::Commit> commitmentsB,
+                        vector<osuCrypto::block> decommitmentsB);
 
     vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder,
                                              vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);

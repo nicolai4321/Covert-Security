@@ -40,12 +40,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, filename);
     int inputGatesNr = cr.getInputGates();
 
-    if(!import.first) {
-      string msg = "Error! Could not import circuit";
-      cout << msg << endl;
-      throw msg;
-    }
-
+    if(!import.first) {throw runtime_error("Error! Could not import circuit");}
     clock_t start = clock();
 
     vector<vector<CryptoPP::byte*>> encodings = import.second;
@@ -62,11 +57,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
       i++;
     }
 
-    if(i != inputGatesNr) {
-        string msg = "Error! To few input gates. There should be "+to_string(inputGatesNr)+" input gates";
-        cout << msg << endl;
-        throw msg;
-    }
+    if(i != inputGatesNr) {throw runtime_error("Error! To few input gates. There should be "+to_string(inputGatesNr)+" input gates");}
 
     GarbledCircuit *F = circuit->exportCircuit();
     evaluator->giveCircuit(F);
@@ -86,14 +77,10 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
         double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
         return duration;
       } else {
-        string msg = "Error! Could not decode the encoding";
-        cout << msg << endl;
-        throw msg;
+        throw runtime_error("Error! Could not decode the encoding");
       }
     } else {
-      string msg = "Error! Could not evaluate circuit";
-      cout << msg << endl;
-      throw msg;
+      throw runtime_error("Error! Could not evaluate circuit");
     }
   } catch (...) {
     return 0;
@@ -141,16 +128,15 @@ void runCircuitFiles(int kappa, HashInterface *hashInterface) {
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
 }
 
-bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circuit, EvaluatorInterface *evaluator) {
-  //Digital Signature
-  pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> keys = Signature::generateKeys(1024);
-  CryptoPP::RSA::PrivateKey sk = keys.first;
-  CryptoPP::RSA::PublicKey pk = keys.second;
+bool startProtocol(int kappa, int lambda, int x, int y,
+                   CircuitInterface *circuit,
+                   EvaluatorInterface *evaluator,
+                   CryptoPP::RSA::PrivateKey sk,
+                   CryptoPP::RSA::PublicKey pk) {
 
   TimeLog *timeLog = new TimeLog();
   TimeLog *timeLogA = new TimeLog();
   TimeLog *timeLogB = new TimeLog();
-
   bool b0;
   bool b1;
 
@@ -172,7 +158,7 @@ bool startProtocol(int kappa, int lambda, int x, int y, CircuitInterface *circui
     cout << circuit->toString() << ": success" << endl;
     string s = timeLog->getTimes();
 
-    if(true) {
+    if(false) {
       s += "\nA:\n";
       s += timeLogA->getTimes();
       s += "\nB:\n";
@@ -200,6 +186,11 @@ void startProtocols(int kappa) {
   int x = 100;
   int y = 20;
 
+  //Digital Signature
+  pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> keys = Signature::generateKeys(1024);
+  CryptoPP::RSA::PrivateKey sk = keys.first;
+  CryptoPP::RSA::PublicKey pk = keys.second;
+
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
   CryptoPP::byte *key = Util::randomByte(keyLength);
@@ -212,17 +203,17 @@ void startProtocols(int kappa) {
   //Normal circuit, sha hash
   CircuitInterface *normalCircuitSha = new NormalCircuit(kappa, unimportantSeed, hashSha);
   EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashSha);
-  startProtocol(kappa, lambda, x, y, normalCircuitSha, normalEvaluatorSha);
+  startProtocol(kappa, lambda, x, y, normalCircuitSha, normalEvaluatorSha, sk, pk);
 
   //Half garbling, sha hash
   CircuitInterface *halfCircuitSha = new HalfCircuit(kappa, unimportantSeed, hashSha);
   EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashSha);
-  startProtocol(kappa, lambda, x, y, halfCircuitSha, halfEvaluatorSha);
+  startProtocol(kappa, lambda, x, y, halfCircuitSha, halfEvaluatorSha, sk, pk);
 
   //Half garbling, aes hash
   CircuitInterface *halfCircuitAES = new HalfCircuit(kappa, unimportantSeed, hashHardware);
   EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardware);
-  startProtocol(kappa, lambda, x, y, halfCircuitAES, halfEvaluatorAES);
+  startProtocol(kappa, lambda, x, y, halfCircuitAES, halfEvaluatorAES, sk, pk);
 }
 
 void timeHash(HashInterface *hashInter, int length, int rounds, string name) {
@@ -256,6 +247,7 @@ int main() {
   //runCircuitFiles(kappa, hashInterface);
   startProtocols(kappa);
   //runHashFuncs(kappa, 1000000);
+
   cout << "covert end" << endl;
   return 0;
 }

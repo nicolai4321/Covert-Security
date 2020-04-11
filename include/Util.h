@@ -22,11 +22,10 @@ class Util {
 
     //Variables
     static const int IV_LENGTH = 16;
-    static const int COMMIT_LENGTH = 16;
 
     //Functions
-    static CryptoPP::byte *commit(osuCrypto::block b, osuCrypto::block r);
-    static CryptoPP::byte *commit(vector<CryptoPP::byte*> bytes, osuCrypto::block r, int length);
+    static osuCrypto::Commit commit(osuCrypto::block b, osuCrypto::block r);
+    static osuCrypto::Commit commit(vector<pair<CryptoPP::byte*,int>> bytes, osuCrypto::block r, int totalLength);
 
     static void shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte *seed, int length, unsigned int iv);
     static CryptoPP::byte *randomByte(int length);
