@@ -9,19 +9,6 @@ PartyB::PartyB(int input, CryptoPP::RSA::PublicKey publicKey, int k, int l, Circ
   circuit = cir;
   evaluator = eI;
   timeLog = timelog;
-
-  //Circuit reader
-  CircuitReader cr = CircuitReader();
-  cr.setReverseInput(true);
-  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuit, GV::filename);
-  if(import.first) {
-    GarbledCircuit *F = circuit->exportCircuit();
-    gateOrderB = F->getGateOrder();
-    outputGatesB = F->getOutputGates();
-    gateInfoB = F->getGateInfo();
-  } else {
-    throw runtime_error("B: Error! Invalid circuit file");
-  }
 }
 
 PartyB::~PartyB() {}
@@ -80,6 +67,22 @@ bool PartyB::startProtocol() {
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: has done first OT" << endl;
   timeLog->endMark("1st ot");
 
+  //simulate garbling
+  timeLog->markTime("simulate garbling");
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: simulate garbling" << endl;
+  vector<CryptoPP::byte*> seedsA;
+  for(int j=0; j<lambda; j++) {
+    seedsA.push_back(Util::blockToByte(seedsWitnessA.at(j), kappa));
+  }
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
+
+  //store basic information (independent of seed)
+  GarbledCircuit *gC = garblingInfo.first.at(0)->exportCircuit();
+  gateOrderB = gC->getGateOrder();
+  outputGatesB = gC->getOutputGates();
+  gateInfoB = gC->getGateInfo();
+  timeLog->endMark("simulate garbling");
+
   //Second OT
   timeLog->markTime("2nd ot");
   vector<osuCrypto::block> encsInputsB = otEncodingsB(&recver, y, lambda, kappa, gamma, chlOT, socketRecorder, seedsB, &ivB);
@@ -105,7 +108,7 @@ bool PartyB::startProtocol() {
 
   //Simulate party A to check signatures and commitments
   timeLog->markTime("simulate");
-  if(!simulatePartyA(&recver, seedsB, signatureHolders, seedsWitnessA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB, decommitmentsB)) {
+  if(!simulatePartyA(&recver, seedsB, signatureHolders, seedsA, commitmentsEncsA, commitmentsCircuitsA, commitmentsB, decommitmentsB, garblingInfo)) {
     chlOT.close();
     chl.close();
     ios->stop();
@@ -347,14 +350,15 @@ bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, v
 /*
   Checks that the input encodings is computed from the seed
 */
-bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
+bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver *recver,
                             vector<CryptoPP::byte*> seedsB,
                             vector<SignatureHolder*> signatureHolders,
-                            vector<osuCrypto::block> seedsWitnessA,
+                            vector<CryptoPP::byte*> seedsA,
                             vector<osuCrypto::Commit> commitmentsEncsA,
                             vector<osuCrypto::Commit> commitmentsCircuitsA,
                             vector<osuCrypto::Commit> commitmentsB,
-                            vector<osuCrypto::block> decommitmentsB) {
+                            vector<osuCrypto::block> decommitmentsB,
+                            pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfoSim) {
   //Checking signatures
   timeLog->markTime("  check signatures");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking signatures" << endl;
@@ -368,25 +372,15 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
   timeLog->endMark("  check signatures");
 
   //Generating seeds
-  timeLog->markTime("  seeds");
-  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: generating seeds" << endl;
+  timeLog->markTime("  iv");
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: generating ivs" << endl;
   map<unsigned int, unsigned int> ivAsim;
   map<unsigned int, unsigned int> ivBSim;
-  vector<CryptoPP::byte*> seedsA;
   for(int j=0; j<lambda; j++) {
-    seedsA.push_back(Util::blockToByte(seedsWitnessA.at(j), kappa));
     ivAsim[j] = 1;
     ivBSim[j] = 1;
   }
-  timeLog->endMark("  seeds");
-
-  //Simulated garbling
-  timeLog->markTime("  garbling");
-  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: simulating garbling" << endl;
-  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
-  vector<CircuitInterface*> circuits = garblingInfo.first;
-  map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfo.second;
-  timeLog->endMark("  garbling");
+  timeLog->endMark("  iv");
 
   //Network
   timeLog->markTime("  network setup");
@@ -404,6 +398,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
 
   //Simulating the 2nd OT
   timeLog->markTime("  2nd ot");
+  map<int, vector<vector<CryptoPP::byte*>>> encsSimulated = garblingInfoSim.second;
   auto senderThread = thread([&]() {
   osuCrypto::KosOtExtSender sender;
     PartyA::otEncs(&sender, lambda, kappa, recSerSim, socSerSim, encsSimulated, seedsA, &ivAsim);
@@ -461,6 +456,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
   timeLog->endMark("  commitments encs");
 
   timeLog->markTime("  commitments circuits");
+  vector<CircuitInterface*> circuits = garblingInfoSim.first;
   pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitPair = PartyA::commitCircuits(lambda, kappa, circuit, seedsA, &ivAsim, circuits);
   vector<osuCrypto::Commit> commitmentsA = commitPair.first;
   vector<osuCrypto::block> decommitmentsA = commitPair.second;

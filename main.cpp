@@ -160,15 +160,15 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     cout << circuitA->toString() << ": success" << endl;
     string s = timeLog->getTimes();
 
-    if(false) {
+    if(true) {
       s += "\nA:\n";
       s += timeLogA->getTimes();
       s += "\nB:\n";
       s += timeLogB->getTimes();
     }
 
-    if(false) {
-      ofstream file(circuitA->toString()+".txt");
+    if(true) {
+      ofstream file(circuitA->toString()+GV::filename);
       file << s;
     }
 

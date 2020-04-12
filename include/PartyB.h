@@ -39,11 +39,12 @@ class PartyB {
     bool simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
                         vector<CryptoPP::byte*> seedsB,
                         vector<SignatureHolder*> signatureHolders,
-                        vector<osuCrypto::block> seedsWitnessA,
+                        vector<CryptoPP::byte*> seedsA,
                         vector<osuCrypto::Commit> commitmentsEncsA,
                         vector<osuCrypto::Commit> commitmentsCircuitsA,
                         vector<osuCrypto::Commit> commitmentsB,
-                        vector<osuCrypto::block> decommitmentsB);
+                        vector<osuCrypto::block> decommitmentsB,
+                        pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfoSim);
 
     vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder,
                                              vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
