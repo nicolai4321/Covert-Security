@@ -379,7 +379,6 @@ osuCrypto::Commit PartyA::commitCircuit(int kapp, string type, GarbledCircuit *F
   } else {
     map<string, vector<CryptoPP::byte*>> encData = F->getAndEncodings();
     map<string, vector<CryptoPP::byte*>>::iterator it = encData.begin();
-    it = encData.begin();
     while(it != encData.end()) {
       string gateName = it->first;
       vector<CryptoPP::byte*> v = encData[gateName];
@@ -410,14 +409,15 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
 
   //Circuit
   string filepath = "circuits/"+GV::filename;
-  ifstream in(filepath);
-  in >> noskipws;
-  vector<unsigned char> circuitVector((istream_iterator<unsigned char>(in)), (istream_iterator<unsigned char>()));
+  ifstream reader(filepath);
+  reader >> noskipws;
+  vector<unsigned char> circuitVector((istream_iterator<unsigned char>(reader)), (istream_iterator<unsigned char>()));
   CryptoPP::byte *circuitByte = new CryptoPP::byte[circuitVector.size()];
   circuitByte = &circuitVector[0];
   pair<CryptoPP::byte*, int> p0(circuitByte, circuitVector.size());
   bytes.push_back(p0);
   bytesSize += circuitVector.size();
+  reader.close();
 
   //Commitments from A
   pair<CryptoPP::byte*, int> p1(commitmentA->data(), commitmentA->size());

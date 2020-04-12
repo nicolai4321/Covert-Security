@@ -253,7 +253,7 @@ bool PartyB::checkCommitments(GarbledCircuit* F,
 
   //Checking gate order
   vector<string> gateOrderA = F->getGateOrder();
-  if(gateOrderA.size() != gateInfoB.size()) {
+  if(gateOrderA.size() != gateOrderB.size()) {
     cout << "B: Error! Not same amount of gates (lambda)" << endl;
     return false;
   }
