@@ -12,26 +12,20 @@ int Util::lsb(CryptoPP::byte* b, int length) {
 }
 
 /*
-  bitwise operations:
-  &: and
-  ^: xor
-  |: or
-  ~: not
+  Bitwise operations:
 */
-CryptoPP::byte* Util::byteOp(CryptoPP::byte* b0, CryptoPP::byte* b1, string op, int length) {
-  CryptoPP::byte *b = new CryptoPP::byte[length];
+void Util::byteOp(CryptoPP::byte *b0, CryptoPP::byte *b1, CryptoPP::byte *output, int op, int length) {
   for(int i=0; i<length; i++) {
-    if(op.compare("XOR") == 0) {
-      b[i] = b0[i] ^ b1[i];
-    } else if(op.compare("AND") == 0) {
-      b[i] = b0[i] & b1[i];
-    } else if(op.compare("OR") == 0) {
-      b[i] = b0[i] | b1[i];
+    if(op == XOR) {
+      output[i] = b0[i] ^ b1[i];
+    } else if(op == AND) {
+      output[i] = b0[i] & b1[i];
+    } else if(op == OR) {
+      output[i] = b0[i] | b1[i];
     } else {
-      throw runtime_error("Error! Unknown operator: '" + op + "'");
+      throw runtime_error("Error! Unknown operator: '" + to_string(op) + "'");
     }
   }
-  return b;
 }
 
 /*
@@ -67,9 +61,10 @@ osuCrypto::Commit Util::commit(vector<pair<CryptoPP::byte*,int>> bytes, osuCrypt
 */
 void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
   //iv size is required to be 16 bytes
-  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
-  memcpy(ivByte, longToByte(iv), 8);
+  memcpy(ivByte, &iv, sizeof(unsigned int));
+
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
   prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
   prng.Shuffle(v.begin(), v.end());
@@ -78,28 +73,24 @@ void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int seedLeng
 /*
   Returns a random byte
 */
-CryptoPP::byte* Util::randomByte(int length) {
+void Util::randomByte(CryptoPP::byte *output, int length) {
   CryptoPP::AutoSeededRandomPool asrp;
-  CryptoPP::byte* b = new CryptoPP::byte[length];
-  asrp.GenerateBlock(b, length);
-  return b;
+  asrp.GenerateBlock(output, length);
 }
 
 /*
   Returns a random byte with a seed
 */
-CryptoPP::byte* Util::randomByte(int length, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
+unsigned int Util::randomByte(CryptoPP::byte *output, int length, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
   //iv size is required to be 16 bytes
-  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
-  memcpy(ivByte, longToByte(iv), 8);
+  memcpy(ivByte, &iv, sizeof(unsigned int));
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
   prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
-  CryptoPP::byte *b = new CryptoPP::byte[length];
-  prng.GenerateBlock(b, length);
-
-  return b;
+  prng.GenerateBlock(output, length);
+  return iv+1;
 }
 
 /*
@@ -124,9 +115,9 @@ long Util::randomInt(int minInt, int maxInt) {
 */
 long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv) {
   //iv size is required to be 16 bytes
-  CryptoPP::byte *ivByte = new CryptoPP::byte[IV_LENGTH];
+  CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
-  memcpy(ivByte, longToByte(iv), 8);
+  memcpy(ivByte, &iv, sizeof(unsigned int));
 
   CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
   prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
@@ -139,25 +130,6 @@ long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, u
   }
   long l = r.ConvertToLong();
   return l;
-}
-
-/*
-  Returns a random string that can contain
-  numbers, upper- and lower-case letters.
-  Returns a random byte with a seed
-*/
-string Util::randomString(int length) {
-  string lettersLower = "abcdefghijklmnopqrstuvwxyz";
-  string lettersUpper = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-  string numbers = "0123456789";
-  string combine = lettersLower+lettersUpper+numbers;
-  string s = "";
-  for(int i=0; i<length; i++) {
-    long l = Util::randomInt(0, combine.size());
-    s += combine[l];
-  }
-
-  return s;
 }
 
 /*
@@ -180,51 +152,23 @@ osuCrypto::block Util::byteToBlock(CryptoPP::byte* b, int length) {
 /*
   Transform block to byte
 */
-CryptoPP::byte* Util::blockToByte(osuCrypto::block b, int length) {
+void Util::blockToByte(osuCrypto::block b, int length, CryptoPP::byte *output) {
   int blockLength = 8;
   int blockIndexesRequired = ceil(((float) length)/((float) blockLength));
 
-  CryptoPP::byte *output = new CryptoPP::byte[length];
-
   for(int i=0; i<blockIndexesRequired; i++) {
-    CryptoPP::byte *bytePart = Util::longToByte(b[i]);
-    for(int j=0; j<blockLength; j++) {
-      output[j+(i*blockLength)] = bytePart[j];
-    }
+    memcpy(output+(i*blockLength), &b[i], blockLength);
   }
-  return output;
 }
 
-/*
-  Transform integer to byte (32 bits)
-*/
-CryptoPP::byte* Util::intToByte(int i) {
-  CryptoPP::byte *b = new CryptoPP::byte[sizeof(int)];
-  memcpy(b, &i, sizeof i);
-  return b;
-}
-
-/*
-  Transform byte to integer (32 bits)
-*/
+//Transform byte to integer (32 bits)
 int Util::byteToInt(CryptoPP::byte* b) {
   int i;
   memcpy(&i, b, sizeof i);
   return i;
 }
 
-/*
-  Transform long to byte (64 bits)
-*/
-CryptoPP::byte* Util::longToByte(long i) {
-  CryptoPP::byte *b = new CryptoPP::byte[sizeof(long)];
-  memcpy(b, &i, sizeof(long));
-  return b;
-}
-
-/*
-  Transform byte to long (64 bits)
-*/
+//Transform byte to long (64 bits)
 long Util::byteToLong(CryptoPP::byte* b) {
   long i;
   memcpy(&i, b, sizeof(long));
@@ -234,24 +178,9 @@ long Util::byteToLong(CryptoPP::byte* b) {
 /*
   Merges two bytes to one
 */
-CryptoPP::byte *Util::mergeBytes(CryptoPP::byte *b0, CryptoPP::byte *b1, int length) {
-  CryptoPP::byte *b = new CryptoPP::byte[2*length];
-  memcpy(b, b0, length);
-  memcpy(b+length, b1, length);
-  return b;
-}
-
-/*
-  Merges multiple bytes to one
-*/
-CryptoPP::byte *Util::mergeBytes(vector<CryptoPP::byte*> bytes, int length) {
-  int vectorLength = bytes.size();
-
-  CryptoPP::byte *b = new CryptoPP::byte[vectorLength*length];
-  for(int i=0; i<vectorLength; i++) {
-    memcpy((b+(i*length)), bytes.at(i), length);
-  }
-  return b;
+void Util::mergeBytes(CryptoPP::byte *b0, CryptoPP::byte *b1, int length, CryptoPP::byte *output) {
+  memcpy(output, b0, length);
+  memcpy(output+length, b1, length);
 }
 
 /*
@@ -271,45 +200,47 @@ string Util::byteToString(CryptoPP::byte* b, int byteSize) {
 }
 
 string Util::blockToString(osuCrypto::block b, int length) {
-  return byteToString(blockToByte(b, length), length);
+  CryptoPP::byte byt[length];
+  blockToByte(b, length, byt);
+  return byteToString(byt, length);
 }
 
 /*
   Transform a string to a byte
 */
-CryptoPP::byte* Util::stringToByte(string s, int length) {
+void Util::stringToByte(string s, CryptoPP::byte *output, int length) {
   string sink;
-  CryptoPP::StringSource ss(s, true,
-    new CryptoPP::HexDecoder(
-        new CryptoPP::StringSink(sink)
-    )
-  );
+  CryptoPP::StringSink *stringSink = new CryptoPP::StringSink(sink);
+  CryptoPP::HexDecoder *hexDecoder = new CryptoPP::HexDecoder(stringSink);
+  CryptoPP::StringSource ss(s, true, hexDecoder);
+
   CryptoPP::byte *b = (CryptoPP::byte*) sink.data();
-  CryptoPP::byte *output = new CryptoPP::byte[length];
   memcpy(output, b, length);
 
-  return output;
+  delete stringSink;
+  delete hexDecoder;
 }
 
 osuCrypto::block Util::stringToBlock(string s, int length) {
-  return byteToBlock(stringToByte(s, length), length);
+  CryptoPP::byte output[length];
+  stringToByte(s, output, length);
+  return byteToBlock(output, length);
 }
 
 /*
   Prints a byte in string form
 */
-void Util::printByte(CryptoPP::byte* b, int length) {
+void Util::printByte(CryptoPP::byte *b, int length) {
   string s;
-	CryptoPP::StringSource(b, length, true,
-		new CryptoPP::HexEncoder(
-			new CryptoPP::StringSink(s)
-		)
-	);
+  CryptoPP::StringSink *stringSink = new CryptoPP::StringSink(s);
+  CryptoPP::HexEncoder *hexDecoder = new CryptoPP::HexEncoder(stringSink);
+	CryptoPP::StringSource(b, length, true, hexDecoder);
   cout << "byte: " << s << endl;
+  delete stringSink;
+  delete hexDecoder;
 }
 
-
-void Util::printByteInBits(CryptoPP::byte* b, int length) {
+void Util::printByteInBits(CryptoPP::byte *b, int length) {
   cout << "bits: ";
   for(int i=length-1; i>=0; i--) {
     cout << bitset<8>(b[i]).to_string() << " ";
@@ -318,11 +249,12 @@ void Util::printByteInBits(CryptoPP::byte* b, int length) {
 }
 
 void Util::printBlockInBits(osuCrypto::block b, int length) {
-  CryptoPP::byte *byt = blockToByte(b, length);
+  CryptoPP::byte byt[length];
+  blockToByte(b, length, byt);
   printByteInBits(byt, length);
 }
 
-string Util::byteToBitString(CryptoPP::byte* b, int length) {
+string Util::byteToBitString(CryptoPP::byte *b, int length) {
   string out;
   for(int i=0; i<length; i++) {
     out += bitset<8>(b[i]).to_string()+" ";

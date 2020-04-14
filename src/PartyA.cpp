@@ -33,8 +33,12 @@ bool PartyA::startProtocol() {
   vector<CryptoPP::byte*> witnesses;
   map<unsigned int, unsigned int> iv;
   for(int j=0; j<lambda; j++) {
-    seedsA.push_back(Util::randomByte(kappa));
-    witnesses.push_back(Util::randomByte(kappa));
+    CryptoPP::byte *seedA = new CryptoPP::byte[kappa];
+    CryptoPP::byte *witnessA = new CryptoPP::byte[kappa];
+    Util::randomByte(seedA, kappa);
+    Util::randomByte(witnessA, kappa);
+    seedsA.push_back(seedA);
+    witnesses.push_back(witnessA);
     iv[j] = 0;
   }
   timeLog->endMark("generating seeds");
@@ -105,10 +109,13 @@ bool PartyA::startProtocol() {
   timeLog->endMark("waiting for gamma, witness");
 
   timeLog->markTime("checking");
-  int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
+
+  CryptoPP::byte gammaByte[4];
+  Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4, gammaByte);
+  int gamma = Util::byteToInt(gammaByte);
 
   //Checks the seeds and witness
-  if(!checkSeedsWitness(gammaSeedsWitnessBlock, seedsA, witnesses)) {
+  if(!checkSeedsWitness(gamma, gammaSeedsWitnessBlock, seedsA, witnesses)) {
     chlOT.close();
     chl.close();
     ios->stop();
@@ -185,7 +192,10 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
     osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kapp);
     osuCrypto::block block1 = Util::byteToBlock(witnesses.at(j), kapp);
     data[0] = {block0, block1};
-    CryptoPP::byte *seedInput = Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]); (*iv)[j] = (*iv)[j] + 1;
+
+    CryptoPP::byte seedInput[kapp];
+    (*iv)[j] = Util::randomByte(seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
+
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
@@ -197,7 +207,6 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
 */
 void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                     map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
-
   sRecorder->forceStore("ot2", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(GV::n2);
@@ -207,7 +216,9 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
       data[i] = {block0, block1};
     }
 
-    CryptoPP::byte* seedInput = Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]); (*iv)[j] = (*iv)[j]+1;
+    CryptoPP::byte seedInput[kapp];
+    (*iv)[j] = Util::randomByte(seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
+
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     sender->genBaseOts(prng, channel);
     sender->sendChosen(data, prng, channel);
@@ -217,11 +228,10 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
 /*
   Checks that party A has correct seeds and witness
 */
-bool PartyA::checkSeedsWitness(vector<osuCrypto::block> gammaSeedsWitnessBlock, vector<CryptoPP::byte*> seedsA, vector<CryptoPP::byte*> witnesses) {
-  int gamma = Util::byteToInt(Util::blockToByte(gammaSeedsWitnessBlock.at(0), 4));
-
+bool PartyA::checkSeedsWitness(int gamma, vector<osuCrypto::block> gammaSeedsWitnessBlock, vector<CryptoPP::byte*> seedsA, vector<CryptoPP::byte*> witnesses) {
   for(int j=0; j<lambda; j++) {
-    CryptoPP::byte *b = Util::blockToByte(gammaSeedsWitnessBlock.at(j+1), kappa);
+    CryptoPP::byte b[kappa];
+    Util::blockToByte(gammaSeedsWitnessBlock.at(j+1), kappa, b);
     if(lambda == j) {
       if(memcmp(witnesses.at(j), b, kappa) != 0) {
         cout << "A: Error! Witness is not correct" << endl;
@@ -273,8 +283,13 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
                             vector<osuCrypto::Commit>* commitmentsEncsInputsA,
                             vector<pair<osuCrypto::block, osuCrypto::block>>* decommitmentsEncsA) {
   for(int i=0; i<GV::n1; i++) {
-    osuCrypto::block decommit0 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
-    osuCrypto::block decommit1 = Util::byteToBlock(Util::randomByte(kapp, seedA, kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
+    CryptoPP::byte decom0[kapp];
+    CryptoPP::byte decom1[kapp];
+    (*iv)[j] = Util::randomByte(decom0, kapp, seedA, kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(decom1, kapp, seedA, kapp, (*iv)[j]);
+
+    osuCrypto::block decommit0 = Util::byteToBlock(decom0, kapp);
+    osuCrypto::block decommit1 = Util::byteToBlock(decom1, kapp);
 
     osuCrypto::Commit c0 = Util::commit(Util::byteToBlock(encs.at(i).at(0), kapp), decommit0);
     osuCrypto::Commit c1 = Util::commit(Util::byteToBlock(encs.at(i).at(1), kapp), decommit1);
@@ -325,7 +340,11 @@ pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits
 
   for(int j=0; j<lamb; j++) {
     GarbledCircuit *F = circuits.at(j)->exportCircuit();
-    osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kapp, seedsA.at(j), kapp, (*iv)[j]), kapp); (*iv)[j] = (*iv)[j]+1;
+
+    CryptoPP::byte decom[kapp];
+    (*iv)[j] = Util::randomByte(decom, kapp, seedsA.at(j), kapp, (*iv)[j]);
+
+    osuCrypto::block decommit = Util::byteToBlock(decom, kapp);
     osuCrypto::Commit c = commitCircuit(kapp, cir->getType(), F, decommit);
 
     decommitmentsA.push_back(decommit);

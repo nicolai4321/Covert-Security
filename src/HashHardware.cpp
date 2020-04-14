@@ -64,13 +64,11 @@ __m128i HashHardware::decrypt(__m128i *cipher, __m128i *key, int nrRounds) {
   return tmp;
 }
 
-CryptoPP::byte* HashHardware::hashByte(CryptoPP::byte *plain, int length) {
-  __m128i sigmaValue = sigmaFunc(plain, length);
+void HashHardware::hashByte(CryptoPP::byte *plain, int plainLength, CryptoPP::byte *outputByte, int outputLength) {
+  __m128i sigmaValue = sigmaFunc(plain, plainLength);
   __m128i cipher = encrypt(&sigmaValue, keySchedule, 10);
   __m128i xored = _mm_xor_si128(cipher, sigmaValue);
-  CryptoPP::byte *output = new CryptoPP::byte[length];
-  _mm_storeu_si128((__m128i*) output, xored);
-  return output;
+  _mm_storeu_si128((__m128i*) outputByte, xored);
 }
 
 string HashHardware::toString() {

@@ -18,8 +18,10 @@ vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName) {
   for false and true
 */
 vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName, string gateType, string gateL, string gateR) {
-  CryptoPP::byte *encF = Util::randomByte(kappa, seed, kappa, iv); iv++;
-  CryptoPP::byte *encT = Util::randomByte(kappa, seed, kappa, iv); iv++;
+  CryptoPP::byte *encF = new CryptoPP::byte[kappa];
+  CryptoPP::byte *encT = new CryptoPP::byte[kappa];
+  iv = Util::randomByte(encF, kappa, seed, kappa, iv);
+  iv = Util::randomByte(encT, kappa, seed, kappa, iv);
 
   vector<CryptoPP::byte*> encodings;
   encodings.push_back(encF);
@@ -40,13 +42,22 @@ vector<CryptoPP::byte*> NormalCircuit::addGate(string gateName, string gateType,
 /*
   Encodes the gate: H(W_l || W_r) xor (W_o || 0^k)
 */
-CryptoPP::byte* NormalCircuit::encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO) {
-  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
+CryptoPP::byte* NormalCircuit::encodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *encO) {
+  CryptoPP::byte zero[kappa];
   memset(zero, 0x00, kappa);
 
-  CryptoPP::byte *l = h->hashByte(Util::mergeBytes(encL, encR, kappa), 2*kappa);
-  CryptoPP::byte *r = Util::mergeBytes(encO, zero, kappa);
-  return Util::byteOp(l, r, "XOR", 2*kappa);
+  CryptoPP::byte encLR[2*kappa];
+  Util::mergeBytes(encL, encR, kappa, encLR);
+
+  CryptoPP::byte hashEncLR[2*kappa];
+  h->hashByte(encLR, 2*kappa, hashEncLR, 2*kappa);
+
+  CryptoPP::byte right[2*kappa];
+  Util::mergeBytes(encO, zero, kappa, right);
+
+  CryptoPP::byte *output = new CryptoPP::byte[2*kappa];
+  Util::byteOp(hashEncLR, right, output, Util::XOR, 2*kappa);
+  return output;
 }
 
 /*

@@ -91,7 +91,8 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
   Runs the circuit files
 */
 void runCircuitFiles(int kappa, HashInterface *hashInterface) {
-  CryptoPP::byte *seed = Util::randomByte(kappa);
+  CryptoPP::byte seed[kappa];
+  Util::randomByte(seed, kappa);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -123,6 +124,11 @@ void runCircuitFiles(int kappa, HashInterface *hashInterface) {
 
     cout << "Time: " << time0 << " ("+circuitN->toString()+"), " << time1 << " ("+circuitH->toString()+")" << endl;
     cout << endl;
+
+    delete circuitN;
+    delete circuitH;
+    delete evalN;
+    delete evalH;
   }
 
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
@@ -160,7 +166,7 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     cout << circuitA->toString() << ": success" << endl;
     string s = timeLog->getTimes();
 
-    if(true) {
+    if(false) {
       s += "\nA:\n";
       s += timeLogA->getTimes();
       s += "\nB:\n";
@@ -195,14 +201,17 @@ void startProtocols(int kappa) {
 
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
-  CryptoPP::byte *key = Util::randomByte(keyLength);
+  CryptoPP::byte key[keyLength];
+  Util::randomByte(key, keyLength);
+
   HashInterface *hashShaA = new HashNormal(kappa);
   HashInterface *hashShaB = new HashNormal(kappa);
   HashInterface *hashHardwareA = new HashHardware(key, keyLength);
   HashInterface *hashHardwareB = new HashHardware(key, keyLength);
 
   //Circuits
-  CryptoPP::byte *unimportantSeed = Util::randomByte(kappa);
+  CryptoPP::byte unimportantSeed[kappa];
+  Util::randomByte(unimportantSeed, kappa);
 
   //Normal circuit, sha hash
   CircuitInterface *normalCircuitShaA = new NormalCircuit(kappa, unimportantSeed, hashShaA);
@@ -210,25 +219,48 @@ void startProtocols(int kappa) {
   EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashShaB);
   startProtocol(kappa, lambda, x, y, normalCircuitShaA, normalCircuitShaB, normalEvaluatorSha, sk, pk);
 
+  //Free memory
+  delete normalCircuitShaA;
+  delete normalCircuitShaB;
+  delete normalEvaluatorSha;
+
   //Half garbling, sha hash
   CircuitInterface *halfCircuitShaA = new HalfCircuit(kappa, unimportantSeed, hashShaA);
   CircuitInterface *halfCircuitShaB = new HalfCircuit(kappa, unimportantSeed, hashShaB);
   EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashShaB);
   startProtocol(kappa, lambda, x, y, halfCircuitShaA, halfCircuitShaB, halfEvaluatorSha, sk, pk);
 
+  //Free memory
+  delete halfCircuitShaA;
+  delete halfCircuitShaB;
+  delete halfEvaluatorSha;
+
+  delete hashShaA;
+  delete hashShaB;
+
   //Half garbling, aes hash
   CircuitInterface *halfCircuitAESA = new HalfCircuit(kappa, unimportantSeed, hashHardwareA);
   CircuitInterface *halfCircuitAESB = new HalfCircuit(kappa, unimportantSeed, hashHardwareB);
   EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardwareB);
   startProtocol(kappa, lambda, x, y, halfCircuitAESA, halfCircuitAESB, halfEvaluatorAES, sk, pk);
+
+  //Free memory
+  delete halfCircuitAESA;
+  delete halfCircuitAESB;
+  delete halfEvaluatorAES;
+
+  delete hashHardwareA;
+  delete hashHardwareB;
 }
 
 void timeHash(HashInterface *hashInter, int length, int rounds, string name) {
-  CryptoPP::byte *plain = Util::randomByte(length);
+  CryptoPP::byte plain[length];
+  Util::randomByte(plain, length);
 
   clock_t start = clock();
   for(int i=0; i<rounds; i++) {
-    hashInter->hashByte(plain, length);
+    CryptoPP::byte hashedByte[length];
+    hashInter->hashByte(plain, length, hashedByte, length);
   }
   double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
   cout << "time: " << duration << " - " << name << endl;
@@ -240,20 +272,26 @@ void runHashFuncs(int kappa, int rounds) {
   HashInterface *hashNormal = new HashNormal(kappa);
   timeHash(hashNormal, kappa, rounds, "normal");
 
-  CryptoPP::byte *key = Util::randomByte(keyLength);
+  CryptoPP::byte key[keyLength];
+  Util::randomByte(key, keyLength);
+
   HashInterface *hashHard = new HashHardware(key, keyLength);
   timeHash(hashHard, kappa, rounds, "aes hardware");
+
+  delete hashNormal;
+  delete hashHard;
 }
 
 int main() {
-  cout << "covert start" << endl;
+  cout << "||COVERT START||" << endl;
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
+  HashInterface *hashInterface = new HashNormal(kappa);
 
-  //runCircuitFiles(kappa, hashInterface);
+  runCircuitFiles(kappa, hashInterface);
   startProtocols(kappa);
-  //runHashFuncs(kappa, 1000000);
+  runHashFuncs(kappa, 1000000);
 
-  cout << "covert end" << endl;
+  cout << "||COVERT END||" << endl;
   return 0;
 }

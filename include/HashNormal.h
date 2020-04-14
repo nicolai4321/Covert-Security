@@ -8,7 +8,7 @@ using namespace std;
 
 class HashNormal: public HashInterface {
   public:
-    virtual CryptoPP::byte* hashByte(CryptoPP::byte *plain, int length);
+    virtual void hashByte(CryptoPP::byte *plain, int plainLength, CryptoPP::byte *outputByte, int outputLength);
     virtual string toString();
     HashNormal(int kappa);
     virtual ~HashNormal();

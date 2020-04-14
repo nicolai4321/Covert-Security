@@ -8,7 +8,7 @@ class HashInterface {
   public:
     HashInterface();
     virtual ~HashInterface();
-    virtual CryptoPP::byte* hashByte(CryptoPP::byte* plain, int length) = 0;
+    virtual void hashByte(CryptoPP::byte* plain, int plainLength, CryptoPP::byte *outputByte, int outputLength) = 0;
     virtual string toString() = 0;
 
   protected:

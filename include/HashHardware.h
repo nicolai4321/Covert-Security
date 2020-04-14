@@ -17,7 +17,7 @@ using namespace std;
 */
 class HashHardware: public HashInterface {
   public:
-    virtual CryptoPP::byte *hashByte(CryptoPP::byte *plain, int length);
+    virtual void hashByte(CryptoPP::byte *plain, int plainLength, CryptoPP::byte *outputByte, int outputLength);
     virtual string toString();
     HashHardware(CryptoPP::byte *key, int keyLength);
     virtual ~HashHardware();

@@ -31,7 +31,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   osuCrypto::Channel recCli(ios, siCli);
   osuCrypto::KosOtExtReceiver recver;
   osuCrypto::KosOtExtSender sender;
-  CryptoPP::byte *seedA;
+  CryptoPP::byte seedA[kappa];
 
   chlCli.waitForConnection();
   recCli.waitForConnection();
@@ -40,14 +40,16 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   socketRecorderClient->storeIn("ot1");
   auto threadCli = thread([&]() {
     int iv = 0;
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, kappa, iv);
+    CryptoPP::byte seedInput[kappa];
+    Util::randomByte(seedInput, kappa, seedB, kappa, iv);
+
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
     vector<osuCrypto::block> seedAblock(1);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, seedAblock, prng, recCli);
-    seedA = Util::blockToByte(seedAblock[0], kappa);
+    Util::blockToByte(seedAblock[0], kappa, seedA);
   });
 
   //This thread below does the OT with the transcript
@@ -142,7 +144,10 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
 
   //Checking commitment for cicuits
   GarbledCircuit *F = circuitInstance->exportCircuit();
-  osuCrypto::block decommit = Util::byteToBlock(Util::randomByte(kappa, seedA, kappa, ivA[j]), kappa);
+  CryptoPP::byte decom[kappa];
+  Util::randomByte(decom, kappa, seedA, kappa, ivA[j]);
+
+  osuCrypto::block decommit = Util::byteToBlock(decom, kappa);
   osuCrypto::Commit commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
 
   if(commitASim.size() != commitA.size()) {
@@ -168,7 +173,8 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
     }
 
     vector<osuCrypto::block> recv(GV::n2);
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedB, kappa, iv);
+    CryptoPP::byte seedInput[kappa];
+    Util::randomByte(seedInput, kappa, seedB, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, recv, prng, recCli);
@@ -183,7 +189,8 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
       data[i] = {enc0, enc1};
     }
 
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedA, kappa, iv);
+    CryptoPP::byte seedInput[kappa];
+    Util::randomByte(seedInput, kappa, seedA, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     sender.genBaseOts(prng, recSer);
     sender.sendChosen(data, prng, recSer);

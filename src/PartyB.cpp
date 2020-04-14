@@ -34,7 +34,9 @@ bool PartyB::startProtocol() {
   vector<CryptoPP::byte*> seedsB;
   map<unsigned int, unsigned int> ivB;
   for(int j=0; j<lambda; j++) {
-    seedsB.push_back(Util::randomByte(kappa));
+    CryptoPP::byte *seedB = new CryptoPP::byte[kappa];
+    Util::randomByte(seedB, kappa);
+    seedsB.push_back(seedB);
     ivB[j] = 0;
   }
   timeLog->endMark("generate gamma, seeds");
@@ -45,7 +47,9 @@ bool PartyB::startProtocol() {
   vector<osuCrypto::Commit> commitmentsB;
   vector<osuCrypto::block> decommitmentsB;
   for(int j=0; j<lambda; j++) {
-    osuCrypto::block r = Util::byteToBlock(Util::randomByte(kappa), kappa);
+    CryptoPP::byte rInput[kappa];
+    Util::randomByte(rInput, kappa);
+    osuCrypto::block r = Util::byteToBlock(rInput, kappa);
     osuCrypto::Commit c = Util::commit(Util::byteToBlock(seedsB.at(j), kappa), r);
     commitmentsB.push_back(c);
     commitmentsBSend.push_back(c);
@@ -72,7 +76,9 @@ bool PartyB::startProtocol() {
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: simulate garbling" << endl;
   vector<CryptoPP::byte*> seedsA;
   for(int j=0; j<lambda; j++) {
-    seedsA.push_back(Util::blockToByte(seedsWitnessA.at(j), kappa));
+    CryptoPP::byte *seedA = new CryptoPP::byte[kappa];
+    Util::blockToByte(seedsWitnessA.at(j), kappa, seedA);
+    seedsA.push_back(seedA);
   }
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
 
@@ -119,7 +125,11 @@ bool PartyB::startProtocol() {
   //Sends gamma, witness and seeds to other party
   timeLog->markTime("send gamma seed witness");
   vector<osuCrypto::block> gammaSeedsWitnessBlock;
-  gammaSeedsWitnessBlock.push_back(Util::byteToBlock(Util::intToByte(gamma), 4));
+
+  CryptoPP::byte gammaByte[sizeof(int)];
+  memcpy(gammaByte, &gamma, sizeof(int));
+
+  gammaSeedsWitnessBlock.push_back(Util::byteToBlock(gammaByte, sizeof(int)));
   for(int j=0; j<lambda; j++) {
     gammaSeedsWitnessBlock.push_back(seedsWitnessA.at(j));
   }
@@ -176,7 +186,9 @@ vector<osuCrypto::block> PartyB::otSeedsWitnessA(osuCrypto::KosOtExtReceiver* re
     osuCrypto::BitVector b(1);
     b[0] = (j==gamma) ? 1 : 0;
 
-    CryptoPP::byte *seedInput = Util::randomByte(kappa, seedsB.at(j), kappa, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+    CryptoPP::byte seedInput[kappa];
+    (*ivB)[j] = Util::randomByte(seedInput, kappa, seedsB.at(j), kappa, (*ivB)[j]);
+
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     vector<osuCrypto::block> dest(1);
     recver->genBaseOts(prng, channel);
@@ -207,7 +219,9 @@ vector<osuCrypto::block> PartyB::otEncodingsB(osuCrypto::KosOtExtReceiver* recve
 
     vector<osuCrypto::block> encs(GV::n2);
     CryptoPP::byte* seed = seedsB.at(j);
-    CryptoPP::byte* seedInput = Util::randomByte(kapp, seed, kapp, (*ivB)[j]); (*ivB)[j] = (*ivB)[j]+1;
+
+    CryptoPP::byte seedInput[kapp];
+    (*ivB)[j] = Util::randomByte(seedInput, kapp, seed, kapp, (*ivB)[j]);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
     recver->genBaseOts(prng, channel);
     recver->receiveChosen(b, encs, prng, channel);
@@ -318,10 +332,14 @@ bool PartyB::checkCommitments(GarbledCircuit* F,
 bool PartyB::evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsB) {
   vector<CryptoPP::byte*> encsInputs;
   for(int j=0; j<GV::n1; j++) {
-    encsInputs.push_back(Util::blockToByte(encsInputsA.at(j), kappa));
+    CryptoPP::byte *encInput = new CryptoPP::byte[kappa];
+    Util::blockToByte(encsInputsA.at(j), kappa, encInput);
+    encsInputs.push_back(encInput);
   }
   for(int j=0; j<GV::n2; j++) {
-    encsInputs.push_back(Util::blockToByte(encsInputsB.at(j), kappa));
+    CryptoPP::byte *encInput = new CryptoPP::byte[kappa];
+    Util::blockToByte(encsInputsB.at(j), kappa, encInput);
+    encsInputs.push_back(encInput);
   }
 
   evaluator->giveCircuit(F);
@@ -507,7 +525,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver *recver,
   skip:
   timeLog->endMark("  check commits");
 
-  timeLog->markTime("  call judge");
+  timeLog->markTime("  judge");
   if(callJudge) {
     cout << "B: calling judge" << endl;
     vector<osuCrypto::Commit> commitmentsEncsAJ;
@@ -539,7 +557,7 @@ bool PartyB::simulatePartyA(osuCrypto::KosOtExtReceiver *recver,
 
     return false;
   }
-  timeLog->endMark("  call judge");
+  timeLog->endMark("  judge");
 
   timeLog->markTime("  network close");
   socSerSim->close();

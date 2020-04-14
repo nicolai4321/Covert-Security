@@ -25,7 +25,9 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         inputIndex++;
       } else if(gateType.compare("CONST") == 0) {
       } else if(gateType.compare("XOR") == 0) {
-        gatesEvaluated[gateName] = Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], "XOR", kappa);
+        CryptoPP::byte *xorLR = new CryptoPP::byte[kappa];
+        Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], xorLR, Util::XOR, kappa);
+        gatesEvaluated[gateName] = xorLR;
       } else if(gateType.compare("AND") == 0) {
         int sa = Util::lsb(gatesEvaluated[gateL], kappa);
         int sb = Util::lsb(gatesEvaluated[gateR], kappa);
@@ -34,15 +36,32 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         CryptoPP::byte *Wa = gatesEvaluated[gateL];
         CryptoPP::byte *Wb = gatesEvaluated[gateR];
 
-        CryptoPP::byte *WG = (sa) ?
-          Util::byteOp(h->hashByte(Wa, kappa), TG, "XOR", kappa):
-          h->hashByte(Wa, kappa);
+        //WG
+        CryptoPP::byte hashWa[kappa];
+        h->hashByte(Wa, kappa, hashWa, kappa);
 
-        CryptoPP::byte *WE = (sb) ?
-          Util::byteOp(h->hashByte(Wb, kappa), Util::byteOp(TE, Wa, "XOR", kappa), "XOR", kappa):
-          h->hashByte(Wb, kappa);
+        CryptoPP::byte xorHashWaTG[kappa];
+        Util::byteOp(hashWa, TG, xorHashWaTG, Util::XOR, kappa);
 
-        gatesEvaluated[gateName] = Util::byteOp(WG, WE, "XOR", kappa);
+        CryptoPP::byte *WG = (sa) ? xorHashWaTG : hashWa;
+
+        //WE
+        CryptoPP::byte hashWb[kappa];
+        h->hashByte(Wb, kappa, hashWb, kappa);
+
+        CryptoPP::byte *xorTEWe = new CryptoPP::byte[kappa];
+        Util::byteOp(TE, Wa, xorTEWe, Util::XOR, kappa);
+
+        CryptoPP::byte *xorHashWbTeWE = new CryptoPP::byte[kappa];
+        Util::byteOp(hashWb, xorTEWe, xorHashWbTeWE, Util::XOR, kappa);
+
+        CryptoPP::byte *WE = (sb) ? xorHashWbTeWE : hashWb;
+
+        //evaluated
+        CryptoPP::byte *xorWGWE = new CryptoPP::byte[kappa];
+        Util::byteOp(WG, WE, xorWGWE, Util::XOR, kappa);
+
+        gatesEvaluated[gateName] = xorWGWE;
       } else {
         cout << "Error! Invalid gate type: " << gateType << endl;
         output.first = false;

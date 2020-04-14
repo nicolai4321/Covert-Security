@@ -1,10 +1,9 @@
 #include "HashNormal.h"
 using namespace std;
 
-CryptoPP::byte *HashNormal::hashByte(CryptoPP::byte *plain, int length) {
-  CryptoPP::byte *b = new CryptoPP::byte[CryptoPP::SHA256::DIGESTSIZE];
-  hashFunc.CalculateDigest(b, plain, length);
-  return b;
+void HashNormal::hashByte(CryptoPP::byte *plain, int plainLength, CryptoPP::byte *outputByte, int outputLength) {
+  hashFunc.Update(plain, plainLength);
+  hashFunc.TruncatedFinal(outputByte, outputLength);
 }
 
 string HashNormal::toString() {

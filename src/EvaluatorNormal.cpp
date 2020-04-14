@@ -73,12 +73,18 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 /*
   Decodes a gate if the last characters are zeros
 */
-pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc) {
+pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *enc) {
   pair<bool, CryptoPP::byte*> output;
   int kappa = F->getKappa();
 
-  CryptoPP::byte *l = h->hashByte(Util::mergeBytes(encL, encR, kappa), 2*kappa);
-  CryptoPP::byte *decoded = Util::byteOp(l, enc, "XOR", 2*kappa);
+  CryptoPP::byte mergedEncs[2*kappa];
+  Util::mergeBytes(encL, encR, kappa, mergedEncs);
+
+  CryptoPP::byte hashMergedEncs[2*kappa];
+  h->hashByte(mergedEncs, 2*kappa, hashMergedEncs, 2*kappa);
+
+  CryptoPP::byte *decoded = new CryptoPP::byte[2*kappa];
+  Util::byteOp(hashMergedEncs, enc, decoded, Util::XOR, 2*kappa);
 
   CryptoPP::byte *zero = new CryptoPP::byte[kappa];
   memset(zero, 0x00, kappa);
