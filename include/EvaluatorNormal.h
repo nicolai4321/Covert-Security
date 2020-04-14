@@ -20,8 +20,7 @@ class EvaluatorNormal: public EvaluatorInterface {
 
   private:
     HashInterface *h;
-
-    pair<bool, CryptoPP::byte*> decodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* enc);
+    bool decodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *enc, CryptoPP::byte *output);
 };
 
 #endif // EVALUATORNORMAL_H

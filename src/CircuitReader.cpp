@@ -21,7 +21,6 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
 
   ifstream reader;
   reader.open(filepath);
-  reader.exceptions (ifstream::eofbit | ifstream::failbit | ifstream::badbit);
   if(reader.is_open()) {
     regex r("[0-9]+");
     smatch m;
@@ -104,7 +103,6 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
       for(int j=0; j<nrOutputWires; j++) {
         outputWires.push_back(stoi(data.at(j+nrInputWires+2)));
       }
-
       string gateType = data.at(nrInputWires+nrOutputWires+2);
 
       if(gateType.compare("XOR") == 0) {
@@ -132,7 +130,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
         output.second = inputEncs;
         return output;
       }
-  }
+    }
 
     //Output gates
     vector<string> outputGates;

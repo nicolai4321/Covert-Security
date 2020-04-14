@@ -77,7 +77,6 @@ class PartyA {
     osuCrypto::Channel chl;
     osuCrypto::Channel chlOT;
     SocketRecorder *socketRecorder;
-    osuCrypto::IOService *ios;
     CircuitInterface *circuit;
     TimeLog *timeLog;
 };

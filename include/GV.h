@@ -24,7 +24,7 @@ class GV {
     inline static const string ADDRESS = SERVER + ":" + to_string(PORT);
     inline static const string ADDRESS_JUDGE = SERVER + ":" + to_string(PORT_JUDGE);
     inline static const string ADDRESS_SIM = SERVER + ":" + to_string(PORT_SIM);
-    static const bool PRINT_NETWORK_COMMUNICATION = false;
+    static const bool PRINT_NETWORK_COMMUNICATION = true;
 
   protected:
 

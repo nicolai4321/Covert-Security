@@ -10,6 +10,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
   pair<bool, vector<CryptoPP::byte*>> output;
   try {
     int inputIndex = 0;
+    int kappa = F->getKappa();
     vector<string> gateOrder = F->getGateOrder();
     map<string, vector<string>> gateInfo = F->getGateInfo();
     map<string, vector<CryptoPP::byte*>> garbledTables = F->getGarbledTables();
@@ -29,9 +30,10 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 
         vector<CryptoPP::byte*> validEncodings;
         for(CryptoPP::byte *b : garbledTable) {
-          pair<bool, CryptoPP::byte*> result = decodeGate(encL, encR, b);
-          if(result.first) {
-            validEncodings.push_back(result.second);
+          CryptoPP::byte *decodedGate = new CryptoPP::byte[2*kappa];
+          bool result = decodeGate(encL, encR, b, decodedGate);
+          if(result) {
+            validEncodings.push_back(decodedGate);
           }
         }
 
@@ -73,8 +75,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorNormal::evaluate(vector<CryptoPP::b
 /*
   Decodes a gate if the last characters are zeros
 */
-pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *enc) {
-  pair<bool, CryptoPP::byte*> output;
+bool EvaluatorNormal::decodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *enc, CryptoPP::byte *output) {
   int kappa = F->getKappa();
 
   CryptoPP::byte mergedEncs[2*kappa];
@@ -83,25 +84,17 @@ pair<bool, CryptoPP::byte*> EvaluatorNormal::decodeGate(CryptoPP::byte *encL, Cr
   CryptoPP::byte hashMergedEncs[2*kappa];
   h->hashByte(mergedEncs, 2*kappa, hashMergedEncs, 2*kappa);
 
-  CryptoPP::byte *decoded = new CryptoPP::byte[2*kappa];
+  CryptoPP::byte decoded[2*kappa];
   Util::byteOp(hashMergedEncs, enc, decoded, Util::XOR, 2*kappa);
 
-  CryptoPP::byte *zero = new CryptoPP::byte[kappa];
+  CryptoPP::byte zero[kappa];
   memset(zero, 0x00, kappa);
 
-  CryptoPP::byte *left = new CryptoPP::byte[kappa];
-  CryptoPP::byte *right = new CryptoPP::byte[kappa];
-  left = decoded;
-  right = (decoded+kappa);
-
-  if(memcmp(right, zero, kappa) == 0) {
-    output.first = true;
-    output.second = left;
-    return output;
+  if(memcmp((decoded+kappa), zero, kappa) == 0) {
+    memcpy(output, decoded, 2*kappa);
+    return true;
   } else {
-    output.first = false;
-    output.second = zero;
-    return output;
+    return false;
   }
 }
 
@@ -109,4 +102,16 @@ EvaluatorNormal::EvaluatorNormal(HashInterface *hashInterface) {
   h = hashInterface;
 }
 
-EvaluatorNormal::~EvaluatorNormal() {}
+EvaluatorNormal::~EvaluatorNormal() {
+  vector<string> gateOrder = F->getGateOrder();
+  map<string, vector<string>> gateInfo = F->getGateInfo();
+  for(string gateName : gateOrder) {
+    vector<string> info = gateInfo[gateName];
+    string gateType = info.at(0);
+
+    if(gateType.compare("INPUT") != 0 && gateType.compare("CONST") != 0) {
+      CryptoPP::byte *b = gatesEvaluated[gateName];
+      delete b;
+    }
+  }
+}

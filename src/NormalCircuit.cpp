@@ -166,8 +166,7 @@ pair<CryptoPP::byte*, CryptoPP::byte*> NormalCircuit::getConstEnc() {
   return output;
 }
 
-GarbledCircuit* NormalCircuit::exportCircuit() {
-  GarbledCircuit *F = new GarbledCircuit();
+void NormalCircuit::exportCircuit(GarbledCircuit *F) {
   F->setKappa(kappa);
   F->setOutputGates(outputGates);
   F->setGateOrder(gateOrder);
@@ -175,7 +174,6 @@ GarbledCircuit* NormalCircuit::exportCircuit() {
   F->setConstants(getConstEnc());
   F->setDecodings(getDecodings());
   F->setGarbledTables(garbledTables);
-  return F;
 }
 
 map<string, vector<CryptoPP::byte*>> NormalCircuit::getGarbledTables() {
@@ -204,4 +202,23 @@ NormalCircuit::NormalCircuit(int k, CryptoPP::byte* s, HashInterface *hashInterf
   gatesEvaluated[CONST_ONE] = encsO.at(1);
 }
 
-NormalCircuit::~NormalCircuit() {}
+NormalCircuit::~NormalCircuit() {
+  for(string gateName : gateOrder) {
+    vector<CryptoPP::byte*> encodings = gates[gateName];
+    delete encodings.at(0);
+    delete encodings.at(1);
+
+    vector<string> info = gateInfo[gateName];
+    string gateType = info.at(0);
+    if(gateType.compare("AND") == 0 ||
+       gateType.compare("XOR") == 0 ||
+       gateType.compare("INV") == 0 ||
+       gateType.compare("EQW") == 0) {
+
+      vector<CryptoPP::byte*> garbledTable = garbledTables[gateName];
+      for(CryptoPP::byte* b : garbledTable) {
+        delete b;
+      }
+    }
+  }
+}

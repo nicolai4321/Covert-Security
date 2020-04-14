@@ -112,12 +112,17 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
   h->hashByte(waf, kappa, hashWaf, kappa);
   h->hashByte(wat, kappa, hashWat, kappa);
 
-  CryptoPP::byte *xorHashWafWat = new CryptoPP::byte[kappa];
-  CryptoPP::byte *xorHashWafWatR = new CryptoPP::byte[kappa];
+  CryptoPP::byte xorHashWafWat[kappa];
+  CryptoPP::byte xorHashWafWatR[kappa];
   Util::byteOp(hashWaf, hashWat, xorHashWafWat, Util::XOR, kappa);
   Util::byteOp(xorHashWafWat, r, xorHashWafWatR, Util::XOR, kappa);
 
-  CryptoPP::byte *TG = (pb) ? xorHashWafWatR : xorHashWafWat;
+  CryptoPP::byte *TG = new CryptoPP::byte[kappa];
+  if(pb) {
+    memcpy(TG, xorHashWafWatR, kappa);
+  } else {
+    memcpy(TG, xorHashWafWat, kappa);
+  }
 
   //Evaluator part
   CryptoPP::byte *wbf = rightEnc.at(0);
@@ -159,8 +164,7 @@ pair<CryptoPP::byte*, CryptoPP::byte*> HalfCircuit::getConstEnc() {
   return output;
 }
 
-GarbledCircuit* HalfCircuit::exportCircuit() {
-  GarbledCircuit *F = new GarbledCircuit();
+void HalfCircuit::exportCircuit(GarbledCircuit *F) {
   F->setKappa(kappa);
   F->setOutputGates(outputGates);
   F->setGateOrder(gateOrder);
@@ -168,7 +172,6 @@ GarbledCircuit* HalfCircuit::exportCircuit() {
   F->setConstants(getConstEnc());
   F->setDecodings(getDecodings());
   F->setAndEncodings(andEncodings);
-  return F;
 }
 
 map<string, vector<CryptoPP::byte*>> HalfCircuit::getAndEncodings() {
@@ -212,5 +215,21 @@ HalfCircuit::HalfCircuit(int k, CryptoPP::byte *s, HashInterface *hashInterface)
 }
 
 HalfCircuit::~HalfCircuit() {
+  for(string gateName : gateOrder) {
+    vector<CryptoPP::byte*> encs = gates[gateName];
+    for(CryptoPP::byte *b : encs) {
+      delete b;
+    }
+
+    vector<string> info = gateInfo[gateName];
+    string gateType = info.at(0);
+
+    if(gateType.compare("AND") == 0) {
+      vector<CryptoPP::byte*> andEncs = andEncodings[gateName];
+      for(CryptoPP::byte *b : andEncs) {
+        delete b;
+      }
+    }
+  }
   delete r;
 }

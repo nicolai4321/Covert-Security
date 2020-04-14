@@ -48,9 +48,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
     int i=0;
     for(char c : input) {
       if(i == inputGatesNr) {
-        string msg = "Error! To many input gates. There are only "+to_string(inputGatesNr)+" input gates";
-        cout << msg << endl;
-        throw msg;
+        throw runtime_error("Error! To many input gates. There are only "+to_string(inputGatesNr)+" input gates");
       }
       int b = (int) c - 48;
       inputs.push_back(encodings.at(i).at(b));
@@ -59,7 +57,8 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
 
     if(i != inputGatesNr) {throw runtime_error("Error! To few input gates. There should be "+to_string(inputGatesNr)+" input gates");}
 
-    GarbledCircuit *F = circuit->exportCircuit();
+    GarbledCircuit *F = new GarbledCircuit();
+    circuit->exportCircuit(F);
     evaluator->giveCircuit(F);
     pair<bool, vector<CryptoPP::byte*>> evaluation = evaluator->evaluate(inputs);
     if(evaluation.first) {
@@ -82,7 +81,9 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
     } else {
       throw runtime_error("Error! Could not evaluate circuit");
     }
-  } catch (...) {
+    delete F;
+  } catch (exception& e) {
+    cout << e.what() << endl;
     return 0;
   }
 }
@@ -90,7 +91,7 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
 /*
   Runs the circuit files
 */
-void runCircuitFiles(int kappa, HashInterface *hashInterface) {
+void runCircuitFiles(int kappa) {
   CryptoPP::byte seed[kappa];
   Util::randomByte(seed, kappa);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
@@ -111,24 +112,29 @@ void runCircuitFiles(int kappa, HashInterface *hashInterface) {
       cout << " | " << i1;
     }
     cout << endl;
-
-    CircuitInterface *circuitN = new NormalCircuit(kappa, seed, hashInterface);
-    CircuitInterface *circuitH = new HalfCircuit(kappa, seed, hashInterface);
-    EvaluatorInterface *evalN = new EvaluatorNormal(hashInterface);
-    EvaluatorInterface *evalH = new EvaluatorHalf(hashInterface);
+    HashInterface *hashInterfaceN = new HashNormal(kappa);
+    HashInterface *hashInterfaceH = new HashNormal(kappa);
+    CircuitInterface *circuitN = new NormalCircuit(kappa, seed, hashInterfaceN);
+    CircuitInterface *circuitH = new HalfCircuit(kappa, seed, hashInterfaceH);
+    EvaluatorInterface *evalN = new EvaluatorNormal(hashInterfaceN);
+    EvaluatorInterface *evalH = new EvaluatorHalf(hashInterfaceH);
 
     double time0 = runCircuit(circuitN, evalN, kappa, filename, input);
     double time1 = runCircuit(circuitH, evalH, kappa, filename, input);
+
+
     timeTotal0 += time0;
     timeTotal1 += time1;
 
     cout << "Time: " << time0 << " ("+circuitN->toString()+"), " << time1 << " ("+circuitH->toString()+")" << endl;
     cout << endl;
 
-    delete circuitN;
-    delete circuitH;
     delete evalN;
     delete evalH;
+    delete circuitN;
+    delete circuitH;
+    delete hashInterfaceN;
+    delete hashInterfaceH;
   }
 
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
@@ -166,7 +172,7 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     cout << circuitA->toString() << ": success" << endl;
     string s = timeLog->getTimes();
 
-    if(false) {
+    if(true) {
       s += "\nA:\n";
       s += timeLogA->getTimes();
       s += "\nB:\n";
@@ -179,6 +185,10 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     }
 
     if(true) {
+      cout << timeLog->getTimes() << endl << endl;
+    }
+
+    if(false) {
       cout << s << endl << endl;
     }
 
@@ -191,8 +201,8 @@ bool startProtocol(int kappa, int lambda, int x, int y,
 
 void startProtocols(int kappa) {
   int lambda = 8;
-  int x = 100;
-  int y = 20;
+  int x = 50;
+  int y = 10;
 
   //Digital Signature
   pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> keys = Signature::generateKeys(1024);
@@ -286,10 +296,8 @@ int main() {
   cout << "||COVERT START||" << endl;
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
-  HashInterface *hashInterface = new HashNormal(kappa);
-
-  runCircuitFiles(kappa, hashInterface);
   startProtocols(kappa);
+  runCircuitFiles(kappa);
   runHashFuncs(kappa, 1000000);
 
   cout << "||COVERT END||" << endl;

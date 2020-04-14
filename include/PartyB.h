@@ -36,7 +36,8 @@ class PartyB {
 
     bool evaluate(GarbledCircuit* F, vector<osuCrypto::block> encsInputsA, vector<osuCrypto::block> encsInputsGammaB);
 
-    bool simulatePartyA(osuCrypto::KosOtExtReceiver* recver,
+    bool simulatePartyA(osuCrypto::IOService *ios,
+                        osuCrypto::KosOtExtReceiver *recver,
                         vector<CryptoPP::byte*> seedsB,
                         vector<SignatureHolder*> signatureHolders,
                         vector<CryptoPP::byte*> seedsA,
@@ -68,7 +69,6 @@ class PartyB {
     vector<string> gateOrderB;
     vector<string> outputGatesB;
     map<string, vector<string>> gateInfoB;
-    osuCrypto::IOService* ios;
     TimeLog *timeLog;
 };
 

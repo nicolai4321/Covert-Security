@@ -23,4 +23,6 @@ SignatureHolder::SignatureHolder(CryptoPP::byte *m, int mLength, CryptoPP::SecBy
   signatureLength = sLength;
 }
 
-SignatureHolder::~SignatureHolder() {}
+SignatureHolder::~SignatureHolder() {
+  delete msg;
+}

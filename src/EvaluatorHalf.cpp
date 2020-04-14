@@ -49,10 +49,10 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         CryptoPP::byte hashWb[kappa];
         h->hashByte(Wb, kappa, hashWb, kappa);
 
-        CryptoPP::byte *xorTEWe = new CryptoPP::byte[kappa];
+        CryptoPP::byte xorTEWe[kappa];
         Util::byteOp(TE, Wa, xorTEWe, Util::XOR, kappa);
 
-        CryptoPP::byte *xorHashWbTeWE = new CryptoPP::byte[kappa];
+        CryptoPP::byte xorHashWbTeWE[kappa];
         Util::byteOp(hashWb, xorTEWe, xorHashWbTeWE, Util::XOR, kappa);
 
         CryptoPP::byte *WE = (sb) ? xorHashWbTeWE : hashWb;
@@ -93,4 +93,15 @@ EvaluatorHalf::EvaluatorHalf(HashInterface *hashInterface) {
   h = hashInterface;
 }
 
-EvaluatorHalf::~EvaluatorHalf() {}
+EvaluatorHalf::~EvaluatorHalf() {
+  vector<string> gateOrder = F->getGateOrder();
+  map<string, vector<string>> gateInfo = F->getGateInfo();
+  for(string gateName : gateOrder) {
+    vector<string> info = gateInfo[gateName];
+    string gateType = info.at(0);
+    if(gateType.compare("XOR") == 0 || gateType.compare("AND") == 0) {
+      CryptoPP::byte *b = gatesEvaluated[gateName];
+      delete b;
+    }
+  }
+}

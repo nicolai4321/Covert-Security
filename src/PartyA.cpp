@@ -20,11 +20,11 @@ PartyA::~PartyA() {}
 bool PartyA::startProtocol() {
   //Network
   timeLog->markTime("network setup");
-  ios = new osuCrypto::IOService(16);
-  chl = osuCrypto::Session(*ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
+  osuCrypto::IOService ios(16);
+  chl = osuCrypto::Session(ios, GV::ADDRESS, osuCrypto::SessionMode::Server).addChannel();
   osuCrypto::SocketInterface *socket = new SocketRecorder(chl);
   socketRecorder = (SocketRecorder*) socket;
-  chlOT = osuCrypto::Channel(*ios, socket);
+  chlOT = osuCrypto::Channel(ios, socket);
   timeLog->endMark("network setup");
 
   //Generating random seeds and witnesses
@@ -59,10 +59,11 @@ bool PartyA::startProtocol() {
 
   //Garbling
   timeLog->markTime("garbling");
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: garbling" << endl;
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
-  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done garbling" << endl;
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: done garbling" << endl;
   timeLog->endMark("garbling");
 
   //Second OT
@@ -118,7 +119,7 @@ bool PartyA::startProtocol() {
   if(!checkSeedsWitness(gamma, gammaSeedsWitnessBlock, seedsA, witnesses)) {
     chlOT.close();
     chl.close();
-    ios->stop();
+    ios.stop();
     return false;
   }
   timeLog->endMark("checking");
@@ -126,7 +127,8 @@ bool PartyA::startProtocol() {
   //Send garbled circuit
   timeLog->markTime("export circuit");
   CircuitInterface *circuit = circuits.at(gamma);
-  GarbledCircuit *F = circuit->exportCircuit();
+  GarbledCircuit *F = new GarbledCircuit();
+  circuit->exportCircuit(F);
   timeLog->endMark("export circuit");
 
   timeLog->markTime("sending circuit, encodings and decommitments");
@@ -149,8 +151,19 @@ bool PartyA::startProtocol() {
   timeLog->markTime("closing network");
   chlOT.close();
   chl.close();
-  ios->stop();
+  ios.stop();
   timeLog->endMark("closing network");
+
+  //Free memory
+  for(CryptoPP::byte *seedA : seedsA) {
+    delete seedA;
+  }
+  for(CryptoPP::byte *witness : witnesses) {
+    delete witness;
+  }
+  for(SignatureHolder *signatureHolder : signatureHolders) {
+    delete signatureHolder;
+  }
 
   return true;
 }
@@ -186,7 +199,7 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
 */
 void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                               vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses) {
-  sRecorder->forceStore("ot1", lambd, 68, 12);
+  sRecorder->scheduleStore("ot1", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(1);
     osuCrypto::block block0 = Util::byteToBlock(seedsA.at(j), kapp);
@@ -207,7 +220,7 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
 */
 void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                     map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
-  sRecorder->forceStore("ot2", lambd, 68, 12);
+  sRecorder->scheduleStore("ot2", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
     vector<array<osuCrypto::block, 2>> data(GV::n2);
     for(int i=0; i<GV::n2; i++) {
@@ -339,7 +352,8 @@ pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits
   vector<osuCrypto::block> decommitmentsA;
 
   for(int j=0; j<lamb; j++) {
-    GarbledCircuit *F = circuits.at(j)->exportCircuit();
+    GarbledCircuit *F = new GarbledCircuit();
+    circuits.at(j)->exportCircuit(F);
 
     CryptoPP::byte decom[kapp];
     (*iv)[j] = Util::randomByte(decom, kapp, seedsA.at(j), kapp, (*iv)[j]);
@@ -349,6 +363,7 @@ pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits
 
     decommitmentsA.push_back(decommit);
     commitmentsA.push_back(c);
+    delete F;
   }
 
   pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> output(commitmentsA, decommitmentsA);
@@ -431,8 +446,8 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
   ifstream reader(filepath);
   reader >> noskipws;
   vector<unsigned char> circuitVector((istream_iterator<unsigned char>(reader)), (istream_iterator<unsigned char>()));
-  CryptoPP::byte *circuitByte = new CryptoPP::byte[circuitVector.size()];
-  circuitByte = &circuitVector[0];
+  CryptoPP::byte circuitByte[circuitVector.size()];
+  copy(circuitVector.begin(), circuitVector.end(), circuitByte);
   pair<CryptoPP::byte*, int> p0(circuitByte, circuitVector.size());
   bytes.push_back(p0);
   bytesSize += circuitVector.size();
@@ -490,9 +505,7 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
       counter += p.second;
   }
 
-  pair<CryptoPP::byte*, int> output;
-  output.first = outputByte;
-  output.second = bytesSize;
+  pair<CryptoPP::byte*, int> output(outputByte, bytesSize);
   return output;
 }
 
@@ -509,11 +522,21 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::Commit> c
       commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(startIndex+2*i));
       commitmentsEncsInputsAJ.push_back(commitmentsEncsInputsA.at(startIndex+2*i+1));
     }
+
+    vector<pair<int, unsigned char*>> transcriptSent1;
+    vector<pair<int, unsigned char*>> transcriptRecv1;
+    vector<pair<int, unsigned char*>> transcriptSent2;
+    vector<pair<int, unsigned char*>> transcriptRecv2;
+    socketRecorder->getSentCat("ot1"+to_string(j), &transcriptSent1);
+    socketRecorder->getRecvCat("ot1"+to_string(j), &transcriptRecv1);
+    socketRecorder->getSentCat("ot2"+to_string(j), &transcriptSent2);
+    socketRecorder->getRecvCat("ot2"+to_string(j), &transcriptRecv2);
+
     pair<CryptoPP::byte*, int> msg = constructSignatureByte(j, kappa, &commitmentsA.at(j), &commitmentsB.at(j), &commitmentsEncsInputsAJ,
-                                                            socketRecorder->getSentCat("ot1"+to_string(j)),
-                                                            socketRecorder->getRecvCat("ot1"+to_string(j)),
-                                                            socketRecorder->getSentCat("ot2"+to_string(j)),
-                                                            socketRecorder->getRecvCat("ot2"+to_string(j)));
+                                                            &transcriptSent1,
+                                                            &transcriptRecv1,
+                                                            &transcriptSent2,
+                                                            &transcriptRecv2);
     pair<CryptoPP::SecByteBlock, size_t> signature = Signature::sign(sk, msg.first, msg.second);
     SignatureHolder *signatureHolder = new SignatureHolder(msg.first, msg.second, signature.first, signature.second);
     output.push_back(signatureHolder);

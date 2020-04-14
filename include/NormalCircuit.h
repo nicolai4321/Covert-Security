@@ -13,7 +13,7 @@ using namespace std;
 
 class NormalCircuit: public CircuitInterface {
   public:
-    NormalCircuit(int kappa, CryptoPP::byte* seed, HashInterface *hashInterface);
+    NormalCircuit(int kappa, CryptoPP::byte *seed, HashInterface *hashInterface);
     virtual ~NormalCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
@@ -22,9 +22,9 @@ class NormalCircuit: public CircuitInterface {
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
     virtual string toString();
-    virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed);
+    virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte *seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
-    virtual GarbledCircuit* exportCircuit();
+    virtual void exportCircuit(GarbledCircuit *F);
     virtual string getType();
 
     map<string, vector<CryptoPP::byte*>> getGarbledTables();
@@ -36,7 +36,7 @@ class NormalCircuit: public CircuitInterface {
     map<string, vector<CryptoPP::byte*>> garbledTables;
     HashInterface *h;
 
-    CryptoPP::byte* encodeGate(CryptoPP::byte* encL, CryptoPP::byte* encR, CryptoPP::byte* encO);
+    CryptoPP::byte *encodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *encO);
     vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR);
 };
 

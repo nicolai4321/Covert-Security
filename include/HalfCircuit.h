@@ -12,7 +12,7 @@ using namespace std;
 
 class HalfCircuit: public CircuitInterface {
   public:
-    HalfCircuit(int kappa, CryptoPP::byte* seed, HashInterface *hashInterface);
+    HalfCircuit(int kappa, CryptoPP::byte *seed, HashInterface *hashInterface);
     virtual ~HalfCircuit();
     virtual vector<CryptoPP::byte*> addGate(string gateName);
     virtual void addEQ(bool b, string outputGate);
@@ -21,9 +21,9 @@ class HalfCircuit: public CircuitInterface {
     virtual void addXOR(string inputGateL, string inputGateR, string outputGate);
     virtual void addAND(string inputGateL, string inputGateR, string outputGate);
     virtual string toString();
-    virtual CircuitInterface* createInstance(int kappa, CryptoPP::byte* seed);
+    virtual CircuitInterface *createInstance(int kappa, CryptoPP::byte *seed);
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
-    virtual GarbledCircuit* exportCircuit();
+    virtual void exportCircuit(GarbledCircuit *F);
     virtual string getType();
 
     map<string, vector<CryptoPP::byte*>> getAndEncodings();
@@ -36,7 +36,7 @@ class HalfCircuit: public CircuitInterface {
     CryptoPP::byte *r;
     HashInterface *h;
 
-    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte* encT);
+    vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte *encT);
 };
 
 #endif // HALFCIRCUIT_H

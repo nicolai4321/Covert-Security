@@ -8,12 +8,6 @@ using namespace osuCrypto;
 
 class SocketRecorder : public SocketInterface {
 public:
-    SocketRecorder(osuCrypto::Channel chl) {
-      mChl = chl;
-    }
-
-    ~SocketRecorder() override {}
-
     void async_send(span<boost::asio::mutable_buffer> buffers,
                     io_completion_handle&& fn) override {
       osuCrypto::error_code ec;
@@ -23,15 +17,14 @@ public:
               auto data = boost::asio::buffer_cast<u8*>(buffers[i]);
               auto siz = boost::asio::buffer_size(buffers[i]);
 
-              CryptoPP::byte* b = new CryptoPP::byte[siz];
+              CryptoPP::byte *b = new CryptoPP::byte[siz];
               memcpy(b, data, siz);
 
               pair<int, CryptoPP::byte*> p;
               p.first = siz;
               p.second = b;
 
-
-              if(forceIterSentTotal == 0) {
+              if(scheduleIterSentTotal  == 0) {
                 vector<pair<int, unsigned char*>> v = dataSentCat[sentCatIndex];
                 v.push_back(p);
                 dataSentCat[sentCatIndex] = v;
@@ -39,8 +32,8 @@ public:
                   cout << name << " send (" << siz << "), storing in '" << sentCatIndex << "'" << endl;
                 }
               } else {
-                string index = forceIndex+to_string(forceIterSent);
-                if(forceSent == 0) {
+                string index = scheduleIndex+to_string(scheduleIterSent);
+                if(scheduleSent == 0) {
                   vector<pair<int, unsigned char*>> vIni;
                   dataSentCat[index] = vIni;
                   debugger.push_back(index);
@@ -53,15 +46,15 @@ public:
                   cout << name << " send (" << siz << "), storing in '" << index << "'" << endl;
                 }
 
-                forceSent++;
-                if(forceSent == forceSentTotal) {
-                  forceSent = 0;
-                  forceIterSent++;
+                scheduleSent++;
+                if(scheduleSent == scheduleSentTotal) {
+                  scheduleSent = 0;
+                  scheduleIterSent++;
                 }
 
-                if(forceIterSent == forceIterSentTotal) {
-                  forceSentTotal = 0;
-                  forceIterSentTotal = 0;
+                if(scheduleIterSent == scheduleIterSentTotal ) {
+                  scheduleSentTotal = 0;
+                  scheduleIterSentTotal  = 0;
                 }
               }
 
@@ -87,13 +80,13 @@ public:
               mChl.recv(data, siz);
               bytesTransfered += siz;
 
-              CryptoPP::byte* b = new CryptoPP::byte[siz];
+              CryptoPP::byte *b = new CryptoPP::byte[siz];
               memcpy(b, data, siz);
               pair<int, CryptoPP::byte*> p;
               p.first = siz;
               p.second = b;
 
-              if(forceIterRecvTotal == 0) {
+              if(scheduleIterRecvTotal == 0) {
                 vector<pair<int, unsigned char*>> v = dataRecvCat[recvCatIndex];
                 v.push_back(p);
                 dataRecvCat[recvCatIndex] = v;
@@ -101,8 +94,8 @@ public:
                   cout << name << " recv(" << siz << ") storing in '" << recvCatIndex << "'" << endl;
                 }
               } else {
-                string index = forceIndex+to_string(forceIterRecv);
-                if(forceRecv == 0) {
+                string index = scheduleIndex+to_string(scheduleIterRecv);
+                if(scheduleRecv == 0) {
                   vector<pair<int, unsigned char*>> vIni;
                   dataRecvCat[index] = vIni;
                   debugger.push_back(index);
@@ -114,15 +107,15 @@ public:
                   cout << name << " recv(" << siz << ") storing in '" << index << "'" << endl;
                 }
 
-                forceRecv++;
-                if(forceRecv == forceRecvTotal) {
-                  forceRecv = 0;
-                  forceIterRecv++;
+                scheduleRecv++;
+                if(scheduleRecv == scheduleRecvTotal) {
+                  scheduleRecv = 0;
+                  scheduleIterRecv++;
                 }
 
-                if(forceIterRecv == forceIterRecvTotal) {
-                  forceRecvTotal = 0;
-                  forceIterRecvTotal = 0;
+                if(scheduleIterRecv == scheduleIterRecvTotal) {
+                  scheduleRecvTotal = 0;
+                  scheduleIterRecvTotal = 0;
                 }
               }
           } catch (...) {
@@ -155,32 +148,26 @@ public:
       if(!b) throw runtime_error("Socket recorder has no record for '"+s+"'");
     }
 
-    vector<pair<int, unsigned char*>> *getSentCat(string cat) {
+    void getSentCat(string cat, vector<pair<int, unsigned char*>> *lst) {
       check(cat);
-      vector<pair<int, unsigned char*>> *output = new vector<pair<int, unsigned char*>>();
       for(pair<int, unsigned char*> p0 : dataSentCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
         p1.second = p0.second;
         if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
-        output->push_back(p1);
+        lst->push_back(p1);
       }
-
-      return output;
     }
 
-    vector<pair<int, unsigned char*>> *getRecvCat(string cat) {
+    void getRecvCat(string cat, vector<pair<int, unsigned char*>> *lst) {
       check(cat);
-      vector<pair<int, unsigned char*>> *output = new vector<pair<int, unsigned char*>>();
       for(pair<int, unsigned char*> p0 : dataRecvCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
         p1.second = p0.second;
         if(p1.first < 0) throw runtime_error("Error! Size for network data cannot be negative: "+to_string(p1.first));
-        output->push_back(p1);
+        lst->push_back(p1);
       }
-
-      return output;
     }
 
     void storeIn(string s) {
@@ -197,34 +184,56 @@ public:
       dataRecvCat[s] = v1;
     }
 
-    void forceStore(string name, int iter, int nrSent, int nrRecv) {
-      forceIndex = name;
-      forceIterSentTotal = iter;
-      forceIterRecvTotal = iter;
-      forceIterSent = 0;
-      forceIterRecv = 0;
-      forceSentTotal = nrSent;
-      forceRecvTotal = nrRecv;
-      forceSent = 0;
-      forceRecv = 0;
+    void scheduleStore(string name, int iter, int nrSent, int nrRecv) {
+      scheduleIndex = name;
+      scheduleIterSentTotal = iter;
+      scheduleIterRecvTotal = iter;
+      scheduleIterSent = 0;
+      scheduleIterRecv = 0;
+      scheduleSentTotal = nrSent;
+      scheduleRecvTotal = nrRecv;
+      scheduleSent = 0;
+      scheduleRecv = 0;
     }
 
     void follow(string s) {
       name = s;
     }
 
+    SocketRecorder(osuCrypto::Channel chl) {
+      mChl = chl;
+    }
+
+    ~SocketRecorder() override {
+      map<string, vector<pair<int, unsigned char*>>>::iterator itSent;
+      for(itSent = dataSentCat.begin(); itSent != dataSentCat.end(); itSent++) {
+        vector<pair<int, unsigned char*>> v = itSent->second;
+        for(pair<int, unsigned char*> p : v) {
+          delete p.second;
+        }
+      }
+
+      map<string, vector<pair<int, unsigned char*>>>::iterator itRecv;
+      for(itRecv = dataRecvCat.begin(); itRecv != dataRecvCat.end(); itRecv++) {
+        vector<pair<int, unsigned char*>> v = itRecv->second;
+        for(pair<int, unsigned char*> p : v) {
+          delete p.second;
+        }
+      }
+    }
+
   private:
     string name = "none";
 
-    string forceIndex;
-    int forceIterSentTotal = 0;
-    int forceIterRecvTotal = 0;
-    int forceIterSent = 0;
-    int forceIterRecv = 0;
-    int forceSentTotal = 0;
-    int forceRecvTotal = 0;
-    int forceSent = 0;
-    int forceRecv = 0;
+    string scheduleIndex;
+    int scheduleIterSentTotal = 0;
+    int scheduleIterRecvTotal = 0;
+    int scheduleIterSent = 0;
+    int scheduleIterRecv = 0;
+    int scheduleSentTotal = 0;
+    int scheduleRecvTotal = 0;
+    int scheduleSent = 0;
+    int scheduleRecv = 0;
 
     osuCrypto::Channel mChl;
     map<string, vector<pair<int, unsigned char*>>> dataSentCat;
