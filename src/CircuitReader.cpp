@@ -21,9 +21,8 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
 
   ifstream reader;
   reader.open(filepath);
+
   if(reader.is_open()) {
-    regex r("[0-9]+");
-    smatch m;
 
     //first line
     line = readOneLine(reader);
@@ -91,44 +90,27 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
       string gateName = "w"+to_string(i);
       data = splitString(line);
 
-      int nrInputWires = stoi(data.at(0));
-      int nrOutputWires = stoi(data.at(1));
-
-      vector<int> inputWires;
-      for(int j=0; j<nrInputWires; j++) {
-        inputWires.push_back(stoi(data.at(j+2)));
-      }
-
-      vector<int> outputWires;
-      for(int j=0; j<nrOutputWires; j++) {
-        outputWires.push_back(stoi(data.at(j+nrInputWires+2)));
-      }
-      string gateType = data.at(nrInputWires+nrOutputWires+2);
-
-      if(gateType.compare("XOR") == 0) {
-        string gateL = "w"+to_string(inputWires.at(0));
-        string gateR = "w"+to_string(inputWires.at(1));
-        string gateO = "w"+to_string(outputWires.at(0));
-        circuit->addXOR(gateL, gateR, gateO);
-      } else if(gateType.compare("AND") == 0) {
-        string gateL = "w"+to_string(inputWires.at(0));
-        string gateR = "w"+to_string(inputWires.at(1));
-        string gateO = "w"+to_string(outputWires.at(0));
-        circuit->addAND(gateL, gateR, gateO);
-      } else if(gateType.compare("INV") == 0) {
-        string gateI = "w"+to_string(inputWires.at(0));
-        string gateO = "w"+to_string(outputWires.at(0));
-        circuit->addINV(gateI, gateO);
-      } else if(gateType.compare("EQW") == 0) {
-        string gateI = "w"+to_string(inputWires.at(0));
-        string gateO = "w"+to_string(outputWires.at(0));
-        circuit->addEQW(gateI, gateO);
+      if(data.size() == 6) {
+        string gateL = "w"+data.at(2);
+        string gateR = "w"+data.at(3);
+        string gateO = "w"+data.at(4);
+        if(data.at(5).compare("XOR") == 0) {
+          circuit->addXOR(gateL, gateR, gateO);
+        } else if(data.at(5).compare("AND") == 0){
+          circuit->addAND(gateL, gateR, gateO);
+        } else {
+          throw runtime_error("Could not read circuit file!");
+        }
       } else {
-        cout << "Error! Unknown gate type: '" << gateType << "'" << endl;
-        inputEncs.clear();
-        output.first = false;
-        output.second = inputEncs;
-        return output;
+        string gateI = "w"+data.at(2);
+        string gateO = "w"+data.at(3);
+        if(data.at(4).compare("INV") == 0) {
+          circuit->addINV(gateI, gateO);
+        } else if(data.at(4).compare("EQW") == 0){
+          circuit->addEQW(gateI, gateO);
+        } else {
+          throw runtime_error("Could not read circuit file!");
+        }
       }
     }
 

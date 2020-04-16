@@ -186,12 +186,11 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
     cr.setReverseInput(true);
     pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
     if(!import.first) {throw runtime_error("Error! Could not import circuit");}
-
     circuits.push_back(G);
     encs[j] = import.second;
   }
-
   pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> output(circuits, encs);
+
   return output;
 }
 

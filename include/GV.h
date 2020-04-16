@@ -12,9 +12,9 @@ using namespace std;
 */
 class GV {
   public:
-    static const int n1 = 64;
-    static const int n2 = 64;
-    inline static const string filename = "mult64.txt";
+    static const int n1 = 256;
+    static const int n2 = 128;
+    inline static const string filename = "aes_256.txt";
 
     //network
     static const int PORT = 1212;
@@ -24,7 +24,7 @@ class GV {
     inline static const string ADDRESS = SERVER + ":" + to_string(PORT);
     inline static const string ADDRESS_JUDGE = SERVER + ":" + to_string(PORT_JUDGE);
     inline static const string ADDRESS_SIM = SERVER + ":" + to_string(PORT_SIM);
-    static const bool PRINT_NETWORK_COMMUNICATION = true;
+    static const bool PRINT_NETWORK_COMMUNICATION = false;
 
   protected:
 

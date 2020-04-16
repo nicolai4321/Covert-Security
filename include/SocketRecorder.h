@@ -36,7 +36,6 @@ public:
                 if(scheduleSent == 0) {
                   vector<pair<int, unsigned char*>> vIni;
                   dataSentCat[index] = vIni;
-                  debugger.push_back(index);
                 }
                 vector<pair<int, unsigned char*>> v = dataSentCat[index];
                 v.push_back(p);
@@ -98,7 +97,6 @@ public:
                 if(scheduleRecv == 0) {
                   vector<pair<int, unsigned char*>> vIni;
                   dataRecvCat[index] = vIni;
-                  debugger.push_back(index);
                 }
                 vector<pair<int, unsigned char*>> v = dataRecvCat[index];
                 v.push_back(p);
@@ -135,21 +133,7 @@ public:
       return mChl;
     }
 
-    //TODO remove debug function
-    void check(string s) {
-      if(s.empty()) throw runtime_error("Socket recorder cannot find record for empty string");
-      bool b = false;
-      for(string z : debugger) {
-        if(z.compare(s) == 0) {
-          b = true;
-          break;
-        }
-      }
-      if(!b) throw runtime_error("Socket recorder has no record for '"+s+"'");
-    }
-
     void getSentCat(string cat, vector<pair<int, unsigned char*>> *lst) {
-      check(cat);
       for(pair<int, unsigned char*> p0 : dataSentCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
@@ -160,7 +144,6 @@ public:
     }
 
     void getRecvCat(string cat, vector<pair<int, unsigned char*>> *lst) {
-      check(cat);
       for(pair<int, unsigned char*> p0 : dataRecvCat[cat]) {
         pair<int, unsigned char*> p1;
         p1.first = p0.first;
@@ -171,11 +154,6 @@ public:
     }
 
     void storeIn(string s) {
-      for(string z : debugger) {
-        if(z.compare(s) == 0) throw runtime_error("Error! Already using that storage");
-      }
-
-      debugger.push_back(s);
       sentCatIndex = s;
       recvCatIndex = s;
       vector<pair<int, unsigned char*>> v0;
@@ -240,6 +218,5 @@ public:
     map<string, vector<pair<int, unsigned char*>>> dataRecvCat;
     string sentCatIndex = "def";
     string recvCatIndex = "def";
-    vector<string> debugger = {"def"};
 };
 #endif // SOCKETRECORDER_H
