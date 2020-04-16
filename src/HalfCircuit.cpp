@@ -11,10 +11,10 @@ CircuitInterface *HalfCircuit::createInstance(int k, CryptoPP::byte *s) {
 */
 vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName) {
   CryptoPP::byte *encF = new CryptoPP::byte[kappa];
-  iv = Util::randomByte(encF, kappa, seed, kappa, iv);
+  iv = Util::randomByte(&prng, encF, kappa, seed, kappa, iv);
 
   CryptoPP::byte *encT = new CryptoPP::byte[kappa];
-  Util::byteOp(encF, r, encT, Util::XOR, kappa);
+  Util::xorBytes(encF, r, encT, kappa);
 
   return addGate(gateName, "INPUT", "", "", encF, encT);
 }
@@ -54,8 +54,8 @@ void HalfCircuit::addEQ(bool b, string outputGate) {
 void HalfCircuit::addEQW(string inputGate, string outputGate) {
   CryptoPP::byte *encF = new CryptoPP::byte[kappa];
   CryptoPP::byte *encT = new CryptoPP::byte[kappa];
-  Util::byteOp(gates[inputGate].at(0), gates[CONST_ZERO].at(0), encF, Util::XOR, kappa);
-  Util::byteOp(encF, r, encT, Util::XOR, kappa);
+  Util::xorBytes(gates[inputGate].at(0), gates[CONST_ZERO].at(0), encF, kappa);
+  Util::xorBytes(encF, r, encT, kappa);
 
   addGate(outputGate, "XOR", inputGate, CONST_ZERO, encF, encT);
 }
@@ -66,8 +66,8 @@ void HalfCircuit::addEQW(string inputGate, string outputGate) {
 void HalfCircuit::addINV(string inputGate, string outputGate) {
   CryptoPP::byte *encF = new CryptoPP::byte[kappa];
   CryptoPP::byte *encT = new CryptoPP::byte[kappa];
-  Util::byteOp(gates[inputGate].at(0), gates[CONST_ONE].at(0), encF, Util::XOR, kappa);
-  Util::byteOp(encF, r, encT, Util::XOR, kappa);
+  Util::xorBytes(gates[inputGate].at(0), gates[CONST_ONE].at(0), encF, kappa);
+  Util::xorBytes(encF, r, encT, kappa);
 
   addGate(outputGate, "XOR", inputGate, CONST_ONE, encF, encT);
 }
@@ -78,8 +78,8 @@ void HalfCircuit::addINV(string inputGate, string outputGate) {
 void HalfCircuit::addXOR(string inputGateL, string inputGateR, string outputGate) {
   CryptoPP::byte *encF = new CryptoPP::byte[kappa];
   CryptoPP::byte *encT = new CryptoPP::byte[kappa];
-  Util::byteOp(gates[inputGateL].at(0), gates[inputGateR].at(0), encF, Util::XOR, kappa);
-  Util::byteOp(encF, r, encT, Util::XOR, kappa);
+  Util::xorBytes(gates[inputGateL].at(0), gates[inputGateR].at(0), encF, kappa);
+  Util::xorBytes(encF, r, encT, kappa);
 
   addGate(outputGate, "XOR", inputGateL, inputGateR, encF, encT);
 }
@@ -102,7 +102,7 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
   h->hashByte(leftEnc.at(pa), kappa, hashLeftEnc, kappa);
 
   CryptoPP::byte xorHashLeftEncR[kappa];
-  Util::byteOp(hashLeftEnc, r, xorHashLeftEncR, Util::XOR, kappa);
+  Util::xorBytes(hashLeftEnc, r, xorHashLeftEncR, kappa);
 
   CryptoPP::byte *WGF = (pa*pb) ? xorHashLeftEncR : hashLeftEnc;
 
@@ -114,8 +114,8 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
 
   CryptoPP::byte xorHashWafWat[kappa];
   CryptoPP::byte xorHashWafWatR[kappa];
-  Util::byteOp(hashWaf, hashWat, xorHashWafWat, Util::XOR, kappa);
-  Util::byteOp(xorHashWafWat, r, xorHashWafWatR, Util::XOR, kappa);
+  Util::xorBytes(hashWaf, hashWat, xorHashWafWat, kappa);
+  Util::xorBytes(xorHashWafWat, r, xorHashWafWatR, kappa);
 
   CryptoPP::byte *TG = new CryptoPP::byte[kappa];
   if(pb) {
@@ -140,8 +140,8 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
 
   CryptoPP::byte xorHashWbfWbt[kappa];
   CryptoPP::byte *TE = new CryptoPP::byte[kappa];
-  Util::byteOp(hashWbf, hashWbt, xorHashWbfWbt, Util::XOR, kappa);
-  Util::byteOp(xorHashWbfWbt, waf, TE, Util::XOR, kappa);
+  Util::xorBytes(hashWbf, hashWbt, xorHashWbfWbt, kappa);
+  Util::xorBytes(xorHashWbfWbt, waf, TE, kappa);
 
   //Adding gates
   vector<CryptoPP::byte*> encodings;
@@ -151,8 +151,8 @@ void HalfCircuit::addAND(string inputGateL, string inputGateR, string outputGate
 
   CryptoPP::byte *encF = new CryptoPP::byte[kappa];
   CryptoPP::byte *encT = new CryptoPP::byte[kappa];
-  Util::byteOp(WGF, WEF, encF, Util::XOR, kappa);
-  Util::byteOp(encF, r, encT, Util::XOR, kappa);
+  Util::xorBytes(WGF, WEF, encF, kappa);
+  Util::xorBytes(encF, r, encT, kappa);
 
   addGate(outputGate, "AND", inputGateL, inputGateR, encF, encT);
 }
@@ -190,7 +190,7 @@ HalfCircuit::HalfCircuit(int k, CryptoPP::byte *s, HashInterface *hashInterface)
   kappa = k;
   seed = s;
   r = new CryptoPP::byte[kappa];
-  iv = Util::randomByte(r, kappa, seed, kappa, iv);
+  iv = Util::randomByte(&prng, r, kappa, seed, kappa, iv);
   h = hashInterface;
 
   //Ensuring that the lsb in r is 1
@@ -199,17 +199,17 @@ HalfCircuit::HalfCircuit(int k, CryptoPP::byte *s, HashInterface *hashInterface)
 
   //Constant 0
   CryptoPP::byte *encFZ = new CryptoPP::byte[kappa];
-  iv = Util::randomByte(encFZ, kappa, seed, kappa, iv);
+  iv = Util::randomByte(&prng, encFZ, kappa, seed, kappa, iv);
   CryptoPP::byte *encTZ = new CryptoPP::byte[kappa];
-  Util::byteOp(encFZ, r, encTZ, Util::XOR, kappa);
+  Util::xorBytes(encFZ, r, encTZ, kappa);
   vector<CryptoPP::byte*> encsZ = addGate(CONST_ZERO, "CONST", "", "", encFZ, encTZ);
   gatesEvaluated[CONST_ZERO] = encsZ.at(0);
 
   //Constant 1
   CryptoPP::byte *encFO = new CryptoPP::byte[kappa];
-  iv = Util::randomByte(encFO, kappa, seed, kappa, iv);
+  iv = Util::randomByte(&prng, encFO, kappa, seed, kappa, iv);
   CryptoPP::byte *encTO = new CryptoPP::byte[kappa];
-  Util::byteOp(encFO, r, encTO, Util::XOR, kappa);
+  Util::xorBytes(encFO, r, encTO, kappa);
   vector<CryptoPP::byte*> encsO = addGate(CONST_ONE, "CONST", "", "", encFO, encTO);
   gatesEvaluated[CONST_ONE] = encsO.at(1);
 }

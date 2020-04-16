@@ -42,7 +42,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   auto threadCli = thread([&]() {
     int iv = 0;
     CryptoPP::byte seedInput[kappa];
-    Util::randomByte(seedInput, kappa, seedB, kappa, iv);
+    Util::randomByte(&prng, seedInput, kappa, seedB, kappa, iv);
 
     osuCrypto::BitVector choices(1);
     choices[0] = 0;
@@ -123,7 +123,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitsEncs;
   map<unsigned int, unsigned int> ivA;
   ivA[j] = 2;
-  PartyA::auxCommitEncsA(j, kappa, seedA, &ivA, encsSim, &commitsEncs, &decommitsEncs);
+  PartyA::auxCommitEncsA(&prng, j, kappa, seedA, &ivA, encsSim, &commitsEncs, &decommitsEncs);
 
   int startIndex = 0;
   for(int i=0; i<GV::n1; i++) {
@@ -149,7 +149,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   GarbledCircuit *F = new GarbledCircuit();
   circuitInstance->exportCircuit(F);
   CryptoPP::byte decom[kappa];
-  Util::randomByte(decom, kappa, seedA, kappa, ivA[j]);
+  Util::randomByte(&prng, decom, kappa, seedA, kappa, ivA[j]);
 
   osuCrypto::block decommit = Util::byteToBlock(decom, kappa);
   osuCrypto::Commit commitASim = PartyA::commitCircuit(kappa, circuitInstance->getType(), F, decommit);
@@ -178,7 +178,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
 
     vector<osuCrypto::block> recv(GV::n2);
     CryptoPP::byte seedInput[kappa];
-    Util::randomByte(seedInput, kappa, seedB, kappa, iv);
+    Util::randomByte(&prng, seedInput, kappa, seedB, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     recver.genBaseOts(prng, recCli);
     recver.receiveChosen(choices, recv, prng, recCli);
@@ -194,7 +194,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
     }
 
     CryptoPP::byte seedInput[kappa];
-    Util::randomByte(seedInput, kappa, seedA, kappa, iv);
+    Util::randomByte(&prng, seedInput, kappa, seedA, kappa, iv);
     osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kappa));
     sender.genBaseOts(prng, recSer);
     sender.sendChosen(data, prng, recSer);

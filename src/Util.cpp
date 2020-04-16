@@ -14,17 +14,9 @@ int Util::lsb(CryptoPP::byte* b, int length) {
 /*
   Bitwise operations:
 */
-void Util::byteOp(CryptoPP::byte *b0, CryptoPP::byte *b1, CryptoPP::byte *output, int op, int length) {
+void Util::xorBytes(CryptoPP::byte *b0, CryptoPP::byte *b1, CryptoPP::byte *output, int length) {
   for(int i=0; i<length; i++) {
-    if(op == XOR) {
-      output[i] = b0[i] ^ b1[i];
-    } else if(op == AND) {
-      output[i] = b0[i] & b1[i];
-    } else if(op == OR) {
-      output[i] = b0[i] | b1[i];
-    } else {
-      throw runtime_error("Error! Unknown operator: '" + to_string(op) + "'");
-    }
+    output[i] = b0[i] ^ b1[i];
   }
 }
 
@@ -40,16 +32,10 @@ osuCrypto::Commit Util::commit(osuCrypto::block b, osuCrypto::block r) {
 */
 osuCrypto::Commit Util::commit(vector<pair<CryptoPP::byte*,int>> bytes, osuCrypto::block r, int totalLength) {
   osuCrypto::u8 arr[totalLength];
-  int index = 0;
-
+  int counter = 0;
   for(pair<CryptoPP::byte*,int> p : bytes) {
-    CryptoPP::byte *b = p.first;
-    int byteLength = p.second;
-
-    for(int j=0; j<byteLength; j++) {
-      arr[index] = b[j];
-      index++;
-    }
+    memcpy(arr+counter, p.first, p.second);
+    counter += p.second;
   }
 
   osuCrypto::span<osuCrypto::u8> s = {arr, totalLength};
@@ -59,51 +45,39 @@ osuCrypto::Commit Util::commit(vector<pair<CryptoPP::byte*,int>> bytes, osuCrypt
 /*
   Randomly shuffles a vector
 */
-void Util::shuffle(vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
+void Util::shuffle(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng, vector<CryptoPP::byte*> v, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
   //iv size is required to be 16 bytes
   CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, &iv, sizeof(unsigned int));
 
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
-  prng.Shuffle(v.begin(), v.end());
-}
-
-/*
-  Returns a random byte
-*/
-void Util::randomByte(CryptoPP::byte *output, int length) {
-  CryptoPP::AutoSeededRandomPool asrp;
-  asrp.GenerateBlock(output, length);
+  prng->SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
+  prng->Shuffle(v.begin(), v.end());
 }
 
 /*
   Returns a random byte with a seed
 */
-unsigned int Util::randomByte(CryptoPP::byte *output, int length, CryptoPP::byte* seed, int seedLength, unsigned int iv) {
+unsigned int Util::randomByte(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng, CryptoPP::byte *output, int length, CryptoPP::byte *seed, int seedLength, unsigned int iv) {
   //iv size is required to be 16 bytes
   CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, &iv, sizeof(unsigned int));
 
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
-  prng.GenerateBlock(output, length);
+  prng->SetKeyWithIV(seed, seedLength, ivByte, IV_LENGTH);
+  prng->GenerateBlock(output, length);
   return iv+1;
 }
 
 /*
   Returns random number between minInt and maxInt
 */
-long Util::randomInt(int minInt, int maxInt) {
-  CryptoPP::AutoSeededRandomPool asrp;
+long Util::randomInt(CryptoPP::AutoSeededRandomPool *asrp, int minInt, int maxInt) {
   CryptoPP::Integer r;
-
   if(minInt == 0) {
-    r = CryptoPP::Integer(asrp, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(*asrp, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
   } else {
-    r = CryptoPP::Integer(asrp, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(*asrp, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
   }
 
   long l = r.ConvertToLong();
@@ -113,20 +87,18 @@ long Util::randomInt(int minInt, int maxInt) {
 /*
   Returns random number between minInt and maxInt with seed
 */
-long Util::randomInt(int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv) {
+long Util::randomInt(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng, int minInt, int maxInt, CryptoPP::byte* seed, int length, unsigned int iv) {
   //iv size is required to be 16 bytes
   CryptoPP::byte ivByte[IV_LENGTH];
   memset(ivByte, 0x00, IV_LENGTH);
   memcpy(ivByte, &iv, sizeof(unsigned int));
 
-  CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
-  prng.SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
-
+  prng->SetKeyWithIV(seed, length, ivByte, IV_LENGTH);
   CryptoPP::Integer r;
   if(minInt == 0) {
-    r = CryptoPP::Integer(prng, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(*prng, CryptoPP::Integer(), CryptoPP::Integer(maxInt));
   } else {
-    r = CryptoPP::Integer(prng, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
+    r = CryptoPP::Integer(*prng, CryptoPP::Integer(minInt), CryptoPP::Integer(maxInt));
   }
   long l = r.ConvertToLong();
   return l;

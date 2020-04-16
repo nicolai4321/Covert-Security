@@ -31,6 +31,7 @@ class Judge {
     int kappa;
     CryptoPP::RSA::PublicKey pk;
     CircuitInterface* circuit;
+    CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
 };
 
 #endif // JUDGE_H

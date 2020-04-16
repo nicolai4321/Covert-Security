@@ -35,6 +35,7 @@ class NormalCircuit: public CircuitInterface {
   private:
     map<string, vector<CryptoPP::byte*>> garbledTables;
     HashInterface *h;
+    CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
 
     CryptoPP::byte *encodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, CryptoPP::byte *encO);
     vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR);

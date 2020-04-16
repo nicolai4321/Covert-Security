@@ -50,8 +50,16 @@ class PartyB {
     vector<osuCrypto::block> otSeedsWitnessA(osuCrypto::KosOtExtReceiver* recver, osuCrypto::Channel chlOT, SocketRecorder *socketRecorder,
                                              vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
 
-    static vector<osuCrypto::block> otEncodingsB(osuCrypto::KosOtExtReceiver* recver, int y, int lambda, int kappa, int gamm, osuCrypto::Channel chlOT,
-                                                 SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsB, map<unsigned int, unsigned int>* ivB);
+    static vector<osuCrypto::block> otEncodingsB(osuCrypto::KosOtExtReceiver* recver,
+                                                 CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                                                 int y,
+                                                 int lambda,
+                                                 int kappa,
+                                                 int gamm,
+                                                 osuCrypto::Channel chlOT,
+                                                 SocketRecorder *socketRecorder,
+                                                 vector<CryptoPP::byte*> seedsB,
+                                                 map<unsigned int, unsigned int>* ivB);
 
   protected:
 
@@ -70,6 +78,7 @@ class PartyB {
     vector<string> outputGatesB;
     map<string, vector<string>> gateInfoB;
     TimeLog *timeLog;
+    CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
 };
 
 #endif // PARTYB_H

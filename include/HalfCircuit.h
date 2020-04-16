@@ -35,6 +35,7 @@ class HalfCircuit: public CircuitInterface {
     map<string, vector<CryptoPP::byte*>> andEncodings;
     CryptoPP::byte *r;
     HashInterface *h;
+    CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
 
     vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte *encT);
 };

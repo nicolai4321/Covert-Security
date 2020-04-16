@@ -93,7 +93,8 @@ double runCircuit(CircuitInterface* circuit, EvaluatorInterface* evaluator, int 
 */
 void runCircuitFiles(int kappa) {
   CryptoPP::byte seed[kappa];
-  Util::randomByte(seed, kappa);
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.GenerateBlock(seed, kappa);
   string files[8] = {"adder64.txt", "divide64.txt", "udivide.txt", "mult64.txt", "mult2_64.txt", "sub64.txt", "neg64.txt", "zero_equal.txt"};
 
   double timeTotal0 = 0;
@@ -180,7 +181,7 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     }
 
     if(true) {
-      ofstream file(circuitA->toString()+GV::filename);
+      ofstream file("time/"+circuitA->toString()+GV::filename);
       file << s;
     }
 
@@ -203,6 +204,7 @@ void startProtocols(int kappa) {
   int lambda = 8;
   int x = 50;
   int y = 10;
+  CryptoPP::AutoSeededRandomPool asrp;
 
   //Digital Signature
   pair<CryptoPP::RSA::PrivateKey, CryptoPP::RSA::PublicKey> keys = Signature::generateKeys(1024);
@@ -212,7 +214,7 @@ void startProtocols(int kappa) {
   //HashInterfaces
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
   CryptoPP::byte key[keyLength];
-  Util::randomByte(key, keyLength);
+  asrp.GenerateBlock(key, keyLength);
 
   HashInterface *hashShaA = new HashNormal(kappa);
   HashInterface *hashShaB = new HashNormal(kappa);
@@ -221,7 +223,7 @@ void startProtocols(int kappa) {
 
   //Circuits
   CryptoPP::byte unimportantSeed[kappa];
-  Util::randomByte(unimportantSeed, kappa);
+  asrp.GenerateBlock(unimportantSeed, kappa);
 
   //Normal circuit, sha hash
   CircuitInterface *normalCircuitShaA = new NormalCircuit(kappa, unimportantSeed, hashShaA);
@@ -263,9 +265,9 @@ void startProtocols(int kappa) {
   delete hashHardwareB;
 }
 
-void timeHash(HashInterface *hashInter, int length, int rounds, string name) {
+void timeHash(CryptoPP::AutoSeededRandomPool *asrp, HashInterface *hashInter, int length, int rounds, string name) {
   CryptoPP::byte plain[length];
-  Util::randomByte(plain, length);
+  asrp->GenerateBlock(plain, length);
 
   clock_t start = clock();
   for(int i=0; i<rounds; i++) {
@@ -278,15 +280,16 @@ void timeHash(HashInterface *hashInter, int length, int rounds, string name) {
 
 void runHashFuncs(int kappa, int rounds) {
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
+  CryptoPP::AutoSeededRandomPool asrp;
 
   HashInterface *hashNormal = new HashNormal(kappa);
-  timeHash(hashNormal, kappa, rounds, "normal");
+  timeHash(&asrp, hashNormal, kappa, rounds, "normal");
 
   CryptoPP::byte key[keyLength];
-  Util::randomByte(key, keyLength);
+  asrp.GenerateBlock(key, keyLength);
 
   HashInterface *hashHard = new HashHardware(key, keyLength);
-  timeHash(hashHard, kappa, rounds, "aes hardware");
+  timeHash(&asrp, hashHard, kappa, rounds, "aes hardware");
 
   delete hashNormal;
   delete hashHard;
@@ -297,7 +300,7 @@ int main() {
 
   int kappa = 16; //they use 16 bytes, 16*8=128 bits
   startProtocols(kappa);
-  runCircuitFiles(kappa);
+  //runCircuitFiles(kappa);
   runHashFuncs(kappa, 1000000);
 
   cout << "||COVERT END||" << endl;

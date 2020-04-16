@@ -26,7 +26,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
       } else if(gateType.compare("CONST") == 0) {
       } else if(gateType.compare("XOR") == 0) {
         CryptoPP::byte *xorLR = new CryptoPP::byte[kappa];
-        Util::byteOp(gatesEvaluated[gateL], gatesEvaluated[gateR], xorLR, Util::XOR, kappa);
+        Util::xorBytes(gatesEvaluated[gateL], gatesEvaluated[gateR], xorLR, kappa);
         gatesEvaluated[gateName] = xorLR;
       } else if(gateType.compare("AND") == 0) {
         int sa = Util::lsb(gatesEvaluated[gateL], kappa);
@@ -41,7 +41,7 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         h->hashByte(Wa, kappa, hashWa, kappa);
 
         CryptoPP::byte xorHashWaTG[kappa];
-        Util::byteOp(hashWa, TG, xorHashWaTG, Util::XOR, kappa);
+        Util::xorBytes(hashWa, TG, xorHashWaTG, kappa);
 
         CryptoPP::byte *WG = (sa) ? xorHashWaTG : hashWa;
 
@@ -50,16 +50,16 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
         h->hashByte(Wb, kappa, hashWb, kappa);
 
         CryptoPP::byte xorTEWe[kappa];
-        Util::byteOp(TE, Wa, xorTEWe, Util::XOR, kappa);
+        Util::xorBytes(TE, Wa, xorTEWe, kappa);
 
         CryptoPP::byte xorHashWbTeWE[kappa];
-        Util::byteOp(hashWb, xorTEWe, xorHashWbTeWE, Util::XOR, kappa);
+        Util::xorBytes(hashWb, xorTEWe, xorHashWbTeWE, kappa);
 
         CryptoPP::byte *WE = (sb) ? xorHashWbTeWE : hashWb;
 
         //evaluated
         CryptoPP::byte *xorWGWE = new CryptoPP::byte[kappa];
-        Util::byteOp(WG, WE, xorWGWE, Util::XOR, kappa);
+        Util::xorBytes(WG, WE, xorWGWE, kappa);
 
         gatesEvaluated[gateName] = xorWGWE;
       } else {

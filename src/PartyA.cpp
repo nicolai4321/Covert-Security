@@ -31,12 +31,13 @@ bool PartyA::startProtocol() {
   timeLog->markTime("generating seeds");
   vector<CryptoPP::byte*> seedsA;
   vector<CryptoPP::byte*> witnesses;
+  CryptoPP::AutoSeededRandomPool asrp;
   map<unsigned int, unsigned int> iv;
   for(int j=0; j<lambda; j++) {
     CryptoPP::byte *seedA = new CryptoPP::byte[kappa];
     CryptoPP::byte *witnessA = new CryptoPP::byte[kappa];
-    Util::randomByte(seedA, kappa);
-    Util::randomByte(witnessA, kappa);
+    asrp.GenerateBlock(seedA, kappa);
+    asrp.GenerateBlock(witnessA, kappa);
     seedsA.push_back(seedA);
     witnesses.push_back(witnessA);
     iv[j] = 0;
@@ -53,7 +54,7 @@ bool PartyA::startProtocol() {
   //First OT
   timeLog->markTime("first ot");
   osuCrypto::KosOtExtSender sender;
-  otSeedsWitnesses(&sender, lambda, kappa, chlOT, socketRecorder, seedsA, &iv, witnesses);
+  otSeedsWitnesses(&sender, &prng, lambda, kappa, chlOT, socketRecorder, seedsA, &iv, witnesses);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done first OT" << endl;
   timeLog->endMark("first ot");
 
@@ -68,20 +69,20 @@ bool PartyA::startProtocol() {
 
   //Second OT
   timeLog->markTime("second ot");
-  otEncs(&sender, lambda, kappa, chlOT, socketRecorder, encs, seedsA, &iv);
+  otEncs(&sender, &prng, lambda, kappa, chlOT, socketRecorder, encs, seedsA, &iv);
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: has done second OT" << endl;
   timeLog->endMark("second ot");
 
   //Commiting input encodings
   timeLog->markTime("commit encs");
-  pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(lambda, kappa, seedsA, &iv, encs);
+  pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitPair0 = commitEncsA(&prng, lambda, kappa, seedsA, &iv, encs);
   vector<osuCrypto::Commit> commitmentsEncsInputsA = commitPair0.first;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA = commitPair0.second;
   timeLog->endMark("commit encs");
 
   //Commiting circuits
   timeLog->markTime("commit circuits");
-  pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitPair1 = commitCircuits(lambda, kappa, circuit, seedsA, &iv, circuits);
+  pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitPair1 = commitCircuits(&prng, lambda, kappa, circuit, seedsA, &iv, circuits);
   vector<osuCrypto::Commit> commitmentsA = commitPair1.first;
   vector<osuCrypto::block> decommitmentsA = commitPair1.second;
   timeLog->endMark("commit circuits");
@@ -197,7 +198,7 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
 /*
   First OT-interaction. Sends seedsA and witnesses
 */
-void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
+void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                               vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses) {
   sRecorder->scheduleStore("ot1", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
@@ -207,18 +208,18 @@ void PartyA::otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambd, int 
     data[0] = {block0, block1};
 
     CryptoPP::byte seedInput[kapp];
-    (*iv)[j] = Util::randomByte(seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(prng, seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
 
-    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
-    sender->genBaseOts(prng, channel);
-    sender->sendChosen(data, prng, channel);
+    osuCrypto::PRNG otPrng(Util::byteToBlock(seedInput, kapp));
+    sender->genBaseOts(otPrng, channel);
+    sender->sendChosen(data, otPrng, channel);
   }
 }
 
 /*
   Second OT-interaction. Sends input encodings for party B
 */
-void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
+void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng, int lambd, int kapp, osuCrypto::Channel channel, SocketRecorder *sRecorder,
                     map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv) {
   sRecorder->scheduleStore("ot2", lambd, 68, 12);
   for(int j=0; j<lambd; j++) {
@@ -230,11 +231,11 @@ void PartyA::otEncs(osuCrypto::KosOtExtSender* sender, int lambd, int kapp, osuC
     }
 
     CryptoPP::byte seedInput[kapp];
-    (*iv)[j] = Util::randomByte(seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(prng, seedInput, kapp, seedsA.at(j), kapp, (*iv)[j]);
 
-    osuCrypto::PRNG prng(Util::byteToBlock(seedInput, kapp));
-    sender->genBaseOts(prng, channel);
-    sender->sendChosen(data, prng, channel);
+    osuCrypto::PRNG otPrng(Util::byteToBlock(seedInput, kapp));
+    sender->genBaseOts(otPrng, channel);
+    sender->sendChosen(data, otPrng, channel);
   }
 }
 
@@ -290,7 +291,10 @@ vector<osuCrypto::block> PartyA::getDecommitmentsInputA(int gamma, vector<pair<o
 /*
   Auxillery function for commitEncsA
 */
-void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
+void PartyA::auxCommitEncsA(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                            int j,
+                            int kapp,
+                            CryptoPP::byte* seedA,
                             map<unsigned int, unsigned int>* iv,
                             vector<vector<CryptoPP::byte*>> encs,
                             vector<osuCrypto::Commit>* commitmentsEncsInputsA,
@@ -298,8 +302,8 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
   for(int i=0; i<GV::n1; i++) {
     CryptoPP::byte decom0[kapp];
     CryptoPP::byte decom1[kapp];
-    (*iv)[j] = Util::randomByte(decom0, kapp, seedA, kapp, (*iv)[j]);
-    (*iv)[j] = Util::randomByte(decom1, kapp, seedA, kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(prng, decom0, kapp, seedA, kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(prng, decom1, kapp, seedA, kapp, (*iv)[j]);
 
     osuCrypto::block decommit0 = Util::byteToBlock(decom0, kapp);
     osuCrypto::block decommit1 = Util::byteToBlock(decom1, kapp);
@@ -313,7 +317,7 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
     decommitmentsEncsA->push_back(p);
 
     //Random order so that party B cannot extract my input when I give him decommitments
-    if(Util::randomInt(0, 1, seedA, kapp, (*iv)[j])) {
+    if(Util::randomInt(prng, 0, 1, seedA, kapp, (*iv)[j])) {
       commitmentsEncsInputsA->push_back(c0);
       commitmentsEncsInputsA->push_back(c1);
     } else {
@@ -330,11 +334,16 @@ void PartyA::auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
   second entry is the decommitments
 */
 pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>>
-PartyA::commitEncsA(int lamb, int kapp, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, map<int, vector<vector<CryptoPP::byte*>>> encs) {
+PartyA::commitEncsA(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                    int lamb,
+                    int kapp,
+                    vector<CryptoPP::byte*> seedsA,
+                    map<unsigned int, unsigned int>* iv,
+                    map<int, vector<vector<CryptoPP::byte*>>> encs) {
   vector<osuCrypto::Commit> commitmentsEncsInputsA;
   vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA;
   for(int j=0; j<lamb; j++) {
-    auxCommitEncsA(j, kapp, seedsA.at(j), iv, encs[j], &commitmentsEncsInputsA, &decommitmentsEncsA);
+    auxCommitEncsA(prng, j, kapp, seedsA.at(j), iv, encs[j], &commitmentsEncsInputsA, &decommitmentsEncsA);
   }
 
   pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> output(commitmentsEncsInputsA, decommitmentsEncsA);
@@ -346,8 +355,13 @@ PartyA::commitEncsA(int lamb, int kapp, vector<CryptoPP::byte*> seedsA, map<unsi
   a list of commitments for the circuits and the second
   entry is the decommitments
 */
-pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits(int lamb, int kapp, CircuitInterface *cir, vector<CryptoPP::byte*> seedsA,
-                                                                                map<unsigned int, unsigned int>* iv, vector<CircuitInterface*> circuits) {
+pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                                                                                 int lamb,
+                                                                                 int kapp,
+                                                                                 CircuitInterface *cir,
+                                                                                 vector<CryptoPP::byte*> seedsA,
+                                                                                 map<unsigned int, unsigned int>* iv,
+                                                                                 vector<CircuitInterface*> circuits) {
   vector<osuCrypto::Commit> commitmentsA;
   vector<osuCrypto::block> decommitmentsA;
 
@@ -356,7 +370,7 @@ pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> PartyA::commitCircuits
     circuits.at(j)->exportCircuit(F);
 
     CryptoPP::byte decom[kapp];
-    (*iv)[j] = Util::randomByte(decom, kapp, seedsA.at(j), kapp, (*iv)[j]);
+    (*iv)[j] = Util::randomByte(prng, decom, kapp, seedsA.at(j), kapp, (*iv)[j]);
 
     osuCrypto::block decommit = Util::byteToBlock(decom, kapp);
     osuCrypto::Commit c = commitCircuit(kapp, cir->getType(), F, decommit);

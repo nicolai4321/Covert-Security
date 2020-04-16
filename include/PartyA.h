@@ -31,31 +31,56 @@ class PartyA {
                                                  vector<osuCrypto::Commit> commitmentsB,
                                                  vector<osuCrypto::Commit> commitmentsEncsInputsA);
 
-    static void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender, int lambda, int kappa, osuCrypto::Channel serverChl, SocketRecorder *socketRecorder, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv, vector<CryptoPP::byte*> witnesses);
-    static void otEncs(osuCrypto::KosOtExtSender* sender, int lambda, int kappa, osuCrypto::Channel c, SocketRecorder *socketRecorder, map<int, vector<vector<CryptoPP::byte*>>> encs, vector<CryptoPP::byte*> seedsA, map<unsigned int, unsigned int>* iv);
+    static void otSeedsWitnesses(osuCrypto::KosOtExtSender* sender,
+                                 CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                                 int lambda,
+                                 int kappa,
+                                 osuCrypto::Channel serverChl,
+                                 SocketRecorder *socketRecorder,
+                                 vector<CryptoPP::byte*> seedsA,
+                                 map<unsigned int, unsigned int>* iv,
+                                 vector<CryptoPP::byte*> witnesses);
 
-    static pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitCircuits(int lambda,
-                                                                                   int kappa,
-                                                                                   CircuitInterface *circuit,
-                                                                                   vector<CryptoPP::byte*> seedsA,
-                                                                                   map<unsigned int, unsigned int>* iv,
-                                                                                   vector<CircuitInterface*> circuits);
+    static void otEncs(osuCrypto::KosOtExtSender* sender,
+                       CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                       int lambda,
+                       int kappa,
+                       osuCrypto::Channel c,
+                       SocketRecorder *socketRecorder,
+                       map<int, vector<vector<CryptoPP::byte*>>> encs,
+                       vector<CryptoPP::byte*> seedsA,
+                       map<unsigned int, unsigned int>* iv);
 
-    static void auxCommitEncsA(int j, int kapp, CryptoPP::byte* seedA,
+    static pair<vector<osuCrypto::Commit>, vector<osuCrypto::block>> commitCircuits(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                                                                                    int lambda,
+                                                                                    int kappa,
+                                                                                    CircuitInterface *circuit,
+                                                                                    vector<CryptoPP::byte*> seedsA,
+                                                                                    map<unsigned int, unsigned int>* iv,
+                                                                                    vector<CircuitInterface*> circuits);
+
+    static void auxCommitEncsA(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                               int j,
+                               int kapp,
+                               CryptoPP::byte* seedA,
                                map<unsigned int, unsigned int>* iv,
                                vector<vector<CryptoPP::byte*>> encs,
                                vector<osuCrypto::Commit>* commitmentsEncsInputsA,
                                vector<pair<osuCrypto::block, osuCrypto::block>>* decommitmentsEncsA);
 
-    static pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>>
-    commitEncsA(int lambda, int kappa,
-                vector<CryptoPP::byte*> seedsA,
-                map<unsigned int, unsigned int>* iv,
-                map<int, vector<vector<CryptoPP::byte*>>> encs);
+    static pair<vector<osuCrypto::Commit>, vector<pair<osuCrypto::block, osuCrypto::block>>> commitEncsA(CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption *prng,
+                                                                                                         int lambda,
+                                                                                                         int kappa,
+                                                                                                         vector<CryptoPP::byte*> seedsA,
+                                                                                                         map<unsigned int, unsigned int>* iv,
+                                                                                                         map<int, vector<vector<CryptoPP::byte*>>> encs);
 
     static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda, int kappa, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);
 
-    static osuCrypto::Commit commitCircuit(int kappa, string type, GarbledCircuit *F, osuCrypto::block decommit);
+    static osuCrypto::Commit commitCircuit(int kappa,
+                                           string type,
+                                           GarbledCircuit *F,
+                                           osuCrypto::block decommit);
 
     static pair<CryptoPP::byte*,int> constructSignatureByte(int j, int kappa,
                                                             osuCrypto::Commit *commitmentA,
@@ -79,6 +104,7 @@ class PartyA {
     SocketRecorder *socketRecorder;
     CircuitInterface *circuit;
     TimeLog *timeLog;
+    CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
 };
 
 #endif // PARTYA_H

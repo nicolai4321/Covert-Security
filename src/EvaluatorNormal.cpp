@@ -85,7 +85,7 @@ bool EvaluatorNormal::decodeGate(CryptoPP::byte *encL, CryptoPP::byte *encR, Cry
   h->hashByte(mergedEncs, 2*kappa, hashMergedEncs, 2*kappa);
 
   CryptoPP::byte decoded[2*kappa];
-  Util::byteOp(hashMergedEncs, enc, decoded, Util::XOR, 2*kappa);
+  Util::xorBytes(hashMergedEncs, enc, decoded, 2*kappa);
 
   CryptoPP::byte zero[kappa];
   memset(zero, 0x00, kappa);

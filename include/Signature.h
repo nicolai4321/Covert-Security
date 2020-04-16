@@ -24,6 +24,7 @@ class Signature {
     CryptoPP::RSASS<CryptoPP::PSS, CryptoPP::SHA256>::Signer signer(sk);
     CryptoPP::SecByteBlock signature(signer.MaxSignatureLength());
     size_t signatureLength = signer.SignMessage(rng, msg, msgLength, signature);
+    if(signatureLength > signer.MaxSignatureLength()) throw runtime_error("Error! Signature length exeeded");
     signature.resize(signatureLength);
 
     pair<CryptoPP::SecByteBlock, size_t> output(signature, signatureLength);
