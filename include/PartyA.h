@@ -20,11 +20,15 @@ using namespace std;
 class PartyA {
   public:
     PartyA(int x, CryptoPP::RSA::PrivateKey sk, CryptoPP::RSA::PublicKey pk, int kappa, int lambda, CircuitInterface *circuit, TimeLog *timeLog);
+
     virtual ~PartyA();
 
-    bool startProtocol();
+    bool startProtocol(string filename);
+
     bool checkSeedsWitness(int gamma, vector<osuCrypto::block> gammaSeedsWitnessBlock, vector<CryptoPP::byte*> seedsA, vector<CryptoPP::byte*> witnesses);
+
     vector<osuCrypto::block> getEncsInputA(int gamma, map<int, vector<vector<CryptoPP::byte*>>> encs);
+
     vector<osuCrypto::block> getDecommitmentsInputA(int gamma, vector<pair<osuCrypto::block, osuCrypto::block>> decommitmentsEncsA);
 
     vector<SignatureHolder*> constructSignatures(vector<osuCrypto::Commit> commitmentsA,
@@ -75,21 +79,27 @@ class PartyA {
                                                                                                          map<unsigned int, unsigned int>* iv,
                                                                                                          map<int, vector<vector<CryptoPP::byte*>>> encs);
 
-    static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda, int kappa, CircuitInterface* circuit, vector<CryptoPP::byte*> seedsA);
+    static pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garbling(int lambda,
+                                                                                               int kappa,
+                                                                                               CircuitInterface* circuit,
+                                                                                               vector<CryptoPP::byte*> seedsA,
+                                                                                               string filename);
 
     static osuCrypto::Commit commitCircuit(int kappa,
                                            string type,
                                            GarbledCircuit *F,
                                            osuCrypto::block decommit);
 
-    static pair<CryptoPP::byte*,int> constructSignatureByte(int j, int kappa,
+    static pair<CryptoPP::byte*,int> constructSignatureByte(int j,
+                                                            int kappa,
                                                             osuCrypto::Commit *commitmentA,
                                                             osuCrypto::Commit *commitmentB,
                                                             vector<osuCrypto::Commit> *commitmentsEncsInputsA,
                                                             vector<pair<int, unsigned char*>> *transcriptSent1,
                                                             vector<pair<int, unsigned char*>> *transcriptRecv1,
                                                             vector<pair<int, unsigned char*>> *transcriptSent2,
-                                                            vector<pair<int, unsigned char*>> *transcriptRecv2);
+                                                            vector<pair<int, unsigned char*>> *transcriptRecv2,
+                                                            string file);
 
   protected:
 
@@ -105,6 +115,7 @@ class PartyA {
     CircuitInterface *circuit;
     TimeLog *timeLog;
     CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+    string filename;
 };
 
 #endif // PARTYA_H

@@ -15,6 +15,7 @@ class EvaluatorNormal: public EvaluatorInterface {
     EvaluatorNormal(HashInterface *hashInterface);
     virtual ~EvaluatorNormal();
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
+    virtual pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
 
   protected:
 

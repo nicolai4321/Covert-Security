@@ -12,7 +12,7 @@ using namespace std;
 
 class Judge {
   public:
-    Judge(int kappa, CryptoPP::RSA::PublicKey pk, CircuitInterface* circuit);
+    Judge(int kappa, CryptoPP::RSA::PublicKey pk, CircuitInterface* circuit, string filename);
     virtual ~Judge();
 
     /*
@@ -32,6 +32,7 @@ class Judge {
     CryptoPP::RSA::PublicKey pk;
     CircuitInterface* circuit;
     CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+    string filename;
 };
 
 #endif // JUDGE_H

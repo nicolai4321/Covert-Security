@@ -12,7 +12,7 @@ int Util::lsb(CryptoPP::byte* b, int length) {
 }
 
 /*
-  Bitwise operations:
+  xor
 */
 void Util::xorBytes(CryptoPP::byte *b0, CryptoPP::byte *b1, CryptoPP::byte *output, int length) {
   for(int i=0; i<length; i++) {

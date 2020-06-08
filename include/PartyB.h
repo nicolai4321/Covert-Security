@@ -29,7 +29,7 @@ class PartyB {
 
     virtual ~PartyB();
 
-    bool startProtocol();
+    bool startProtocol(string filename);
 
     bool checkCommitments(GarbledCircuit* F, vector<osuCrypto::block> decommitmentsEncA, vector<osuCrypto::block> decommitmentsCircuitA,
                           vector<osuCrypto::Commit> commitmentsEncsA, vector<osuCrypto::Commit> commitmentsCircuitsA, vector<osuCrypto::block> encsInputsA);
@@ -79,6 +79,7 @@ class PartyB {
     map<string, vector<string>> gateInfoB;
     TimeLog *timeLog;
     CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+    string filename;
 };
 
 #endif // PARTYB_H

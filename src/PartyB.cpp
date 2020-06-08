@@ -16,7 +16,9 @@ PartyB::~PartyB() {}
 /*
   Starts the protocol
 */
-bool PartyB::startProtocol() {
+bool PartyB::startProtocol(string file) {
+  filename = file;
+
   //Network
   timeLog->markTime("network setup");
   osuCrypto::IOService ios(16);
@@ -81,7 +83,7 @@ bool PartyB::startProtocol() {
     Util::blockToByte(seedsWitnessA.at(j), kappa, seedA);
     seedsA.push_back(seedA);
   }
-  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA);
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = PartyA::garbling(lambda, kappa, circuit, seedsA, filename);
 
   //store basic information (independent of seed)
   GarbledCircuit *gC = new GarbledCircuit();
@@ -484,7 +486,8 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
                                                                          &transcriptRecv1,
                                                                          &transcriptSent1,
                                                                          &transcriptSimSent2,
-                                                                         &transcriptSimRecv2);
+                                                                         &transcriptSimRecv2,
+                                                                         filename);
       timeLog->endMark("    construct signature string"+to_string(j));
 
       if(signatureHolder->getMsgLength() != msgSim.second) {
@@ -595,7 +598,7 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
     socSerSim->getSentCat("ot2"+to_string(j), &transcriptSimSent2);
     socSerSim->getRecvCat("ot2"+to_string(j), &transcriptSimRecv2);
 
-    Judge judge(kappa, pk, circuit);
+    Judge judge(kappa, pk, circuit, filename);
     bool judgement = judge.accuse(j, signature, signatureLength, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,
                                   &transcriptRecv1,
                                   &transcriptSent1,

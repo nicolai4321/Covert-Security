@@ -13,8 +13,8 @@ class EvaluatorInterface {
     EvaluatorInterface();
     virtual ~EvaluatorInterface();
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs) = 0;
+    virtual pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs) = 0;
     void giveCircuit(GarbledCircuit* F);
-    pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
 
   protected:
     GarbledCircuit *F;

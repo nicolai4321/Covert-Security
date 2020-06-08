@@ -11,7 +11,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   osuCrypto::Commit commitB = Util::commit(Util::byteToBlock(seedB, kappa), decommitB);
 
   pair<CryptoPP::byte*, int> signatureMsg = PartyA::constructSignatureByte(j, kappa, &commitA, &commitB, &commitEncsA, transcriptSent1,
-                                                         transcriptRecv1, transcriptSent2, transcriptRecv2);
+                                                         transcriptRecv1, transcriptSent2, transcriptRecv2, filename);
   bool correctSignature = Signature::verify(pk, signatureMsg.first, signatureMsg.second, signature, signatureLength);
   delete signatureMsg.first;
   if(!correctSignature) {
@@ -114,7 +114,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   CircuitInterface *circuitInstance = circuit->createInstance(kappa, seedA);
   CircuitReader cr = CircuitReader();
   cr.setReverseInput(true);
-  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuitInstance, GV::filename);
+  pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(circuitInstance, filename);
   if(!import.first) {throw runtime_error("J: Error! Could not import circuit");}
   vector<vector<CryptoPP::byte*>> encsSim = import.second;
 
@@ -248,10 +248,11 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
   return false;
 }
 
-Judge::Judge(int k, CryptoPP::RSA::PublicKey publicKey, CircuitInterface* c){
+Judge::Judge(int k, CryptoPP::RSA::PublicKey publicKey, CircuitInterface* c, string file){
   kappa = k;
   pk = publicKey;
   circuit = c;
+  filename = file;
 }
 
 Judge::~Judge(){

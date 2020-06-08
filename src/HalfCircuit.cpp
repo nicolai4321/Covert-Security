@@ -37,6 +37,7 @@ vector<CryptoPP::byte*> HalfCircuit::addGate(string gateName, string gateType, s
 
   if(gateType.compare("INPUT") == 0) nrInputGates++;
   gateOrder.push_back(gateName);
+
   return encodings;
 }
 
@@ -164,13 +165,36 @@ pair<CryptoPP::byte*, CryptoPP::byte*> HalfCircuit::getConstEnc() {
   return output;
 }
 
+/*
+  Sets the output gate
+*/
+vector<vector<CryptoPP::byte*>> HalfCircuit::setOutputGates(vector<string> oG) {
+  outputGates = oG;
+
+  for(string s : outputGates) {
+    vector<CryptoPP::byte*> encs;
+
+    CryptoPP::byte *encF = new CryptoPP::byte[kappa];
+    CryptoPP::byte *encT = new CryptoPP::byte[kappa];
+
+    h->hashByte(gates[s].at(0), kappa, encF, kappa);
+    h->hashByte(gates[s].at(1), kappa, encT, kappa);
+
+    encs.push_back(encF);
+    encs.push_back(encT);
+    decodings.push_back(encs);
+  }
+
+  return decodings;
+}
+
 void HalfCircuit::exportCircuit(GarbledCircuit *F) {
   F->setKappa(kappa);
   F->setOutputGates(outputGates);
   F->setGateOrder(gateOrder);
   F->setGateInfo(gateInfo);
   F->setConstants(getConstEnc());
-  F->setDecodings(getDecodings());
+  F->setDecodings(decodings);
   F->setAndEncodings(andEncodings);
 }
 
@@ -231,5 +255,12 @@ HalfCircuit::~HalfCircuit() {
       }
     }
   }
+
+  for(vector<CryptoPP::byte*> v : decodings) {
+    for(CryptoPP::byte* b : v) {
+      delete b;
+    }
+  }
+
   delete r;
 }

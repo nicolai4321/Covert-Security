@@ -25,6 +25,7 @@ class HalfCircuit: public CircuitInterface {
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual void exportCircuit(GarbledCircuit *F);
     virtual string getType();
+    virtual vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
 
     map<string, vector<CryptoPP::byte*>> getAndEncodings();
     inline static const string TYPE = "HALF";
@@ -36,6 +37,7 @@ class HalfCircuit: public CircuitInterface {
     CryptoPP::byte *r;
     HashInterface *h;
     CryptoPP::OFB_Mode<CryptoPP::AES>::Encryption prng;
+    vector<vector<CryptoPP::byte*>> decodings;
 
     vector<CryptoPP::byte*> addGate(string gateName, string gateType, string gateL, string gateR, CryptoPP::byte* encF, CryptoPP::byte *encT);
 };

@@ -78,6 +78,7 @@ pair<bool, vector<vector<CryptoPP::byte*>>> CircuitReader::import(CircuitInterfa
 
     //adds remaining gates
     int i = totalInputGates;
+
     while (!reader.eof()) {
       getline(reader, line);
 

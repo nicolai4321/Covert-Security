@@ -89,6 +89,44 @@ pair<bool, vector<CryptoPP::byte*>> EvaluatorHalf::evaluate(vector<CryptoPP::byt
   }
 }
 
+/*
+  Returns the decoding of the output.
+  The bool determines if the decoding was successful
+  The vector contains the output value
+*/
+pair<bool, vector<bool>> EvaluatorHalf::decode(vector<CryptoPP::byte*> encs) {
+  pair<bool, vector<bool>> output;
+  vector<bool> outputBools;
+  int kappa = F->getKappa();
+
+  int i=0;
+  vector<vector<CryptoPP::byte*>> decodings = F->getDecodings();
+  for(vector<CryptoPP::byte*> v : decodings) {
+    CryptoPP::byte *encF = v.at(0);
+    CryptoPP::byte *encT = v.at(1);
+
+    CryptoPP::byte enc[kappa];
+    h->hashByte(encs.at(i), kappa, enc, kappa);
+
+    if(memcmp(enc, encF, kappa) == 0) {
+      outputBools.push_back(false);
+    } else if(memcmp(enc, encT, kappa) == 0) {
+      outputBools.push_back(true);
+    } else {
+      cout << "Error! Invalid decoding" << endl;
+      output.first = false;
+      output.second = vector<bool>();
+      return output;
+    }
+    i++;
+  }
+
+  output.first = true;
+  output.second = outputBools;
+  return output;
+}
+
+
 EvaluatorHalf::EvaluatorHalf(HashInterface *hashInterface) {
   h = hashInterface;
 }

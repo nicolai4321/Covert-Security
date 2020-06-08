@@ -21,8 +21,8 @@ class CircuitInterface {
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc() = 0;
     virtual void exportCircuit(GarbledCircuit *F) = 0;
     virtual string getType() = 0;
+    virtual vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates) = 0;
 
-    vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
     vector<vector<CryptoPP::byte*>> getDecodings();
 
     inline static const string CONST_ZERO = "constZero";

@@ -26,6 +26,7 @@ class NormalCircuit: public CircuitInterface {
     virtual pair<CryptoPP::byte*, CryptoPP::byte*> getConstEnc();
     virtual void exportCircuit(GarbledCircuit *F);
     virtual string getType();
+    virtual vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
 
     map<string, vector<CryptoPP::byte*>> getGarbledTables();
     inline static const string TYPE = "NORMAL";

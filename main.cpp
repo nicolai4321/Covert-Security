@@ -141,12 +141,16 @@ void runCircuitFiles(int kappa) {
   cout << "Time total: " << timeTotal0 << " (normal), " << timeTotal1 << " (half)" << endl;
 }
 
-bool startProtocol(int kappa, int lambda, int x, int y,
+bool startProtocol(int kappa,
+                   int lambda,
+                   int x,
+                   int y,
                    CircuitInterface *circuitA,
                    CircuitInterface *circuitB,
                    EvaluatorInterface *evaluator,
                    CryptoPP::RSA::PrivateKey sk,
-                   CryptoPP::RSA::PublicKey pk) {
+                   CryptoPP::RSA::PublicKey pk,
+                   string filename) {
 
   TimeLog *timeLog = new TimeLog();
   TimeLog *timeLogA = new TimeLog();
@@ -157,12 +161,12 @@ bool startProtocol(int kappa, int lambda, int x, int y,
   timeLog->markTime("protocol time");
   auto threadA = thread([&]() {
     PartyA partyA = PartyA(x, sk, pk, kappa, lambda, circuitA, timeLogA);
-    b0 = partyA.startProtocol();
+    b0 = partyA.startProtocol(filename);
  });
 
   auto threadB = thread([&]() {
     PartyB partyB = PartyB(y, pk, kappa, lambda, circuitB, evaluator, timeLogB);
-    b1 = partyB.startProtocol();
+    b1 = partyB.startProtocol(filename);
   });
 
   threadA.join();
@@ -181,7 +185,7 @@ bool startProtocol(int kappa, int lambda, int x, int y,
     }
 
     if(true) {
-      ofstream file("time/"+circuitA->toString()+GV::filename);
+      ofstream file("time/"+circuitA->toString()+filename);
       file << s;
     }
 
@@ -200,10 +204,7 @@ bool startProtocol(int kappa, int lambda, int x, int y,
   }
 }
 
-void startProtocols(int kappa) {
-  int lambda = 8;
-  int x = 50;
-  int y = 10;
+void startProtocols(string filename, int kappa, int lambda, int x, int y) {
   CryptoPP::AutoSeededRandomPool asrp;
 
   //Digital Signature
@@ -218,8 +219,6 @@ void startProtocols(int kappa) {
 
   HashInterface *hashShaA = new HashNormal(kappa);
   HashInterface *hashShaB = new HashNormal(kappa);
-  HashInterface *hashHardwareA = new HashHardware(key, keyLength);
-  HashInterface *hashHardwareB = new HashHardware(key, keyLength);
 
   //Circuits
   CryptoPP::byte unimportantSeed[kappa];
@@ -229,7 +228,7 @@ void startProtocols(int kappa) {
   CircuitInterface *normalCircuitShaA = new NormalCircuit(kappa, unimportantSeed, hashShaA);
   CircuitInterface *normalCircuitShaB = new NormalCircuit(kappa, unimportantSeed, hashShaB);
   EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashShaB);
-  startProtocol(kappa, lambda, x, y, normalCircuitShaA, normalCircuitShaB, normalEvaluatorSha, sk, pk);
+  startProtocol(kappa, lambda, x, y, normalCircuitShaA, normalCircuitShaB, normalEvaluatorSha, sk, pk, filename);
 
   //Free memory
   delete normalCircuitShaA;
@@ -240,7 +239,7 @@ void startProtocols(int kappa) {
   CircuitInterface *halfCircuitShaA = new HalfCircuit(kappa, unimportantSeed, hashShaA);
   CircuitInterface *halfCircuitShaB = new HalfCircuit(kappa, unimportantSeed, hashShaB);
   EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashShaB);
-  startProtocol(kappa, lambda, x, y, halfCircuitShaA, halfCircuitShaB, halfEvaluatorSha, sk, pk);
+  startProtocol(kappa, lambda, x, y, halfCircuitShaA, halfCircuitShaB, halfEvaluatorSha, sk, pk, filename);
 
   //Free memory
   delete halfCircuitShaA;
@@ -251,10 +250,13 @@ void startProtocols(int kappa) {
   delete hashShaB;
 
   //Half garbling, aes hash
+  HashInterface *hashHardwareA = new HashHardware(key, keyLength);
+  HashInterface *hashHardwareB = new HashHardware(key, keyLength);
+
   CircuitInterface *halfCircuitAESA = new HalfCircuit(kappa, unimportantSeed, hashHardwareA);
   CircuitInterface *halfCircuitAESB = new HalfCircuit(kappa, unimportantSeed, hashHardwareB);
   EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardwareB);
-  startProtocol(kappa, lambda, x, y, halfCircuitAESA, halfCircuitAESB, halfEvaluatorAES, sk, pk);
+  startProtocol(kappa, lambda, x, y, halfCircuitAESA, halfCircuitAESB, halfEvaluatorAES, sk, pk, filename);
 
   //Free memory
   delete halfCircuitAESA;
@@ -265,7 +267,7 @@ void startProtocols(int kappa) {
   delete hashHardwareB;
 }
 
-void timeHash(CryptoPP::AutoSeededRandomPool *asrp, HashInterface *hashInter, int length, int rounds, string name) {
+double timeHash(CryptoPP::AutoSeededRandomPool *asrp, HashInterface *hashInter, int length, int rounds, string name) {
   CryptoPP::byte plain[length];
   asrp->GenerateBlock(plain, length);
 
@@ -275,33 +277,68 @@ void timeHash(CryptoPP::AutoSeededRandomPool *asrp, HashInterface *hashInter, in
     hashInter->hashByte(plain, length, hashedByte, length);
   }
   double duration = (clock()-start) / (double) CLOCKS_PER_SEC;
-  cout << "time: " << duration << " - " << name << endl;
+  return duration;
+  //cout << "time: " << duration << " - " << name << endl;
 }
 
 void runHashFuncs(int kappa, int rounds) {
   int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
   CryptoPP::AutoSeededRandomPool asrp;
+  int avv = 1;
 
   HashInterface *hashNormal = new HashNormal(kappa);
-  timeHash(&asrp, hashNormal, kappa, rounds, "normal");
+  double timeNormal = 0;
+  for(int i=0; i<avv; i++) {
+    timeNormal += timeHash(&asrp, hashNormal, kappa, rounds, "normal");
+  }
+  cout << "time: " << timeNormal/avv << " - " << "normal" << endl;
 
   CryptoPP::byte key[keyLength];
   asrp.GenerateBlock(key, keyLength);
+  delete hashNormal;
 
   HashInterface *hashHard = new HashHardware(key, keyLength);
-  timeHash(&asrp, hashHard, kappa, rounds, "aes hardware");
-
-  delete hashNormal;
+  double timeAES = 0;
+  for(int i=0; i<avv; i++) {
+    timeAES += timeHash(&asrp, hashHard, kappa, rounds, "aes hardware");
+  }
+  cout << "time: " << timeAES/avv << " - " << "aes" << endl;
   delete hashHard;
 }
 
-int main() {
+/*
+  The arguments are
+  - filename
+  - lambda
+  - x
+  - y
+*/
+int main(int argc, char* argv[]) {
   cout << "||COVERT START||" << endl;
 
-  int kappa = 16; //they use 16 bytes, 16*8=128 bits
-  startProtocols(kappa);
-  //runCircuitFiles(kappa);
-  runHashFuncs(kappa, 1000000);
+  if(argc == 5){
+    string filename = argv[1];
+    int lambda = atoi(argv[2]);
+    int x = atoi(argv[3]);
+    int y = atoi(argv[4]);
+    int kappa = 16; //they use 16 bytes, 16*8=128 bits
+
+    cout << "filename: " << filename;
+    cout << ", lambda: " << lambda;
+    cout << ", x: " << x;
+    cout << ", y: " << y;
+    cout << ", n1: " << GV::n1;
+    cout << ", n2: " << GV::n2;
+    cout << ", kappa: " << kappa << endl << endl;
+
+    startProtocols(filename, kappa, lambda, x, y);
+  } else {
+    cout << "need arguments for: file name, lambda, x and y" << endl;
+  }
+
+  //runCircuitFiles(kappa);8
+  //runHashFuncs(kappa, 1000000);
+  //runHashFuncs(kappa, 2^30);
 
   cout << "||COVERT END||" << endl;
   return 0;

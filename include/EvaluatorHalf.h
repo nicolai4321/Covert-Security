@@ -17,6 +17,7 @@ class EvaluatorHalf: public EvaluatorInterface {
     EvaluatorHalf(HashInterface *hashInterface);
     virtual ~EvaluatorHalf();
     virtual pair<bool, vector<CryptoPP::byte*>> evaluate(vector<CryptoPP::byte*> inputs);
+    virtual pair<bool, vector<bool>> decode(vector<CryptoPP::byte*> encs);
 
   protected:
 

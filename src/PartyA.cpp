@@ -17,7 +17,9 @@ PartyA::~PartyA() {}
 /*
   Starts the protocol
 */
-bool PartyA::startProtocol() {
+bool PartyA::startProtocol(string file) {
+  filename = file;
+
   //Network
   timeLog->markTime("network setup");
   osuCrypto::IOService ios(16);
@@ -61,7 +63,7 @@ bool PartyA::startProtocol() {
   //Garbling
   timeLog->markTime("garbling");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: garbling" << endl;
-  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA);
+  pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfo = garbling(lambda, kappa, circuit, seedsA, filename);
   vector<CircuitInterface*> circuits = garblingInfo.first;
   map<int, vector<vector<CryptoPP::byte*>>> encs = garblingInfo.second;
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "A: done garbling" << endl;
@@ -175,7 +177,8 @@ bool PartyA::startProtocol() {
 pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> PartyA::garbling(int lamb,
                                                                                             int kapp,
                                                                                             CircuitInterface* circuitI,
-                                                                                            vector<CryptoPP::byte*> seedsA) {
+                                                                                            vector<CryptoPP::byte*> seedsA,
+                                                                                            string file) {
   vector<CircuitInterface*> circuits;
   map<int, vector<vector<CryptoPP::byte*>>> encs;
 
@@ -184,7 +187,7 @@ pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> Party
 
     CircuitReader cr = CircuitReader();
     cr.setReverseInput(true);
-    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, GV::filename);
+    pair<bool, vector<vector<CryptoPP::byte*>>> import = cr.import(G, file);
     if(!import.first) {throw runtime_error("Error! Could not import circuit");}
     circuits.push_back(G);
     encs[j] = import.second;
@@ -450,12 +453,13 @@ pair<CryptoPP::byte*,int> PartyA::constructSignatureByte(int j, int kapp, osuCry
                                         vector<pair<int, unsigned char*>> *transcriptSent1,
                                         vector<pair<int, unsigned char*>> *transcriptRecv1,
                                         vector<pair<int, unsigned char*>> *transcriptSent2,
-                                        vector<pair<int, unsigned char*>> *transcriptRecv2) {
+                                        vector<pair<int, unsigned char*>> *transcriptRecv2,
+                                        string file) {
   vector<pair<CryptoPP::byte*,int>> bytes;
   int bytesSize = 0;
 
   //Circuit
-  string filepath = "circuits/"+GV::filename;
+  string filepath = "circuits/"+file;
   ifstream reader(filepath);
   reader >> noskipws;
   vector<unsigned char> circuitVector((istream_iterator<unsigned char>(reader)), (istream_iterator<unsigned char>()));
@@ -549,7 +553,8 @@ vector<SignatureHolder*> PartyA::constructSignatures(vector<osuCrypto::Commit> c
                                                             &transcriptSent1,
                                                             &transcriptRecv1,
                                                             &transcriptSent2,
-                                                            &transcriptRecv2);
+                                                            &transcriptRecv2,
+                                                            filename);
     pair<CryptoPP::SecByteBlock, size_t> signature = Signature::sign(sk, msg.first, msg.second);
     SignatureHolder *signatureHolder = new SignatureHolder(msg.first, msg.second, signature.first, signature.second);
     output.push_back(signatureHolder);
