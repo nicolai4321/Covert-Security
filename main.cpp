@@ -320,50 +320,13 @@ void runHashFuncs(int kappa, int rounds) {
 /*
   The arguments are
   - filename
+  - type
   - lambda
   - x
   - y
 */
 int main(int argc, char* argv[]) {
   cout << "||COVERT START||" << endl;
-/*
-  int kappa = 16;
-
-  CryptoPP::byte seed[kappa];
-  CryptoPP::AutoSeededRandomPool asrp;
-  asrp.GenerateBlock(seed, kappa);
-
-  int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
-  CryptoPP::byte key[keyLength];
-  asrp.GenerateBlock(key, keyLength);
-
-  HashInterface *hashInterfaceN = new HashNormal(kappa);
-  HashInterface *hashInterfaceH = new HashHardware(key, keyLength);
-
-  CircuitInterface *circuitN = new NormalCircuit(kappa, seed, hashInterfaceN);
-  EvaluatorInterface *evalN = new EvaluatorNormal(hashInterfaceN);
-
-  CircuitInterface *circuitH = new HalfCircuit(kappa, seed, hashInterfaceN);
-  EvaluatorInterface *evalH = new EvaluatorHalf(hashInterfaceN);
-
-  CircuitInterface *circuitH2 = new HalfCircuit(kappa, seed, hashInterfaceH);
-  EvaluatorInterface *evalH2 = new EvaluatorHalf(hashInterfaceH);
-
-  string filename = "aes_128.txt";
-  int inputSize = 128 +128  ;
-
-  string input = "";
-  for(int i=0; i<inputSize; i++) {
-    input += "0";
-  }
-
-
-  //double time = runCircuit(circuitN, evalN, kappa, filename, input);
-  //double time = runCircuit(circuitH, evalH, kappa, filename, input);
-  //double time = runCircuit(circuitH2, evalH2, kappa, filename, input);
-
-  cout << "time: " << time << endl;
-*/
   if(argc == 6){
     string filename = argv[1];
     int type = atoi(argv[2]);
@@ -385,10 +348,6 @@ int main(int argc, char* argv[]) {
   } else {
     cout << "need arguments for: file name, type, lambda, x, y" << endl;
   }
-
-  //runCircuitFiles(kappa);8
-  //runHashFuncs(kappa, 1000000);
-  //runHashFuncs(kappa, 2^30);
 
   cout << "||COVERT END||" << endl;
   return 0;
