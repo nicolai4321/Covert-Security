@@ -32,6 +32,7 @@ bool PartyB::startProtocol(string file) {
   CryptoPP::AutoSeededRandomPool asrp;
   timeLog->markTime("generate gamma, seeds");
   gamma = Util::randomInt(&asrp, 0, lambda-1);
+  if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: gamma is " << gamma << endl;
 
   //Generating random seeds
   vector<CryptoPP::byte*> seedsB;
@@ -405,6 +406,7 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
                             vector<osuCrypto::Commit> commitmentsB,
                             vector<osuCrypto::block> decommitmentsB,
                             pair<vector<CircuitInterface*>, map<int, vector<vector<CryptoPP::byte*>>>> garblingInfoSim) {
+
   //Checking signatures
   timeLog->markTime("  check signatures");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking signatures" << endl;
@@ -414,6 +416,40 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
       cout << "B: found invalid signature" << endl;
       return false;
     }
+
+    vector<osuCrypto::Commit> commitmentsEncsAJ;
+    int startIndex = 2*j*GV::n1;
+    for(int i=0; i<GV::n1; i++) {
+      commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
+      commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i+1));
+    }
+
+    vector<pair<int, unsigned char*>> transcriptSent1;
+    vector<pair<int, unsigned char*>> transcriptRecv1;
+    vector<pair<int, unsigned char*>> transcriptSent2;
+    vector<pair<int, unsigned char*>> transcriptRecv2;
+    socketRecorder->getSentCat("ot1"+to_string(j), &transcriptSent1);
+    socketRecorder->getRecvCat("ot1"+to_string(j), &transcriptRecv1);
+    socketRecorder->getSentCat("ot2"+to_string(j), &transcriptSent2);
+    socketRecorder->getRecvCat("ot2"+to_string(j), &transcriptRecv2);
+
+    CryptoPP::byte *msg = signatureHolder->getMsg();
+    pair<CryptoPP::byte*,int> msgCorrect = PartyA::constructSignatureByte(j, kappa, &commitmentsCircuitsA.at(j), &commitmentsB.at(j), &commitmentsEncsAJ,
+                                                                         &transcriptRecv1,
+                                                                         &transcriptSent1,
+                                                                         &transcriptRecv2,
+                                                                         &transcriptSent2,
+                                                                         filename);
+    if(signatureHolder->getMsgLength() != msgCorrect.second) {
+      cout << "B: signature of data with different length for round: " << j << endl;
+      return false;
+    }
+
+    if(memcmp(msg, msgCorrect.first, msgCorrect.second) != 0) {
+      cout << "B: signature of wrong data for round: " << j << " - " << memcmp(msg, msgCorrect.first, msgCorrect.second) << endl;
+      return false;
+    }
+    delete msgCorrect.first;
   }
   timeLog->endMark("  check signatures");
 
@@ -453,65 +489,53 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
   senderThread.join();
   timeLog->endMark("  2nd ot");
 
+  bool callJudge = false;
+
   //Checking the conent of the transscripts
   timeLog->markTime("  check transscripts");
   if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking transscripts" << endl;
-  for(int j=0; j<lambda; j++) {
+  int j;
+  for(j=0; j<lambda; j++) {
     if(j != gamma) {
-      timeLog->markTime("    get msg"+to_string(j));
-      SignatureHolder *signatureHolder = signatureHolders.at(j);
-      CryptoPP::byte *msg = signatureHolder->getMsg();
-      timeLog->endMark("    get msg"+to_string(j));
-
-      timeLog->markTime("    find commitments for encs"+to_string(j));
-      vector<osuCrypto::Commit> commitmentsEncsAJ;
-      int startIndex = 2*j*GV::n1;
-      for(int i=0; i<GV::n1; i++) {
-        commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
-        commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i+1));
-      }
-      timeLog->endMark("    find commitments for encs"+to_string(j));
-
-      timeLog->markTime("    construct signature string"+to_string(j));
-      vector<pair<int, unsigned char*>> transcriptSent1;
-      vector<pair<int, unsigned char*>> transcriptRecv1;
+      vector<pair<int, unsigned char*>> transcriptSent2;
+      vector<pair<int, unsigned char*>> transcriptRecv2;
       vector<pair<int, unsigned char*>> transcriptSimSent2;
       vector<pair<int, unsigned char*>> transcriptSimRecv2;
-      socketRecorder->getSentCat("ot1"+to_string(j), &transcriptSent1);
-      socketRecorder->getRecvCat("ot1"+to_string(j), &transcriptRecv1);
+
+      socketRecorder->getSentCat("ot2"+to_string(j), &transcriptSent2);
+      socketRecorder->getRecvCat("ot2"+to_string(j), &transcriptRecv2);
       socSerSim->getSentCat("ot2"+to_string(j), &transcriptSimSent2);
       socSerSim->getRecvCat("ot2"+to_string(j), &transcriptSimRecv2);
 
-      pair<CryptoPP::byte*,int> msgSim = PartyA::constructSignatureByte(j, kappa, &commitmentsCircuitsA.at(j), &commitmentsB.at(j), &commitmentsEncsAJ,
-                                                                         &transcriptRecv1,
-                                                                         &transcriptSent1,
-                                                                         &transcriptSimSent2,
-                                                                         &transcriptSimRecv2,
-                                                                         filename);
-      timeLog->endMark("    construct signature string"+to_string(j));
-
-      if(signatureHolder->getMsgLength() != msgSim.second) {
-        cout << "B: signature of data with different length for round: " << j << endl;
-        socSerSim->close();
-        socCliSim->close();
-        recSerSim.close();
-        recCliSim.close();
-        chlSerSim.close();
-        chlCliSim.close();
-        return false;
+      if(transcriptSimSent2.size() != transcriptRecv2.size()) {
+        cout << "B: wrong transcript size at round: " << j << endl;
+        callJudge = true;
+        break;
       }
 
-      if(memcmp(msg, msgSim.first, msgSim.second) != 0) {
-        cout << "B: signature of wrong data for round: " << j << " - " << memcmp(msg, msgSim.first, msgSim.second) << endl;
-        socSerSim->close();
-        socCliSim->close();
-        recSerSim.close();
-        recCliSim.close();
-        chlSerSim.close();
-        chlCliSim.close();
-        return false;
+      if(transcriptSimRecv2.size() != transcriptSent2.size()) {
+        cout << "B: wrong transcript size at round: " << j << endl;
+        callJudge = true;
+        break;
       }
-      delete msgSim.first;
+
+      for(int i=0; i<transcriptSimSent2.size(); i++) {
+        if(memcmp(transcriptSimSent2.at(i).second, transcriptRecv2.at(i).second, transcriptRecv2.at(i).first) != 0) {
+          cout << "B: wrong transcript at round: " << j << endl;
+          callJudge = true;
+          break;
+        }
+      }
+
+      for(int i=0; i<transcriptSimRecv2.size(); i++) {
+        if(memcmp(transcriptSimRecv2.at(i).second, transcriptSent2.at(i).second, transcriptSent2.at(i).first) != 0) {
+          cout << "B: wrong transcript at round: " << j << endl;
+          callJudge = true;
+          break;
+        }
+      }
+
+      if(callJudge) break;
     }
   }
   timeLog->endMark("  check transscripts");
@@ -531,44 +555,45 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
   timeLog->endMark("  commitments circuits");
 
   timeLog->markTime("  check commits");
-  bool callJudge = false;
-  int j;
-  for(j=0; j<lambda; j++) {
-    if(j != gamma) {
-      int startIndex = 2*j*GV::n1;
-      for(int i=0; i<GV::n1; i++) {
-        osuCrypto::Commit commitSimulated0 = commitmentsEncsASimulated.at(startIndex+2*i);
-        osuCrypto::Commit commitReceived0 = commitmentsEncsA.at(startIndex+2*i);
-        osuCrypto::Commit commitSimulated1 = commitmentsEncsASimulated.at(startIndex+2*i+1);
-        osuCrypto::Commit commitReceived1 = commitmentsEncsA.at(startIndex+2*i+1);
+  if(!callJudge) {
+    if(GV::PRINT_NETWORK_COMMUNICATION) cout << "B: checking commitments" << endl;
+    for(j=0; j<lambda; j++) {
+      if(j != gamma) {
+        int startIndex = 2*j*GV::n1;
+        for(int i=0; i<GV::n1; i++) {
+          osuCrypto::Commit commitSimulated0 = commitmentsEncsASimulated.at(startIndex+2*i);
+          osuCrypto::Commit commitReceived0 = commitmentsEncsA.at(startIndex+2*i);
+          osuCrypto::Commit commitSimulated1 = commitmentsEncsASimulated.at(startIndex+2*i+1);
+          osuCrypto::Commit commitReceived1 = commitmentsEncsA.at(startIndex+2*i+1);
 
-        if(commitSimulated0.size() != commitReceived0.size() || commitSimulated1.size() != commitReceived1.size()) {
-          cout << "B: Corrupt! Simulation of commitments for input encodings does not have same length" << endl;
+          if(commitSimulated0.size() != commitReceived0.size() || commitSimulated1.size() != commitReceived1.size()) {
+            cout << "B: Corrupt! Simulation of commitments for input encodings does not have same length" << endl;
+            callJudge = true;
+            goto skip;
+          }
+
+          if(memcmp(commitSimulated0.data(), commitReceived0.data(), commitSimulated0.size()) != 0 ||
+             memcmp(commitSimulated1.data(), commitReceived1.data(), commitSimulated1.size()) != 0) {
+            cout << "B: Corrupt! Simulation of commitments for input encodings does not match" << endl;
+            callJudge = true;
+            goto skip;
+          }
+        }
+
+        osuCrypto::Commit commitSim1 = commitmentsA.at(j);
+        osuCrypto::Commit commitRec1 = commitmentsCircuitsA.at(j);
+
+        if(commitSim1.size() != commitRec1.size()) {
+          cout << "B: Corrupt! Simulation of commitments for circuits does not have same length" << endl;
           callJudge = true;
           goto skip;
         }
 
-        if(memcmp(commitSimulated0.data(), commitReceived0.data(), commitSimulated0.size()) != 0 ||
-           memcmp(commitSimulated1.data(), commitReceived1.data(), commitSimulated1.size()) != 0) {
-          cout << "B: Corrupt! Simulation of commitments for input encodings does not match" << endl;
+        if(memcmp(commitSim1.data(), commitRec1.data(), commitSim1.size()) != 0) {
+          cout << "B: Corrupt! Simulation of commitments for circuits does not match (" << j << ")" << endl;
           callJudge = true;
           goto skip;
         }
-      }
-
-      osuCrypto::Commit commitSim1 = commitmentsA.at(j);
-      osuCrypto::Commit commitRec1 = commitmentsCircuitsA.at(j);
-
-      if(commitSim1.size() != commitRec1.size()) {
-        cout << "B: Corrupt! Simulation of commitments for circuits does not have same length" << endl;
-        callJudge = true;
-        goto skip;
-      }
-
-      if(memcmp(commitSim1.data(), commitRec1.data(), commitSim1.size()) != 0) {
-        cout << "B: Corrupt! Simulation of commitments for circuits does not match (" << j << ")" << endl;
-        callJudge = true;
-        goto skip;
       }
     }
   }
@@ -577,9 +602,10 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
 
   timeLog->markTime("  judge");
   if(callJudge) {
-    cout << "B: calling judge" << endl;
+    cout << "B: calling judge at round: " << j << endl;
     vector<osuCrypto::Commit> commitmentsEncsAJ;
     int startIndex = 2*j*GV::n1;
+
     for(int i=0; i<GV::n1; i++) {
       commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i));
       commitmentsEncsAJ.push_back(commitmentsEncsA.at(startIndex+2*i+1));
@@ -591,19 +617,19 @@ bool PartyB::simulatePartyA(osuCrypto::IOService *ios,
 
     vector<pair<int, unsigned char*>> transcriptSent1;
     vector<pair<int, unsigned char*>> transcriptRecv1;
-    vector<pair<int, unsigned char*>> transcriptSimSent2;
-    vector<pair<int, unsigned char*>> transcriptSimRecv2;
+    vector<pair<int, unsigned char*>> transcriptSent2;
+    vector<pair<int, unsigned char*>> transcriptRecv2;
     socketRecorder->getSentCat("ot1"+to_string(j), &transcriptSent1);
     socketRecorder->getRecvCat("ot1"+to_string(j), &transcriptRecv1);
-    socSerSim->getSentCat("ot2"+to_string(j), &transcriptSimSent2);
-    socSerSim->getRecvCat("ot2"+to_string(j), &transcriptSimRecv2);
+    socketRecorder->getSentCat("ot2"+to_string(j), &transcriptSent2);
+    socketRecorder->getRecvCat("ot2"+to_string(j), &transcriptRecv2);
 
     Judge judge(kappa, pk, circuit, filename);
-    bool judgement = judge.accuse(j, signature, signatureLength, seedsB.at(j), decommitmentsB.at(j), commitmentsA.at(j), commitmentsEncsAJ,
+    bool judgement = judge.accuse(j, signature, signatureLength, seedsB.at(j), decommitmentsB.at(j), commitmentsCircuitsA.at(j), commitmentsEncsAJ,
                                   &transcriptRecv1,
                                   &transcriptSent1,
-                                  &transcriptSimSent2,
-                                  &transcriptSimRecv2);
+                                  &transcriptRecv2,
+                                  &transcriptSent2);
 
     cout << "B: the judgement is: " << judgement << endl;
 

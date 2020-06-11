@@ -204,7 +204,7 @@ bool startProtocol(int kappa,
   }
 }
 
-void startProtocols(string filename, int kappa, int lambda, int x, int y) {
+void startProtocols(string filename, int type, int kappa, int lambda, int x, int y) {
   CryptoPP::AutoSeededRandomPool asrp;
 
   //Digital Signature
@@ -212,59 +212,70 @@ void startProtocols(string filename, int kappa, int lambda, int x, int y) {
   CryptoPP::RSA::PrivateKey sk = keys.first;
   CryptoPP::RSA::PublicKey pk = keys.second;
 
-  //HashInterfaces
-  int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
-  CryptoPP::byte key[keyLength];
-  asrp.GenerateBlock(key, keyLength);
-
-  HashInterface *hashShaA = new HashNormal(kappa);
-  HashInterface *hashShaB = new HashNormal(kappa);
-
   //Circuits
   CryptoPP::byte unimportantSeed[kappa];
   asrp.GenerateBlock(unimportantSeed, kappa);
 
   //Normal circuit, sha hash
-  CircuitInterface *normalCircuitShaA = new NormalCircuit(kappa, unimportantSeed, hashShaA);
-  CircuitInterface *normalCircuitShaB = new NormalCircuit(kappa, unimportantSeed, hashShaB);
-  EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashShaB);
-  startProtocol(kappa, lambda, x, y, normalCircuitShaA, normalCircuitShaB, normalEvaluatorSha, sk, pk, filename);
+  if(type == 0) {
+    HashInterface *hashShaA = new HashNormal(kappa);
+    HashInterface *hashShaB = new HashNormal(kappa);
 
-  //Free memory
-  delete normalCircuitShaA;
-  delete normalCircuitShaB;
-  delete normalEvaluatorSha;
+    CircuitInterface *normalCircuitShaA = new NormalCircuit(kappa, unimportantSeed, hashShaA);
+    CircuitInterface *normalCircuitShaB = new NormalCircuit(kappa, unimportantSeed, hashShaB);
+    EvaluatorInterface *normalEvaluatorSha = new EvaluatorNormal(hashShaB);
+    startProtocol(kappa, lambda, x, y, normalCircuitShaA, normalCircuitShaB, normalEvaluatorSha, sk, pk, filename);
+
+    //Free memory
+    delete normalCircuitShaA;
+    delete normalCircuitShaB;
+    delete normalEvaluatorSha;
+
+    delete hashShaA;
+    delete hashShaB;
 
   //Half garbling, sha hash
-  CircuitInterface *halfCircuitShaA = new HalfCircuit(kappa, unimportantSeed, hashShaA);
-  CircuitInterface *halfCircuitShaB = new HalfCircuit(kappa, unimportantSeed, hashShaB);
-  EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashShaB);
-  startProtocol(kappa, lambda, x, y, halfCircuitShaA, halfCircuitShaB, halfEvaluatorSha, sk, pk, filename);
+  } else if(type == 1) {
+    HashInterface *hashShaA = new HashNormal(kappa);
+    HashInterface *hashShaB = new HashNormal(kappa);
 
-  //Free memory
-  delete halfCircuitShaA;
-  delete halfCircuitShaB;
-  delete halfEvaluatorSha;
+    CircuitInterface *halfCircuitShaA = new HalfCircuit(kappa, unimportantSeed, hashShaA);
+    CircuitInterface *halfCircuitShaB = new HalfCircuit(kappa, unimportantSeed, hashShaB);
+    EvaluatorInterface *halfEvaluatorSha = new EvaluatorHalf(hashShaB);
+    startProtocol(kappa, lambda, x, y, halfCircuitShaA, halfCircuitShaB, halfEvaluatorSha, sk, pk, filename);
 
-  delete hashShaA;
-  delete hashShaB;
+    //Free memory
+    delete halfCircuitShaA;
+    delete halfCircuitShaB;
+    delete halfEvaluatorSha;
+
+    delete hashShaA;
+    delete hashShaB;
 
   //Half garbling, aes hash
-  HashInterface *hashHardwareA = new HashHardware(key, keyLength);
-  HashInterface *hashHardwareB = new HashHardware(key, keyLength);
+  } else if(type == 2) {
+    int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
+    CryptoPP::byte key[keyLength];
+    asrp.GenerateBlock(key, keyLength);
 
-  CircuitInterface *halfCircuitAESA = new HalfCircuit(kappa, unimportantSeed, hashHardwareA);
-  CircuitInterface *halfCircuitAESB = new HalfCircuit(kappa, unimportantSeed, hashHardwareB);
-  EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardwareB);
-  startProtocol(kappa, lambda, x, y, halfCircuitAESA, halfCircuitAESB, halfEvaluatorAES, sk, pk, filename);
+    HashInterface *hashHardwareA = new HashHardware(key, keyLength);
+    HashInterface *hashHardwareB = new HashHardware(key, keyLength);
 
-  //Free memory
-  delete halfCircuitAESA;
-  delete halfCircuitAESB;
-  delete halfEvaluatorAES;
+    CircuitInterface *halfCircuitAESA = new HalfCircuit(kappa, unimportantSeed, hashHardwareA);
+    CircuitInterface *halfCircuitAESB = new HalfCircuit(kappa, unimportantSeed, hashHardwareB);
+    EvaluatorInterface *halfEvaluatorAES = new EvaluatorHalf(hashHardwareB);
+    startProtocol(kappa, lambda, x, y, halfCircuitAESA, halfCircuitAESB, halfEvaluatorAES, sk, pk, filename);
 
-  delete hashHardwareA;
-  delete hashHardwareB;
+    //Free memory
+    delete halfCircuitAESA;
+    delete halfCircuitAESB;
+    delete halfEvaluatorAES;
+
+    delete hashHardwareA;
+    delete hashHardwareB;
+  } else {
+    cout << "Error! Unknown type: '" << type << "'" << endl;
+  }
 }
 
 double timeHash(CryptoPP::AutoSeededRandomPool *asrp, HashInterface *hashInter, int length, int rounds, string name) {
@@ -315,15 +326,54 @@ void runHashFuncs(int kappa, int rounds) {
 */
 int main(int argc, char* argv[]) {
   cout << "||COVERT START||" << endl;
+/*
+  int kappa = 16;
 
-  if(argc == 5){
+  CryptoPP::byte seed[kappa];
+  CryptoPP::AutoSeededRandomPool asrp;
+  asrp.GenerateBlock(seed, kappa);
+
+  int keyLength = CryptoPP::AES::DEFAULT_KEYLENGTH;
+  CryptoPP::byte key[keyLength];
+  asrp.GenerateBlock(key, keyLength);
+
+  HashInterface *hashInterfaceN = new HashNormal(kappa);
+  HashInterface *hashInterfaceH = new HashHardware(key, keyLength);
+
+  CircuitInterface *circuitN = new NormalCircuit(kappa, seed, hashInterfaceN);
+  EvaluatorInterface *evalN = new EvaluatorNormal(hashInterfaceN);
+
+  CircuitInterface *circuitH = new HalfCircuit(kappa, seed, hashInterfaceN);
+  EvaluatorInterface *evalH = new EvaluatorHalf(hashInterfaceN);
+
+  CircuitInterface *circuitH2 = new HalfCircuit(kappa, seed, hashInterfaceH);
+  EvaluatorInterface *evalH2 = new EvaluatorHalf(hashInterfaceH);
+
+  string filename = "aes_128.txt";
+  int inputSize = 128 +128  ;
+
+  string input = "";
+  for(int i=0; i<inputSize; i++) {
+    input += "0";
+  }
+
+
+  //double time = runCircuit(circuitN, evalN, kappa, filename, input);
+  //double time = runCircuit(circuitH, evalH, kappa, filename, input);
+  //double time = runCircuit(circuitH2, evalH2, kappa, filename, input);
+
+  cout << "time: " << time << endl;
+*/
+  if(argc == 6){
     string filename = argv[1];
-    int lambda = atoi(argv[2]);
-    int x = atoi(argv[3]);
-    int y = atoi(argv[4]);
+    int type = atoi(argv[2]);
+    int lambda = atoi(argv[3]);
+    int x = atoi(argv[4]);
+    int y = atoi(argv[5]);
     int kappa = 16; //they use 16 bytes, 16*8=128 bits
 
     cout << "filename: " << filename;
+    cout << ", type: " << type;
     cout << ", lambda: " << lambda;
     cout << ", x: " << x;
     cout << ", y: " << y;
@@ -331,9 +381,9 @@ int main(int argc, char* argv[]) {
     cout << ", n2: " << GV::n2;
     cout << ", kappa: " << kappa << endl << endl;
 
-    startProtocols(filename, kappa, lambda, x, y);
+    startProtocols(filename, type, kappa, lambda, x, y);
   } else {
-    cout << "need arguments for: file name, lambda, x and y" << endl;
+    cout << "need arguments for: file name, type, lambda, x, y" << endl;
   }
 
   //runCircuitFiles(kappa);8

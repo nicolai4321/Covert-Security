@@ -18,7 +18,7 @@ bool Judge::accuse(int j, CryptoPP::SecByteBlock signature, size_t signatureLeng
     cout << "J: The signature is not correct" << endl;
     return false;
   }
-  cout << "Judge: correct signature" << endl;
+  cout << "J: correct signature" << endl;
 
   //Network
   osuCrypto::IOService ios(16);
