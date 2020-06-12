@@ -28,6 +28,7 @@ class HalfCircuit: public CircuitInterface {
     virtual vector<vector<CryptoPP::byte*>> setOutputGates(vector<string> outputGates);
 
     map<string, vector<CryptoPP::byte*>> getAndEncodings();
+    void setDecodings(vector<vector<CryptoPP::byte*>> decodings);
     inline static const string TYPE = "HALF";
 
   protected:

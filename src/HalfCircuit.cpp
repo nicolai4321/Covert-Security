@@ -188,6 +188,10 @@ vector<vector<CryptoPP::byte*>> HalfCircuit::setOutputGates(vector<string> oG) {
   return decodings;
 }
 
+void HalfCircuit::setDecodings(vector<vector<CryptoPP::byte*>> dec) {
+  decodings = dec;
+}
+
 void HalfCircuit::exportCircuit(GarbledCircuit *F) {
   F->setKappa(kappa);
   F->setOutputGates(outputGates);

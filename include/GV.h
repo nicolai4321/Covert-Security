@@ -12,8 +12,8 @@ using namespace std;
 */
 class GV {
   public:
-    static const int n1 = 128;
-    static const int n2 = 128;
+    static const int n1 = 64;
+    static const int n2 = 64;
 
     //network
     static const int PORT = 1212;
